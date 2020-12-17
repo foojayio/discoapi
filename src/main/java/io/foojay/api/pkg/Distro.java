@@ -90,9 +90,14 @@ public enum Distro implements ApiFeature {
             case "AdoptOpenJDK":
                 return AOJ;
             case "aoj_openj9":
+            case "AOJ_OpenJ9":
             case "AOJ_OPENJ9":
+            case "AOJ OpenJ9":
+            case "AOJ OPENJ9":
+            case "aoj openj9":
             case "adopt_openj9":
             case "ADOPT_OPENJ9":
+            case "Adopt OpenJ9":
             case "adoptopenjdk_openj9":
             case "Adopt_OpenJ9":
             case "AdoptOpenJDK_OpenJ9":
