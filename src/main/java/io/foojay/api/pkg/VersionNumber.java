@@ -375,7 +375,7 @@ public class VersionNumber implements Comparable<VersionNumber> {
         if (Helper.isPositiveInteger(text)) {
             return Integer.valueOf(text);
         } else {
-            LOGGER.debug("Given text {} did not contain positive integer. Full text to parse was: {}", text, fullTextToParse);
+            LOGGER.info("Given text {} did not contain positive integer. Full text to parse was: {}", text, fullTextToParse);
             return -1;
         }
     }
