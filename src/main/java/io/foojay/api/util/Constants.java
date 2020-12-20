@@ -35,10 +35,6 @@ import java.util.regex.Pattern;
 
 public class Constants {
     public static final String        BASE_PATH                = "disco";
-    public static final String        CURRENT_API_VERSION      = "v1.0";
-    public static final String        PACKAGES_PATH            = "packages";
-    public static final String        MAJOR_VERSIONS_PATH      = "major_versions";
-    public static final String        EPHEMERAL_IDS_PATH       = "ephemeral_ids";
 
     public static final String        PACKAGES_COLLECTION      = "packages";
     public static final String        DOWNLOADS_COLLECTION     = "downloads";
