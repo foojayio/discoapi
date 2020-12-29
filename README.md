@@ -4,7 +4,7 @@
 
 ## Disco API is a general purpose JDK/JRE discovery api
 
-The foojay discovery api (disco api) is made to discover java packages (jre/jdk) from different distributions.
+The foojay discovery api (disco api) is made to discover builds of OpenJDK (jre/jdk) from different distributions.
 
 #### At the moment the following distributions are supported by the api:
 * AdoptOpenJDK
