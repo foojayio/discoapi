@@ -34,6 +34,7 @@ import io.foojay.api.util.Config;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.OutputFormat;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.bson.json.JsonParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +52,8 @@ import java.util.function.Consumer;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Updates.combine;
 import static com.mongodb.client.model.Updates.set;
+import static io.foojay.api.pkg.Pkg.FIELD_FILENAME;
+import static io.foojay.api.pkg.Pkg.FIELD_LATEST_BUILD_AVAILABLE;
 
 
 public enum MongoDbManager {
@@ -209,6 +212,38 @@ public enum MongoDbManager {
         return true;
     }
 
+    public boolean removePkgs(final Collection<Pkg> pkgs) {
+        if (!connected) { init(); }
+        if (null == pkgs || pkgs.isEmpty()) {
+            LOGGER.debug("Packages are null or empty.");
+            return false;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Packages have not been removed because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return false;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.PACKAGES_COLLECTION) {
+            LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
+            return false;
+        };
+
+        MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
+        for (Pkg pkg : pkgs) {
+            try {
+                Bson deleteFilter = eq(FIELD_FILENAME, pkg.getFileName());
+                collection.deleteOne(deleteFilter);
+            } catch (JsonParseException e) {
+                LOGGER.error("Error when deleting package {}. {}", pkg.getId(), e.getMessage());
+            }
+        }
+        LOGGER.debug("Successfully deleted {} packages from mongodb.", pkgs.size());
+        return true;
+    }
+
     public Map<String, Long> getDowloads() {
         if (!connected) { init(); }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
@@ -247,7 +282,7 @@ public enum MongoDbManager {
         if (null == Constants.DOWNLOADS_COLLECTION) {
             LOGGER.error("Constants.DOWNLOADS_COLLECTION not set.");
             return;
-        };
+        }
         database.getCollection(Constants.DOWNLOADS_COLLECTION)
                 .updateOne(eq(FIELD_PACKAGE_ID, id), combine(set(FIELD_PACKAGE_ID, id), set(FIELD_DOWNLOADS, noOfDownloads)), new UpdateOptions().upsert(true));
 
@@ -277,5 +312,45 @@ public enum MongoDbManager {
 
         collection.insertOne(document);
         LOGGER.debug("Successfully stored ip-address {} for download of package id {} to mongodb.", ipAddress, id);
+    }
+
+    public void updateLatestBuildAvailable(final List<Pkg> pkgs) {
+        if (!connected) { init(); }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Could not update latest build available because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.PACKAGES_COLLECTION) {
+            LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
+            return;
+        }
+        MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
+        pkgs.forEach(pkg -> collection.updateOne(eq(FIELD_PACKAGE_ID, pkg.getId()), set(FIELD_LATEST_BUILD_AVAILABLE, false)));
+
+        LOGGER.debug("Successfully updated latest build available for {} packages", pkgs.size());
+    }
+
+    public void syncLatestBuildAvailableInDatabaseWithCache(final Collection<Pkg> pkgs) {
+        if (!connected) { init(); }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Could not sync cache with database because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.PACKAGES_COLLECTION) {
+            LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
+            return;
+        }
+        MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
+        pkgs.forEach(pkg -> collection.updateOne(eq(FIELD_PACKAGE_ID, pkg.getId()), set(FIELD_LATEST_BUILD_AVAILABLE, pkg.isLatestBuildAvailable())));
+
+        LOGGER.debug("Successfully synced latest build available for all packages in cache {}", pkgs.size());
     }
 }
