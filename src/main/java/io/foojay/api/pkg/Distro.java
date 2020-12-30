@@ -24,6 +24,8 @@ import io.foojay.api.distribution.AOJ_OPENJ9;
 import io.foojay.api.distribution.Corretto;
 import io.foojay.api.distribution.Distribution;
 import io.foojay.api.distribution.Dragonwell;
+import io.foojay.api.distribution.GraalVMCE11;
+import io.foojay.api.distribution.GraalVMCE8;
 import io.foojay.api.distribution.Liberica;
 import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
@@ -39,13 +41,15 @@ import java.util.stream.Collectors;
 public enum Distro implements ApiFeature {
     AOJ("AOJ", "aoj", new AOJ(), 1),
     AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 1),
-    CORRETTO("Corretto", "corretto", new Corretto(), 6),
-    DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 6),
+    CORRETTO("Corretto", "corretto", new Corretto(), 12),
+    DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 12),
+    GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 12),
+    GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 12),
     LIBERICA("Liberica", "liberica", new Liberica(), 1),
     ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 6),
     ORACLE("Oracle", "oracle", new Oracle(), 1),
     RED_HAT("Red Hat", "redhat", new RedHat(), 12),
-    SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 6),
+    SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 12),
     ZULU("Zulu", "zulu", new Zulu(), 1),
     NONE("-", "", null, 0),
     NOT_FOUND("", "", null, 0);
@@ -114,6 +118,18 @@ public enum Distro implements ApiFeature {
             case "LIBERICA":
             case "Liberica":
                 return LIBERICA;
+            case "graalvm_ce8":
+            case "graalvmce8":
+            case "GraalVM CE 8":
+            case "GraalVMCE8":
+            case "GraalVM_CE8":
+                return GRAALVM_CE8;
+            case "graalvm_ce11":
+            case "graalvmce11":
+            case "GraalVM CE 11":
+            case "GraalVMCE11":
+            case "GraalVM_CE11":
+                return GRAALVM_CE11;
             case "sap_machine":
             case "sapmachine":
             case "SAPMACHINE":

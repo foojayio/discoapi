@@ -27,6 +27,6 @@ public class DistributionTest {
 
     @Test
     public void distributions() {
-        assert (Distro.getDistributions().size() == 10);
+        assert (Distro.getDistributions().size() == 12);
     }
 }
