@@ -34,8 +34,6 @@ import java.util.regex.Pattern;
 
 
 public class Constants {
-    public static final String        BASE_PATH                = "disco";
-
     public static final String        PACKAGES_COLLECTION      = "packages";
     public static final String        DOWNLOADS_COLLECTION     = "downloads";
     public static final String        DOWNLOADS_IP_COLLECTION  = "downloadsip";
@@ -58,9 +56,15 @@ public class Constants {
 
     public static final String        MAINTAINED_PROPERTIES_URL = "https://github.com/foojay2020/maintained_major_versions/raw/main/maintained.properties";
 
+    public static final String        FILE_ENDING_JAR           = "jar";
+    public static final String        FILE_ENDING_TXT           = "txt";
+
+    public static final long          EPHEMERAL_ID_DELAY        = 120; // [sec]
+    public static final long          EPHEMERAL_ID_TIMEOUT      = 600; // [sec]
+
     public static final Map<String, String> PARAMETER_LOOKUP = new HashMap<>() {{
-        put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, arm64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
-        put(Pkg.FIELD_ARCHIVE_TYPE, "cab, deb, dmg, exe, msi, pkg, rpm, tar, zip");
+        put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
+        put(Pkg.FIELD_ARCHIVE_TYPE, "cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip");
         put(Pkg.FIELD_BITNESS, "32, 64");
         put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, dragonwell, corretto, liberica, oracle, oracle_open_jdk, redhat, sap_machine, zulu");
         put(Pkg.FIELD_OPERATING_SYSTEM, "aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows");
@@ -70,29 +74,25 @@ public class Constants {
         put(Pkg.FIELD_TERM_OF_SUPPORT, "sts, mts, lts");
     }};
 
-    public static final String        FILE_ENDING_JAR          = "jar";
-    public static final String        FILE_ENDING_TXT          = "txt";
-
-    public static final long          EPHEMERAL_ID_DELAY       = 120; // [sec]
-    public static final long          EPHEMERAL_ID_TIMEOUT     = 600; // [sec]
-
-
     public static final LinkedHashMap<String, ArchiveType> ARCHIVE_TYPE_LOOKUP = new LinkedHashMap<>() {{
+        put(".bin", ArchiveType.BIN);
         put(".cab", ArchiveType.CAB);
         put(".deb", ArchiveType.DEB);
         put(".dmg", ArchiveType.DMG);
         put(".msi", ArchiveType.MSI);
         put(".pkg", ArchiveType.PKG);
         put(".rpm", ArchiveType.RPM);
-        put(".src.tar.gz", ArchiveType.SRC_TAR);
         put(".source.tar.gz", ArchiveType.SRC_TAR);
+        put(".src.tar.gz", ArchiveType.SRC_TAR);
         put(".tar.gz", ArchiveType.TAR_GZ);
-        put(".tar", ArchiveType.TAR_GZ);
+        put(".tar.Z", ArchiveType.TAR_Z);
+        put(".tar", ArchiveType.TAR);
         put(".zip", ArchiveType.ZIP);
         put(".exe", ArchiveType.EXE);
     }};
 
     public static final LinkedHashMap<String, Architecture> ARCHITECTURE_LOOKUP = new LinkedHashMap<>() {{
+        put("ia64", Architecture.IA64);
         put("aarch64", Architecture.AARCH64);
         put("aarch32sf", Architecture.ARM);
         put("aarch32hf", Architecture.ARM);
@@ -117,16 +117,14 @@ public class Constants {
         put("ppc32hf", Architecture.PPC);
         put("ppc64le", Architecture.PPC64LE);
         put("ppc64", Architecture.PPC64);
+        put("ppc", Architecture.PPC);
         put("riscv64", Architecture.RISCV64);
         put("sparcv9", Architecture.SPARCV9);
+        put("sparc", Architecture.SPARC);
         put("musl", Architecture.X64);
     }};
 
     public static final LinkedHashMap<String, OperatingSystem> OPERATING_SYSTEM_LOOKUP = new LinkedHashMap<>() {{
-        put("macosx", OperatingSystem.MACOS);
-        put("macos", OperatingSystem.MACOS);
-        put("mac", OperatingSystem.MACOS);
-        put("osx", OperatingSystem.MACOS);
         put("windows", OperatingSystem.WINDOWS);
         put("Windows", OperatingSystem.WINDOWS);
         put("win", OperatingSystem.WINDOWS);
@@ -139,31 +137,39 @@ public class Constants {
         put("solaris", OperatingSystem.SOLARIS);
         put("qnx", OperatingSystem.QNX);
         put("aix", OperatingSystem.AIX);
+        put("darwin", OperatingSystem.MACOS);
+        put("macosx", OperatingSystem.MACOS);
+        put("macos", OperatingSystem.MACOS);
+        put("osx", OperatingSystem.MACOS);
+        put("mac", OperatingSystem.MACOS);
     }};
 
     public static final LinkedHashMap<String, PackageType> PACKAGE_TYPE_LOOKUP = new LinkedHashMap<>() {{
         put("jdk", PackageType.JDK);
         put("-jdk", PackageType.JDK);
         put("jdk-", PackageType.JDK);
+        put("JDK", PackageType.JDK);
         put("jre", PackageType.JRE);
         put("-jre", PackageType.JRE);
         put("jre-", PackageType.JRE);
+        put("JRE", PackageType.JRE);
+        put("serverjre", PackageType.JRE);
     }};
 
     public static final LinkedHashMap<String, ReleaseStatus> RELEASE_STATUS_LOOKUP = new LinkedHashMap<>() {{
+        put("/early_access/", ReleaseStatus.EA);
+        put("/EA/", ReleaseStatus.GA);
+        put("preview", ReleaseStatus.EA);
         put("-ea", ReleaseStatus.EA);
         put("_ea", ReleaseStatus.EA);
         put("ea-", ReleaseStatus.EA);
         put("ea", ReleaseStatus.EA); 
         put("EA", ReleaseStatus.EA);
-        put("/early_access/", ReleaseStatus.EA);
-        put("/EA/", ReleaseStatus.GA);
-        put("preview", ReleaseStatus.EA); 
+        put("/GA/", ReleaseStatus.GA);
         put("-ga", ReleaseStatus.GA);
         put("_ga", ReleaseStatus.GA);
         put("ga-", ReleaseStatus.GA); 
         put("ga", ReleaseStatus.GA); 
         put("GA", ReleaseStatus.GA);
-        put("/GA/", ReleaseStatus.GA);
     }};
 }
