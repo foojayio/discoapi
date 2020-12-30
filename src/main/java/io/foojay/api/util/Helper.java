@@ -59,6 +59,7 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -85,7 +86,7 @@ public class Helper {
     private static final Random  RND                   = new Random();
     public  static final Pattern FILE_URL_PATTERN      = Pattern.compile("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)");
     public  static final Pattern HREF_FILE_PATTERN     = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
-    public  static final Pattern HREF_DOWNLOAD_PATTERN = Pattern.compile("(>)((jdk|jre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-z]+)(<)");
+    public  static final Pattern HREF_DOWNLOAD_PATTERN = Pattern.compile("(>)(\\s?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(<)");
     public  static final Matcher FILE_URL_MATCHER      = FILE_URL_PATTERN.matcher("");
     public  static final Matcher HREF_FILE_MATCHER     = HREF_FILE_PATTERN.matcher("");
     public  static final Matcher HREF_DOWNLOAD_MATCHER = HREF_DOWNLOAD_PATTERN.matcher("");
@@ -112,7 +113,7 @@ public class Helper {
                 // Get all jdk 8 packages from github
                 String       query8     = oracleOpenJDK.getGithubPkg8Url() + "/releases?per_page=100";
                 HttpClient  clientOJ    = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
-                HttpRequest request8    = HttpRequest.newBuilder().uri(URI.create(query8)).GET().build();
+                HttpRequest request8 = HttpRequest.newBuilder().uri(URI.create(query8)).setHeader("User-Agent", "DiscoAPI").GET().build();
                 try {
                     HttpResponse<String> response = clientOJ.send(request8, BodyHandlers.ofString());
                     if (response.statusCode() == 200) {
@@ -132,7 +133,7 @@ public class Helper {
                 }
                 // Get all jdk 11 packages from github
                 String       query11    = oracleOpenJDK.getGithubPkg11Url() + "/releases?per_page=100";
-                HttpRequest request11    = HttpRequest.newBuilder().uri(URI.create(query11)).GET().build();
+                HttpRequest request11 = HttpRequest.newBuilder().uri(URI.create(query11)).setHeader("User-Agent", "DiscoAPI").GET().build();
                 try {
                     HttpResponse<String> response = clientOJ.send(request11, BodyHandlers.ofString());
                     if (response.statusCode() == 200) {
@@ -153,12 +154,16 @@ public class Helper {
                 break;
             case SAP_MACHINE:
                 SAPMachine  sapMachine = (SAPMachine) distro.get();
-                // Fetch official packages from sap.github.io -> sapmachine_releases.json
+                // Fetch packages from sap.github.io -> sapmachine_releases.json
                 pkgs.addAll(sapMachine.getAllPkgsFromJsonUrl());
+
+                // Fetch major versions 10, 12, 13 from github
+                pkgs.addAll(sapMachine.getAllPkgs());
+
                 // Search through github release and fetch packages from there
                 String      query      = sapMachine.getPkgUrl() + "?per_page=100";
                 HttpClient  clientSAP  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
-                HttpRequest request    = HttpRequest.newBuilder().uri(URI.create(query)).GET().build();
+                HttpRequest request   = HttpRequest.newBuilder().uri(URI.create(query)).setHeader("User-Agent", "DiscoAPI").GET().build();
                 try {
                     HttpResponse<String> response = clientSAP.send(request, BodyHandlers.ofString());
                     if (response.statusCode() == 200) {
@@ -220,7 +225,7 @@ public class Helper {
         if (query.isEmpty()) { return List.of(); }
 
         HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(query)).GET().build();
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(query)).setHeader("User-Agent", "DiscoAPI").GET().build();
         List<Pkg>   pkgs    = new LinkedList<>();
         try {
             List<Pkg> pkgsFound = new ArrayList<>();
@@ -237,8 +242,7 @@ public class Helper {
                         JsonArray jsonArray = element.getAsJsonArray();
                         for (int i = 0; i < jsonArray.size(); i++) {
                             JsonObject pkgJsonObj         = jsonArray.get(i).getAsJsonObject();
-                            List<Pkg>  pkgsInDistribution =
-                                distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
+                            List<Pkg>  pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
                         pkgsFound.addAll(pkgsInDistribution);
                         //pkgsFound.addAll(pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList()));
                         }
@@ -277,7 +281,7 @@ public class Helper {
                                           final PackageType packageType, final boolean javaFX, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         String      query   = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, javaFX, releaseStatus, termOfSupport);
         HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_1_1).build();
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(query)).GET().build();
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(query)).setHeader("User-Agent", "DiscoAPI").GET().build();
         List<Pkg>   pkgs    = new LinkedList<>();
         try {
             String      body     = getResponseAsync(client, request);
@@ -375,7 +379,7 @@ public class Helper {
         Set<String> hrefsFound = new HashSet<>();
         HREF_DOWNLOAD_MATCHER.reset(text);
         while (HREF_DOWNLOAD_MATCHER.find()) {
-            hrefsFound.add(HREF_DOWNLOAD_MATCHER.group(2));
+            hrefsFound.add(HREF_DOWNLOAD_MATCHER.group(2).strip());
         }
         return hrefsFound;
     }
@@ -536,5 +540,76 @@ public class Helper {
 
     public static String trimPrefix(final String text, final String prefix) {
         return text.replaceFirst(prefix, "");
+    }
+
+    public static boolean isDifferentBuild(final Pkg pkg1, final Pkg pkg2) {
+        return !pkg1.getDistribution().equals(pkg2.getDistribution())           ||
+                pkg1.getVersionNumber().compareTo(pkg2.getVersionNumber()) !=0  ||
+                pkg1.getArchitecture()    != pkg2.getArchitecture()             ||
+                pkg1.getBitness()         != pkg2.getBitness()                  ||
+                pkg1.getOperatingSystem() != pkg2.getOperatingSystem()          ||
+                pkg1.getLibCType()        != pkg2.getLibCType()                 ||
+                pkg1.getArchiveType()     != pkg2.getArchiveType()              ||
+                pkg1.getPackageType()     != pkg2.getPackageType()              ||
+                pkg1.getReleaseStatus()   != pkg2.getReleaseStatus()            ||
+                pkg1.isJavaFXBundled()    != pkg2.isJavaFXBundled()             ||
+                pkg1.getTermOfSupport()   != pkg2.getTermOfSupport();
+    }
+
+    public static List<Pkg> getAllBuildsOfPackage(final Pkg pkg) {
+        List<Pkg> differentBuilds = CacheManager.INSTANCE.pkgCache.getPkgs()
+                                                                  .stream()
+                                                                  .filter(p -> p.getDistribution().equals(pkg.getDistribution()))
+                                                                  //.filter(p -> p.getVersionNumber().compareTo(pkg.getVersionNumber()) == 0)
+                                                                  .filter(p -> p.getSemver().compareTo(pkg.getSemver()) == 0)
+                                                                  .filter(p -> p.getArchitecture()    == pkg.getArchitecture())
+                                                                  .filter(p -> p.getBitness()         == pkg.getBitness())
+                                                                  .filter(p -> p.getOperatingSystem() == pkg.getOperatingSystem())
+                                                                  .filter(p -> p.getLibCType()        == pkg.getLibCType())
+                                                                  .filter(p -> p.getArchiveType()     == pkg.getArchiveType())
+                                                                  .filter(p -> p.getPackageType()     == pkg.getPackageType())
+                                                                  .filter(p -> p.getReleaseStatus()   == pkg.getReleaseStatus())
+                                                                  .filter(p -> p.getTermOfSupport()   == pkg.getTermOfSupport())
+                                                                  .filter(p -> p.isJavaFXBundled()    == pkg.isJavaFXBundled())
+                                                                  .filter(p -> !p.getFileName().equals(pkg.getFileName()))
+                                                                  .collect(Collectors.toList());
+        return differentBuilds;
+    }
+
+    public static List<Pkg> getAllBuildsOfPackageInList(final Collection<Pkg> packages, final Pkg pkg) {
+        List<Pkg> differentBuilds = packages.stream()
+                                            .filter(p -> p.getDistribution().equals(pkg.getDistribution()))
+                                            .filter(p -> p.getVersionNumber().compareTo(pkg.getVersionNumber()) == 0)
+                                            .filter(p -> p.getArchitecture()    == pkg.getArchitecture())
+                                            .filter(p -> p.getBitness()         == pkg.getBitness())
+                                            .filter(p -> p.getOperatingSystem() == pkg.getOperatingSystem())
+                                            .filter(p -> p.getLibCType()        == pkg.getLibCType())
+                                            .filter(p -> p.getArchiveType()     == pkg.getArchiveType())
+                                            .filter(p -> p.getPackageType()     == pkg.getPackageType())
+                                            .filter(p -> p.getReleaseStatus()   == pkg.getReleaseStatus())
+                                            .filter(p -> p.getTermOfSupport()   == pkg.getTermOfSupport())
+                                            .filter(p -> p.isJavaFXBundled()    == pkg.isJavaFXBundled())
+                                            .filter(p -> !p.getFileName().equals(pkg.getFileName()))
+                                            .collect(Collectors.toList());
+        return differentBuilds;
+    }
+
+    public static Optional<Pkg> getPkgWithMaxVersionForGivenPackage(final Pkg pkg) {
+        int             featureVersion          = pkg.getVersionNumber().getFeature().getAsInt();
+        Optional<Pkg>   pkgWithMaxVersionNumber = CacheManager.INSTANCE.pkgCache.getPkgs()
+                                                                                .stream()
+                                                                                .filter(p -> p.getDistribution().equals(pkg.getDistribution()))
+                                                                                .filter(p -> p.getArchitecture()    == pkg.getArchitecture())
+                                                                                .filter(p -> p.getArchiveType()     == pkg.getArchiveType())
+                                                                                .filter(p -> p.getOperatingSystem() == pkg.getOperatingSystem())
+                                                                                .filter(p -> p.getLibCType()        == pkg.getLibCType())
+                                                                                .filter(p -> p.getTermOfSupport()   == pkg.getTermOfSupport())
+                                                                                .filter(p -> p.getPackageType()     == pkg.getPackageType())
+                                                                                .filter(p -> p.getReleaseStatus()   == pkg.getReleaseStatus())
+                                                                                .filter(p -> p.getBitness()         == pkg.getBitness())
+                                                                                .filter(p -> p.isJavaFXBundled()    == pkg.isJavaFXBundled())
+                                                                                .filter(p -> featureVersion         == pkg.getVersionNumber().getFeature().getAsInt())
+                                                                                .max(Comparator.comparing(Pkg::getVersionNumber));
+        return pkgWithMaxVersionNumber;
     }
 }
