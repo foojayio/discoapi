@@ -31,25 +31,26 @@ import java.util.OptionalInt;
 
 
 public class Pkg {
-    public  static final String            FIELD_ID                    = "id";
-    public  static final String            FIELD_DISTRIBUTION          = "distribution";
-    public  static final String            FIELD_MAJOR_VERSION         = "major_version";
-    public  static final String            FIELD_JAVA_VERSION          = "java_version";
-    public  static final String            FIELD_DISTRIBUTION_VERSION  = "distribution_version";
-    public  static final String            FIELD_ARCHITECTURE          = "architecture";
-    public  static final String            FIELD_BITNESS               = "bitness";
-    public  static final String            FIELD_OPERATING_SYSTEM      = "operating_system";
-    public  static final String            FIELD_LIB_C_TYPE            = "lib_c_type";
-    public  static final String            FIELD_PACKAGE_TYPE          = "package_type";
-    public  static final String            FIELD_RELEASE_STATUS        = "release_status";
-    public  static final String            FIELD_ARCHIVE_TYPE          = "archive_type";
-    public  static final String            FIELD_TERM_OF_SUPPORT       = "term_of_support";
-    public  static final String            FIELD_JAVAFX_BUNDLED        = "javafx_bundled";
-    public  static final String            FIELD_DIRECTLY_DOWNLOADABLE = "directly_downloadable";
-    public  static final String            FIELD_FILENAME              = "filename";
-    public  static final String            FIELD_DIRECT_DOWNLOAD_URI   = "direct_download_uri";
-    public  static final String            FIELD_DOWNLOAD_SITE_URI     = "download_site_uri";
-    public  static final String            FIELD_EPHEMERAL_ID          = "ephemeral_id";
+    public  static final String            FIELD_ID                     = "id";
+    public  static final String            FIELD_DISTRIBUTION           = "distribution";
+    public  static final String            FIELD_MAJOR_VERSION          = "major_version";
+    public  static final String            FIELD_JAVA_VERSION           = "java_version";
+    public  static final String            FIELD_DISTRIBUTION_VERSION   = "distribution_version";
+    public  static final String            FIELD_LATEST_BUILD_AVAILABLE = "latest_build_available";
+    public  static final String            FIELD_ARCHITECTURE           = "architecture";
+    public  static final String            FIELD_BITNESS                = "bitness";
+    public  static final String            FIELD_OPERATING_SYSTEM       = "operating_system";
+    public  static final String            FIELD_LIB_C_TYPE             = "lib_c_type";
+    public  static final String            FIELD_PACKAGE_TYPE           = "package_type";
+    public  static final String            FIELD_RELEASE_STATUS         = "release_status";
+    public  static final String            FIELD_ARCHIVE_TYPE           = "archive_type";
+    public  static final String            FIELD_TERM_OF_SUPPORT        = "term_of_support";
+    public  static final String            FIELD_JAVAFX_BUNDLED         = "javafx_bundled";
+    public  static final String            FIELD_DIRECTLY_DOWNLOADABLE  = "directly_downloadable";
+    public  static final String            FIELD_FILENAME               = "filename";
+    public  static final String            FIELD_DIRECT_DOWNLOAD_URI    = "direct_download_uri";
+    public  static final String            FIELD_DOWNLOAD_SITE_URI      = "download_site_uri";
+    public  static final String            FIELD_EPHEMERAL_ID           = "ephemeral_id";
     private              Distribution      distribution;
     private              VersionNumber     versionNumber;
     private              VersionNumber     javaVersion;
@@ -64,6 +65,7 @@ public class Pkg {
     private              ArchiveType       archiveType;
     private              TermOfSupport     termOfSupport;
     private              Boolean           javafxBundled;
+    private              Boolean           latestBuildAvailable;
     private              Boolean           directlyDownloadable;
     private              boolean           headless;
     private              String            fileName;
@@ -80,6 +82,7 @@ public class Pkg {
         this.versionNumber        = versionNumber;
         this.javaVersion          = new VersionNumber();
         this.distributionVersion  = new VersionNumber();
+        this.latestBuildAvailable = false;
         this.architecture         = architecture;
         this.bitness              = bitness;
         this.operatingSystem      = operatingSystem;
@@ -106,6 +109,7 @@ public class Pkg {
         this.versionNumber        = VersionNumber.fromText(json.get(FIELD_JAVA_VERSION).getAsString());
         this.javaVersion          = VersionNumber.fromText(json.get(FIELD_JAVA_VERSION).getAsString());
         this.distributionVersion  = VersionNumber.fromText(json.get(FIELD_DISTRIBUTION_VERSION).getAsString());
+        this.latestBuildAvailable = json.has(FIELD_LATEST_BUILD_AVAILABLE) ? json.get(FIELD_LATEST_BUILD_AVAILABLE).getAsBoolean() : Boolean.valueOf(false);
         this.architecture         = Architecture.fromText(json.get(FIELD_ARCHITECTURE).getAsString());
         this.bitness              = this.architecture.getBitness();
         this.operatingSystem      = OperatingSystem.fromText(json.get(FIELD_OPERATING_SYSTEM).getAsString());
@@ -132,6 +136,8 @@ public class Pkg {
 
     public String getDistributionName() { return this.distribution.getDistro().getName(); }
 
+    public MajorVersion getMajorVersion() { return versionNumber.getMajorVersion(); }
+
     public VersionNumber getVersionNumber() { return versionNumber; }
     public void setVersionNumber(final VersionNumber versionNumber) {
         this.versionNumber = versionNumber;
@@ -143,6 +149,9 @@ public class Pkg {
 
     public VersionNumber getDistributionVersion() { return distributionVersion; }
     public void setDistributionVersion(final VersionNumber distributionVersion) { this.distributionVersion = distributionVersion; }
+
+    public Boolean isLatestBuildAvailable() { return null == latestBuildAvailable ? false : latestBuildAvailable; }
+    public void setLatestBuildAvailable(final Boolean latestBuildAvailable) { this.latestBuildAvailable = latestBuildAvailable; }
 
     public SemVer getSemver() { return semver; }
 
@@ -221,6 +230,7 @@ public class Pkg {
                                           .append("  \"").append(FIELD_MAJOR_VERSION).append("\"").append(":").append(versionNumber.getFeature().getAsInt()).append(",\n")
                                           .append("  \"").append(FIELD_JAVA_VERSION).append("\"").append(":").append("\"").append(semver).append("\"").append(",\n")
                                           .append("  \"").append(FIELD_DISTRIBUTION_VERSION).append("\"").append(":").append("\"").append(distributionVersion.toStringInclVendorSpecific()).append("\"").append(",\n")
+                                          .append("  \"").append(FIELD_LATEST_BUILD_AVAILABLE).append("\"").append(":").append(null == latestBuildAvailable ? false : latestBuildAvailable).append(",\n")
                                           .append("  \"").append(FIELD_RELEASE_STATUS).append("\"").append(":").append("\"").append(releaseStatus.getApiString()).append("\"").append(",\n")
                                           .append("  \"").append(FIELD_TERM_OF_SUPPORT).append("\"").append(":").append("\"").append(termOfSupport.getApiString()).append("\"").append(",\n")
                                           .append("  \"").append(FIELD_OPERATING_SYSTEM).append("\"").append(":").append("\"").append(operatingSystem.getApiString()).append("\"").append(",\n")
@@ -242,6 +252,7 @@ public class Pkg {
                                           .append("  \"").append(FIELD_MAJOR_VERSION).append("\"").append(":").append(versionNumber.getFeature().getAsInt()).append(",\n")
                                           .append("  \"").append(FIELD_JAVA_VERSION).append("\"").append(":").append("\"").append(semver).append("\"").append(",\n")
                                           .append("  \"").append(FIELD_DISTRIBUTION_VERSION).append("\"").append(":").append("\"").append(distributionVersion.toStringInclVendorSpecific()).append("\"").append(",\n")
+                                          .append("  \"").append(FIELD_LATEST_BUILD_AVAILABLE).append("\"").append(":").append(null == latestBuildAvailable ? false : latestBuildAvailable).append(",\n")
                                           .append("  \"").append(FIELD_RELEASE_STATUS).append("\"").append(":").append("\"").append(releaseStatus.getApiString()).append("\"").append(",\n")
                                           .append("  \"").append(FIELD_TERM_OF_SUPPORT).append("\"").append(":").append("\"").append(termOfSupport.getApiString()).append("\"").append(",\n")
                                           .append("  \"").append(FIELD_OPERATING_SYSTEM).append("\"").append(":").append("\"").append(operatingSystem.getApiString()).append("\"").append(",\n")
@@ -262,6 +273,7 @@ public class Pkg {
                                           .append("\"").append(FIELD_MAJOR_VERSION).append("\"").append(":").append(versionNumber.getFeature().getAsInt()).append(",")
                                           .append("\"").append(FIELD_JAVA_VERSION).append("\"").append(":").append("\"").append(semver).append("\"").append(",")
                                           .append("\"").append(FIELD_DISTRIBUTION_VERSION).append("\"").append(":").append("\"").append(distributionVersion.toStringInclVendorSpecific()).append("\"").append(",")
+                                          .append("\"").append(FIELD_LATEST_BUILD_AVAILABLE).append("\"").append(":").append(null == latestBuildAvailable ? false : latestBuildAvailable).append(",")
                                           .append("\"").append(FIELD_RELEASE_STATUS).append("\"").append(":").append("\"").append(releaseStatus.getApiString()).append("\"").append(",")
                                           .append("\"").append(FIELD_TERM_OF_SUPPORT).append("\"").append(":").append("\"").append(termOfSupport.getApiString()).append("\"").append(",")
                                           .append("\"").append(FIELD_OPERATING_SYSTEM).append("\"").append(":").append("\"").append(operatingSystem.getApiString()).append("\"").append(",")
@@ -284,6 +296,7 @@ public class Pkg {
                                           .append("\"").append(FIELD_MAJOR_VERSION).append("\"").append(":").append(versionNumber.getFeature().getAsInt()).append(",")
                                           .append("\"").append(FIELD_JAVA_VERSION).append("\"").append(":").append("\"").append(semver).append("\"").append(",")
                                           .append("\"").append(FIELD_DISTRIBUTION_VERSION).append("\"").append(":").append("\"").append(distributionVersion.toStringInclVendorSpecific()).append("\"").append(",")
+                                          .append("\"").append(FIELD_LATEST_BUILD_AVAILABLE).append("\"").append(":").append(null == latestBuildAvailable ? false : latestBuildAvailable).append(",")
                                           .append("\"").append(FIELD_RELEASE_STATUS).append("\"").append(":").append("\"").append(releaseStatus.getApiString()).append("\"").append(",")
                                           .append("\"").append(FIELD_TERM_OF_SUPPORT).append("\"").append(":").append("\"").append(termOfSupport.getApiString()).append("\"").append(",")
                                           .append("\"").append(FIELD_OPERATING_SYSTEM).append("\"").append(":").append("\"").append(operatingSystem.getApiString()).append("\"").append(",")
