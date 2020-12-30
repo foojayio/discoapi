@@ -25,6 +25,7 @@ import java.util.List;
 
 
 public enum ArchiveType implements ApiFeature {
+    BIN("bin", "bin", "bin"),
     CAB("cab", "cab",".cab"),
     DEB("deb", "deb",".deb"),
     DMG("dmg", "dmg",".dmg"),
@@ -32,7 +33,9 @@ public enum ArchiveType implements ApiFeature {
     PKG("pkg", "pkg",".pkg"),
     RPM("rpm", "rpm",".rpm"),
     SRC_TAR("src.tar.gz", "src_tar",".src.tar.gz", ".source.tar.gz", "source.tar.gz"),
+    TAR("tar", "tar", ".tar"),
     TAR_GZ("tar.gz", "tar.gz", ".tar.gz"),
+    TAR_Z("tar.Z", "tar.z", ".tar.Z"),
     ZIP("zip", "zip", ".zip"),
     EXE("exe", "exe", ".exe"),
     NONE("-", "", "-"),
@@ -62,6 +65,10 @@ public enum ArchiveType implements ApiFeature {
 
     public static ArchiveType fromText(final String text) {
         switch (text) {
+            case "bin":
+            case ".bin":
+            case "BIN":
+                return BIN;
             case "cab":
             case ".cab":
             case "CAB":
@@ -93,12 +100,18 @@ public enum ArchiveType implements ApiFeature {
             case "src_tar":
             case "SRC_TAR":
                 return SRC_TAR;
+            case "tar.Z":
+            case ".tar.Z":
+            case "TAR.Z":
+                return TAR_Z;
             case "tar.gz":
             case ".tar.gz":
             case "TAR.GZ":
-            case "tar":
-            case "TAR":
                 return TAR_GZ;
+            case "tar":
+            case ".tar":
+            case "TAR":
+                return TAR;
             case "zip":
             case ".zip":
             case "ZIP":
