@@ -23,13 +23,13 @@ import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
+import io.foojay.api.pkg.BasicScope;
 import io.foojay.api.pkg.Bitness;
-import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.OperatingSystem;
+import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.BasicScope;
 import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
@@ -47,18 +47,6 @@ import java.util.Map.Entry;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.Architecture.AARCH64;
-import static io.foojay.api.pkg.Architecture.X64;
-import static io.foojay.api.pkg.Bitness.BIT_64;
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.PackageType.JRE;
-import static io.foojay.api.pkg.ArchiveType.EXE;
-import static io.foojay.api.pkg.ArchiveType.TAR_GZ;
-import static io.foojay.api.pkg.ArchiveType.ZIP;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.OperatingSystem.LINUX_MUSL;
-import static io.foojay.api.pkg.OperatingSystem.MACOS;
-import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
 import static io.foojay.api.pkg.ReleaseStatus.EA;
 import static io.foojay.api.pkg.ReleaseStatus.GA;
 
@@ -67,18 +55,17 @@ public class Oracle implements Distribution {
     private static final Logger LOGGER = LoggerFactory.getLogger(Oracle.class);
 
     public  static final List<String>                 PACKAGE_URLS            = List.of("https://www.oracle.com/java/technologies/javase-jdk15-downloads.html",
+                                                                                        "https://www.oracle.com/java/technologies/javase/jdk14-archive-downloads.html",
+                                                                                        "https://www.oracle.com/java/technologies/javase-jdk13-downloads.html",
+                                                                                        "https://www.oracle.com/java/technologies/javase/jdk12-archive-downloads.html",
                                                                                         "https://www.oracle.com/java/technologies/javase-jdk11-downloads.html",
+                                                                                        "https://www.oracle.com/java/technologies/java-archive-javase10-downloads.html",
+                                                                                        "https://www.oracle.com/java/technologies/javase/javase9-archive-downloads.html",
                                                                                         "https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/javase-jre8-downloads.html");
+                                                                                        "https://www.oracle.com/java/technologies/javase-jre8-downloads.html",
+                                                                                        "https://www.oracle.com/java/technologies/javase/javase7-archive-downloads.html",
+                                                                                        "https://www.oracle.com/java/technologies/javase-java-archive-javase6-downloads.html");
     private static final String                       PACKAGE_URL             = "";
-    private static final List<Architecture>           ARCHITECTURES           = List.of(X64, AARCH64);
-    private static final List<OperatingSystem>        OPERATING_SYSTEMS       = List.of(LINUX_MUSL, LINUX, WINDOWS, MACOS);
-    private static final List<ArchiveType>            ARCHIVE_TYPES           = List.of(TAR_GZ, ZIP);
-    private static final List<PackageType>            PACKAGE_TYPES           = List.of(JDK, JRE);
-    private static final List<ReleaseStatus>          RELEASE_STATUSES        = List.of(EA, GA);
-    private static final List<TermOfSupport>          TERM_OF_SUPPORT         = List.of(TermOfSupport.STS, TermOfSupport.LTS);
-    private static final List<Bitness>                BITNESSES               = List.of(BIT_64);
-    private static final Boolean                      BUNDLED_WITH_JAVA_FX    = false;
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM      = "";
@@ -90,18 +77,8 @@ public class Oracle implements Distribution {
     private static final String                       BITNESS_PARAM           = "";
 
     // Mappings for url parameters
-    private static final Map<Architecture, String>    ARCHITECTURE_MAP        = Map.of(X64, "x64", AARCH64, "aarch64");
-    private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP    = Map.of(LINUX_MUSL, "linux", LINUX, "linux", WINDOWS, "windows", MACOS, "osx");
-    private static final Map<ArchiveType, String>     ARCHIVE_TYPE_MAP        = Map.of(TAR_GZ, "tar.gz", ZIP, "zip", EXE, "exe");
-    private static final Map<PackageType, String>     PACKAGE_TYPE_MAP        = Map.of(JDK, "jdk", JRE, "jre");
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP      = Map.of(EA, "early_access", GA, "GA");
-    private static final Map<TermOfSupport, String>   TERMS_OF_SUPPORT_MAP    = Map.of(TermOfSupport.LTS, "lts");
-    private static final Map<Bitness, String>         BITNESS_MAP             = Map.of(BIT_64, "64");
 
-
-    public Oracle() {
-
-    }
 
     @Override public Distro getDistro() { return Distro.ORACLE; }
 
@@ -110,23 +87,6 @@ public class Oracle implements Distribution {
     @Override public String getPkgUrl() { return PACKAGE_URL; }
 
     @Override public List<Scope> getScopes() { return List.of(BasicScope.PUBLIC); }
-
-    @Override public List<Architecture> getArchitectures() { return ARCHITECTURES; }
-
-    @Override public List<OperatingSystem> getOperatingSystems() { return OPERATING_SYSTEMS; }
-
-    @Override public List<ArchiveType> getArchiveTypes() { return ARCHIVE_TYPES; }
-
-    @Override public List<PackageType> getPackageTypes() { return PACKAGE_TYPES; }
-
-    @Override public List<ReleaseStatus> getReleaseStatuses() { return RELEASE_STATUSES; }
-
-    @Override public List<TermOfSupport> getTermsOfSupport() { return TERM_OF_SUPPORT; }
-
-    @Override public List<Bitness> getBitnesses() { return BITNESSES; }
-
-    @Override public Boolean bundledWithJavaFX() { return BUNDLED_WITH_JAVA_FX; }
-
 
     @Override public String getArchitectureParam() { return ARCHITECTURE_PARAM; }
 
@@ -141,21 +101,6 @@ public class Oracle implements Distribution {
     @Override public String getTermOfSupportParam() { return TERM_OF_SUPPORT_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
-
-
-    @Override public Map<Architecture, String> getArchitectureMap() { return ARCHITECTURE_MAP; }
-
-    @Override public Map<OperatingSystem, String> getOperatingSystemMap() { return OPERATING_SYSTEM_MAP; }
-
-    @Override public Map<ArchiveType, String> getArchiveTypeMap() { return ARCHIVE_TYPE_MAP; }
-
-    @Override public Map<PackageType, String> getPackageTypeMap() { return PACKAGE_TYPE_MAP; }
-
-    @Override public Map<ReleaseStatus, String> getReleaseStatusMap() { return RELEASE_STATUS_MAP; }
-
-    @Override public Map<TermOfSupport, String> getTermOfSupportMap() { return TERMS_OF_SUPPORT_MAP; }
-
-    @Override public Map<Bitness, String> getBitnessMap() { return BITNESS_MAP; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -200,10 +145,9 @@ public class Oracle implements Distribution {
     public List<Pkg> getAllPkgs() {
         List<Pkg> pkgs = new ArrayList<>();
         try {
-            Oracle oracle = new Oracle();
             for (String packageUrl : PACKAGE_URLS) {
                 String html = Helper.getTextFromUrl(packageUrl);
-                pkgs.addAll(oracle.getAllPkgsFromHtml(html));
+                pkgs.addAll(getAllPkgsFromHtml(html, packageUrl));
             }
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Oracle. {}", e);
@@ -211,12 +155,13 @@ public class Oracle implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromHtml(final String html) {
+    public List<Pkg> getAllPkgsFromHtml(final String html, final String packageUrl) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
         List<String> fileNames = new ArrayList<>(Helper.getDownloadHrefsFromString(html));
         for (String filename : fileNames) {
-            if (filename.contains("-demos")) { continue; }
+            if (filename.contains("-demos") || filename.contains("-p-")) { continue; }
+            if (filename.endsWith(".sh") || filename.endsWith("iftw.exe")) { continue; }
             PackageType packageType;
             String[]    nameParts;
             VersionNumber   versionNumber;
@@ -227,10 +172,20 @@ public class Oracle implements Distribution {
             ArchiveType     archiveType;
             TermOfSupport   termOfSupport;
             if (filename.contains("_")) {
-                // > JDK 11
+                // > JDK 8
                 packageType = filename.startsWith("jdk") ? PackageType.JDK : PackageType.JRE;
                 nameParts       = filename.split("_");
-                versionNumber   = VersionNumber.fromText(nameParts[0].replace(filename.startsWith("jdk") ? "jdk-" : "jre-", ""));
+                
+                if (filename.startsWith("jdk")) {
+                    versionNumber = VersionNumber.fromText(nameParts[0].replace("jdk-", ""));
+                } else if (filename.startsWith("jre")) {
+                    versionNumber = VersionNumber.fromText(nameParts[0].replace("jre-", ""));
+                } else if (filename.startsWith("serverjre")) {
+                    versionNumber = VersionNumber.fromText(nameParts[0].replace("serverjre-", ""));
+                } else {
+                    continue;
+                }
+
                 osArchParts     = nameParts[1].split("-");
                 operatingSystem = OperatingSystem.fromText(osArchParts[0]);
                 architecture    = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
@@ -238,9 +193,10 @@ public class Oracle implements Distribution {
                                                                .findFirst()
                                                                .map(Entry::getValue)
                                                                .orElse(Architecture.NONE);
-                bitness         = architecture.getBitness();
+
+                bitness     = architecture.getBitness();
                 archiveType = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
-                                                           .filter(entry -> filename.contains(entry.getKey()))
+                                                           .filter(entry -> filename.endsWith(entry.getKey()))
                                                            .findFirst()
                                                            .map(Entry::getValue)
                                                            .orElse(ArchiveType.NONE);
@@ -248,7 +204,16 @@ public class Oracle implements Distribution {
             } else {
                 // <= JDK 8
                 packageType = filename.startsWith("jdk") ? PackageType.JDK : PackageType.JRE;
-                nameParts       = filename.replace(filename.startsWith("jdk") ? "jdk-" : "jre-", "").split("-");
+                if (filename.startsWith("jdk")) {
+                    nameParts = filename.replace("jdk-", "").split("-");
+                } else if (filename.startsWith("jre")) {
+                        nameParts = filename.replace("jre-", "").split("-");
+                } else if (filename.startsWith("serverjre")) {
+                        nameParts = filename.replace("serverjre-", "").split("-");
+                } else {
+                    continue;
+                }
+
                 versionNumber   = VersionNumber.fromText(nameParts[0]);
                 operatingSystem = OperatingSystem.fromText(nameParts[1]);
                 architecture    = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
@@ -256,13 +221,26 @@ public class Oracle implements Distribution {
                                                                .findFirst()
                                                                .map(Entry::getValue)
                                                                .orElse(Architecture.NONE);
-                bitness         = architecture.getBitness();
+
+                bitness     = architecture.getBitness();
                 archiveType = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
-                                                           .filter(entry -> filename.contains(entry.getKey()))
+                                                           .filter(entry -> filename.endsWith(entry.getKey()))
                                                            .findFirst()
                                                            .map(Entry::getValue)
                                                            .orElse(ArchiveType.NONE);
                 termOfSupport = Helper.getTermOfSupport(versionNumber);
+            }
+            if (ArchiveType.NONE == archiveType) {
+                LOGGER.debug("Archive Type not found in Oracle for filename: {}", filename);
+                continue;
+            }
+            if (Architecture.NONE == architecture) {
+                LOGGER.debug("Architecture not found in Oracle for filename: {}", filename);
+                continue;
+            }
+            if (OperatingSystem.NONE == operatingSystem) {
+                LOGGER.debug("Operating System not found in Oracle for filename: {}", filename);
+                continue;
             }
 
             Pkg pkg = new Pkg();
@@ -278,7 +256,7 @@ public class Oracle implements Distribution {
             pkg.setTermOfSupport(termOfSupport);
             pkg.setFileName(filename);
             pkg.setArchiveType(archiveType);
-            pkg.setDownloadSiteUri("https://www.oracle.com/java/technologies/javase-downloads.html");
+            pkg.setDownloadSiteUri(packageUrl);
             pkg.setJavaFXBundled(false);
             pkg.setDirectlyDownloadable(false);
 

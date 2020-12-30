@@ -113,23 +113,6 @@ public class Zulu implements Distribution {
 
     @Override public List<Scope> getScopes() { return List.of(BasicScope.PUBLIC); }
 
-    @Override public List<Architecture> getArchitectures() { return ARCHITECTURES; }
-
-    @Override public List<OperatingSystem> getOperatingSystems() { return OPERATING_SYSTEMS; }
-
-    @Override public List<ArchiveType> getArchiveTypes() { return ARCHIVE_TYPES; }
-
-    @Override public List<PackageType> getPackageTypes() { return PACKAGE_TYPES; }
-
-    @Override public List<ReleaseStatus> getReleaseStatuses() { return RELEASE_STATUSES; }
-
-    @Override public List<TermOfSupport> getTermsOfSupport() { return TERMS_OF_SUPPORT; }
-
-    @Override public List<Bitness> getBitnesses() { return BITNESSES; }
-
-    @Override public Boolean bundledWithJavaFX() { return BUNDLED_WITH_JAVA_FX; }
-
-
     @Override public String getArchitectureParam() { return ARCHITECTURE_PARAM; }
 
     @Override public String getOperatingSystemParam() { return OPERATING_SYSTEM_PARAM; }
@@ -143,21 +126,6 @@ public class Zulu implements Distribution {
     @Override public String getTermOfSupportParam() { return TERM_OF_SUPPORT_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
-
-
-    @Override public Map<Architecture, String> getArchitectureMap() { return ARCHITECTURE_MAP; }
-
-    @Override public Map<OperatingSystem, String> getOperatingSystemMap() { return OPERATING_SYSTEM_MAP; }
-
-    @Override public Map<ArchiveType, String> getArchiveTypeMap() { return ARCHIVE_TYPE_MAP; }
-
-    @Override public Map<PackageType, String> getPackageTypeMap() { return PACKAGE_TYPE_MAP; }
-
-    @Override public Map<ReleaseStatus, String> getReleaseStatusMap() { return RELEASE_STATUS_MAP; }
-
-    @Override public Map<TermOfSupport, String> getTermOfSupportMap() { return TERMS_OF_SUPPORT_MAP; }
-
-    @Override public Map<Bitness, String> getBitnessMap() { return BITNESS_MAP; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -261,11 +229,6 @@ public class Zulu implements Distribution {
         */
 
         TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
-        if (TermOfSupport.NONE != termOfSupport && termOfSupport != supTerm) { return pkgs; }
-
-        if (OperatingSystem.NONE != operatingSystem && !OPERATING_SYSTEM_MAP.containsKey(operatingSystem)) { return pkgs; }
-
-        if (Architecture.NONE != architecture && !ARCHITECTURE_MAP.containsKey(architecture)) { return pkgs; }
 
         Pkg pkg = new Pkg();
         pkg.setDistribution(Distro.ZULU.get());
@@ -280,8 +243,16 @@ public class Zulu implements Distribution {
         if (null != javafxBundled && javafxBundled && !withoutPrefix.contains(Constants.FX_POSTFIX)) { return pkgs; }
         pkg.setJavaFXBundled(withoutPrefix.contains(Constants.FX_POSTFIX));
 
-        ArchiveType ext = ArchiveType.getFromFileName(fileName);
-        if (ArchiveType.NONE != archiveType && ext != archiveType) { return pkgs; }
+        ArchiveType ext = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
+                                                       .filter(entry -> fileName.endsWith(entry.getKey()))
+                                                       .findFirst()
+                                                       .map(Entry::getValue)
+                                                       .orElse(ArchiveType.NONE);
+        if (ArchiveType.NONE == ext) {
+            LOGGER.debug("Archive Type not found in Zulu for filename: {}", fileName);
+            return pkgs;
+        }
+
         pkg.setArchiveType(ext);
 
         switch (packageType) {
@@ -321,8 +292,10 @@ public class Zulu implements Distribution {
                                                          .findFirst()
                                                          .map(Entry::getValue)
                                                          .orElse(Architecture.NONE);
-        if (Architecture.NONE != architecture && architecture != arch) { return pkgs; }
-        if (Bitness.NONE != bitness && bitness != arch.getBitness()) { return pkgs; }
+        if (Architecture.NONE == arch) {
+            LOGGER.debug("Architecture not found in Zulu for filename: {}", fileName);
+            return pkgs;
+        }
         pkg.setArchitecture(arch);
         pkg.setBitness(arch.getBitness());
 
@@ -350,12 +323,11 @@ public class Zulu implements Distribution {
             }
         }
 
-        if (Architecture.NONE == arch && OperatingSystem.MACOS == os) {
-            pkg.setArchitecture(X64);
-            pkg.setBitness(X64.getBitness());
+        if (OperatingSystem.NONE == os) {
+            LOGGER.debug("Operating System not found in Zulu for filename: {}", fileName);
+            return pkgs;
         }
 
-        if (OperatingSystem.NONE != operatingSystem && operatingSystem != os) { return pkgs; }
         pkg.setOperatingSystem(os);
 
         pkg.setTermOfSupport(supTerm);

@@ -23,13 +23,13 @@ import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
+import io.foojay.api.pkg.BasicScope;
 import io.foojay.api.pkg.Bitness;
-import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.OperatingSystem;
+import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.BasicScope;
 import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
@@ -47,19 +47,8 @@ import java.util.Map.Entry;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.Architecture.AARCH64;
-import static io.foojay.api.pkg.Architecture.X64;
-import static io.foojay.api.pkg.Architecture.X86;
-import static io.foojay.api.pkg.Bitness.BIT_64;
 import static io.foojay.api.pkg.PackageType.JDK;
 import static io.foojay.api.pkg.PackageType.JRE;
-import static io.foojay.api.pkg.ArchiveType.MSI;
-import static io.foojay.api.pkg.ArchiveType.TAR_GZ;
-import static io.foojay.api.pkg.ArchiveType.ZIP;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.OperatingSystem.LINUX_MUSL;
-import static io.foojay.api.pkg.OperatingSystem.MACOS;
-import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
 import static io.foojay.api.pkg.ReleaseStatus.EA;
 import static io.foojay.api.pkg.ReleaseStatus.GA;
 
@@ -70,14 +59,6 @@ public class RedHat implements Distribution {
     public  static final String                       PACKAGE_ALL_URL        = "https://developers.redhat.com/products/openjdk/download";
     private static final String                       DOWNLOAD_PREFIX        = "https://developers.redhat.com/download-manager/file/";
     private static final String                       PACKAGE_URL            = "";
-    private static final List<Architecture>           ARCHITECTURES          = List.of(X64, AARCH64);
-    private static final List<OperatingSystem>        OPERATING_SYSTEMS      = List.of(LINUX_MUSL, LINUX, WINDOWS, MACOS);
-    private static final List<ArchiveType>            ARCHIVE_TYPES          = List.of(TAR_GZ, ZIP);
-    private static final List<PackageType>            PACKAGE_TYPES          = List.of(JDK, JRE);
-    private static final List<ReleaseStatus>          RELEASE_STATUSES       = List.of(EA, GA);
-    private static final List<TermOfSupport>          TERM_OF_SUPPORT        = List.of(TermOfSupport.STS, TermOfSupport.LTS);
-    private static final List<Bitness>                BITNESSES              = List.of(BIT_64);
-    private static final Boolean                      BUNDLED_WITH_JAVA_FX   = false;
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM     = "";
@@ -89,13 +70,7 @@ public class RedHat implements Distribution {
     private static final String                       BITNESS_PARAM          = "";
 
     // Mappings for url parameters
-    private static final Map<Architecture, String>    ARCHITECTURE_MAP       = Map.of(X64, "x64", X86, "x86");
-    private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP   = Map.of(WINDOWS, "windows");
-    private static final Map<ArchiveType, String>     ARCHIVE_TYPE_MAP       = Map.of(MSI, "msi", ZIP, "zip");
-    private static final Map<PackageType, String>     PACKAGE_TYPE_MAP       = Map.of(JDK, "jdk");
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP     = Map.of(EA, "early_access", GA, "GA");
-    private static final Map<TermOfSupport, String>   TERMS_OF_SUPPORT_MAP   = Map.of(TermOfSupport.LTS, "lts");
-    private static final Map<Bitness, String>         BITNESS_MAP            = Map.of(BIT_64, "64");
 
 
     public RedHat() {
@@ -110,23 +85,6 @@ public class RedHat implements Distribution {
 
     @Override public List<Scope> getScopes() { return List.of(BasicScope.PUBLIC); }
 
-    @Override public List<Architecture> getArchitectures() { return ARCHITECTURES; }
-
-    @Override public List<OperatingSystem> getOperatingSystems() { return OPERATING_SYSTEMS; }
-
-    @Override public List<ArchiveType> getArchiveTypes() { return ARCHIVE_TYPES; }
-
-    @Override public List<PackageType> getPackageTypes() { return PACKAGE_TYPES; }
-
-    @Override public List<ReleaseStatus> getReleaseStatuses() { return RELEASE_STATUSES; }
-
-    @Override public List<TermOfSupport> getTermsOfSupport() { return TERM_OF_SUPPORT; }
-
-    @Override public List<Bitness> getBitnesses() { return BITNESSES; }
-
-    @Override public Boolean bundledWithJavaFX() { return BUNDLED_WITH_JAVA_FX; }
-
-
     @Override public String getArchitectureParam() { return ARCHITECTURE_PARAM; }
 
     @Override public String getOperatingSystemParam() { return OPERATING_SYSTEM_PARAM; }
@@ -140,21 +98,6 @@ public class RedHat implements Distribution {
     @Override public String getTermOfSupportParam() { return TERM_OF_SUPPORT_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
-
-
-    @Override public Map<Architecture, String> getArchitectureMap() { return ARCHITECTURE_MAP; }
-
-    @Override public Map<OperatingSystem, String> getOperatingSystemMap() { return OPERATING_SYSTEM_MAP; }
-
-    @Override public Map<ArchiveType, String> getArchiveTypeMap() { return ARCHIVE_TYPE_MAP; }
-
-    @Override public Map<PackageType, String> getPackageTypeMap() { return PACKAGE_TYPE_MAP; }
-
-    @Override public Map<ReleaseStatus, String> getReleaseStatusMap() { return RELEASE_STATUS_MAP; }
-
-    @Override public Map<TermOfSupport, String> getTermOfSupportMap() { return TERMS_OF_SUPPORT_MAP; }
-
-    @Override public Map<Bitness, String> getBitnessMap() { return BITNESS_MAP; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -234,6 +177,10 @@ public class RedHat implements Distribution {
                                                                      .findFirst()
                                                                      .map(Entry::getValue)
                                                                      .orElse(Architecture.NONE);
+            if (Architecture.NONE == architecture) {
+                LOGGER.debug("Architecture not found in Redhat for filename: {}", filename);
+                continue;
+            }
             pkg.setArchitecture(architecture);
             pkg.setBitness(architecture.getBitness());
 
@@ -242,6 +189,10 @@ public class RedHat implements Distribution {
                                                                                .findFirst()
                                                                                .map(Entry::getValue)
                                                                                .orElse(OperatingSystem.NONE);
+            if (OperatingSystem.NONE == operatingSystem) {
+                LOGGER.debug("Operating System not found in Redhat for filename: {}", filename);
+                continue;
+            }
             pkg.setOperatingSystem(operatingSystem);
 
             ArchiveType archiveType = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
@@ -249,6 +200,10 @@ public class RedHat implements Distribution {
                                                                    .findFirst()
                                                                    .map(Entry::getValue)
                                                                    .orElse(ArchiveType.NONE);
+            if (ArchiveType.NONE == archiveType) {
+                LOGGER.debug("Archive Type not found in Redhat for filename: {}", filename);
+                continue;
+            }
             pkg.setArchiveType(archiveType);
 
             pkg.setReleaseStatus(withoutPrefix.contains(".dev.") ? EA : GA);

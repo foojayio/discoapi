@@ -42,7 +42,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
@@ -50,13 +49,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.Architecture.*;
-import static io.foojay.api.pkg.Bitness.*;
 import static io.foojay.api.pkg.PackageType.*;
-import static io.foojay.api.pkg.ArchiveType.*;
-import static io.foojay.api.pkg.OperatingSystem.*;
 import static io.foojay.api.pkg.ReleaseStatus.*;
-import static io.foojay.api.pkg.TermOfSupport.*;
 
 
 public class Corretto implements Distribution {
@@ -65,14 +59,6 @@ public class Corretto implements Distribution {
     private static final Pattern                      FILENAME_PREFIX_PATTERN = Pattern.compile("(java-(\\d+)?\\.?(\\d+)?\\.?(\\d+)?\\.?-)|(amazon-corretto-)(jdk_|devel-)?");
     private static final Matcher                      FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
     private static final String                       PACKAGE_URL             = "https://api.github.com/repos/corretto/";// jdk8: corretto-8, jdk11: corretto-11, jdk15: corretto-jdk
-    private static final List<Architecture>           ARCHITECTURES           = List.of(AARCH64, X64, X86);
-    private static final List<OperatingSystem>        OPERATING_SYSTEMS       = List.of(ALPINE_LINUX, LINUX, MACOS, WINDOWS);
-    private static final List<ArchiveType>            ARCHIVE_TYPES           = List.of(DEB, MSI, PKG, RPM, TAR_GZ, ZIP);
-    private static final List<PackageType>            PACKAGE_TYPES           = List.of(JRE, JDK);
-    private static final List<ReleaseStatus>          RELEASE_STATUSES        = List.of(GA);
-    private static final List<TermOfSupport>          TERMS_OF_SUPPORT        = List.of(STS, LTS);
-    private static final List<Bitness>                BITNESSES               = List.of(BIT_32, BIT_64);
-    private static final Boolean                      BUNDLED_WITH_JAVA_FX    = false;
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM      = "";
@@ -83,15 +69,6 @@ public class Corretto implements Distribution {
     private static final String                       SUPPORT_TERM_PARAM      = "";
     private static final String                       BITNESS_PARAM           = "";
 
-    // Mappings for url parameters
-    private static final Map<Architecture, String>    ARCHITECTURE_MAP        = Map.of(AARCH64, "aarch64", X64, "x64", X86, "x86");
-    private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP    = Map.of(ALPINE_LINUX, "alpine-linux", LINUX, "linux", MACOS, "mac", WINDOWS, "windows");
-    private static final Map<ArchiveType, String>     ARCHIVE_TYPE_MAP        = Map.of(DEB, "deb", MSI, "msi", PKG, "pkg", RPM, "rpm", TAR_GZ, "tar.gz", ZIP, "zip");
-    private static final Map<PackageType, String>     PACKAGE_TYPE_MAP        = Map.of(JDK, "jdk");
-    private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP      = Map.of(GA, "ga");
-    private static final Map<TermOfSupport, String>   TERMS_OF_SUPPORT_MAP    = Map.of(LTS, "lts");
-    private static final Map<Bitness, String>         BITNESS_MAP             = Map.of(BIT_32, "32", BIT_64, "64");
-
 
     @Override public Distro getDistro() { return Distro.CORRETTO; }
 
@@ -100,23 +77,6 @@ public class Corretto implements Distribution {
     @Override public String getPkgUrl() { return PACKAGE_URL; }
 
     @Override public List<Scope> getScopes() { return List.of(BasicScope.PUBLIC); }
-
-    @Override public List<Architecture> getArchitectures() { return ARCHITECTURES; }
-
-    @Override public List<OperatingSystem> getOperatingSystems() { return OPERATING_SYSTEMS; }
-
-    @Override public List<ArchiveType> getArchiveTypes() { return ARCHIVE_TYPES; }
-
-    @Override public List<PackageType> getPackageTypes() { return PACKAGE_TYPES; }
-
-    @Override public List<ReleaseStatus> getReleaseStatuses() { return RELEASE_STATUSES; }
-
-    @Override public List<TermOfSupport> getTermsOfSupport() { return TERMS_OF_SUPPORT; }
-
-    @Override public List<Bitness> getBitnesses() { return BITNESSES; }
-
-    @Override public Boolean bundledWithJavaFX() { return BUNDLED_WITH_JAVA_FX; }
-
 
     @Override public String getArchitectureParam() { return ARCHITECTURE_PARAM; }
 
@@ -131,21 +91,6 @@ public class Corretto implements Distribution {
     @Override public String getTermOfSupportParam() { return SUPPORT_TERM_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
-
-
-    @Override public Map<Architecture, String> getArchitectureMap() { return ARCHITECTURE_MAP; }
-
-    @Override public Map<OperatingSystem, String> getOperatingSystemMap() { return OPERATING_SYSTEM_MAP; }
-
-    @Override public Map<ArchiveType, String> getArchiveTypeMap() { return ARCHIVE_TYPE_MAP; }
-
-    @Override public Map<PackageType, String> getPackageTypeMap() { return PACKAGE_TYPE_MAP; }
-
-    @Override public Map<ReleaseStatus, String> getReleaseStatusMap() { return RELEASE_STATUS_MAP; }
-
-    @Override public Map<TermOfSupport, String> getTermOfSupportMap() { return TERMS_OF_SUPPORT_MAP; }
-
-    @Override public Map<Bitness, String> getBitnessMap() { return BITNESS_MAP; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -183,15 +128,8 @@ public class Corretto implements Distribution {
                                               final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         List<Pkg> pkgs = new ArrayList<>();
 
-        if (Architecture.NONE != architecture && !ARCHITECTURE_MAP.containsKey(architecture)) { return pkgs; }
-
-        if (OperatingSystem.NONE != operatingSystem && !OPERATING_SYSTEM_MAP.containsKey(operatingSystem)) { return pkgs; }
-
-        if (ArchiveType.NONE != archiveType && !ARCHIVE_TYPE_MAP.containsKey(archiveType)) { return pkgs; }
-
         TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
         supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
-        if (TermOfSupport.NONE != termOfSupport && termOfSupport != supTerm) { return pkgs; }
 
         String       bodyText      = jsonObj.get("body").getAsString();
         Set<String>  fileUrlsFound = Helper.getFileUrlsFromString(bodyText);
@@ -270,8 +208,11 @@ public class Corretto implements Distribution {
                                                              .findFirst()
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
-            if (Architecture.NONE != architecture && architecture != arch) { continue; }
-            if (Bitness.NONE != bitness && bitness != arch.getBitness()) { continue; }
+            if (Architecture.NONE == arch) {
+                LOGGER.debug("Architecture not found in Corretto for filename: {}", fileName);
+                continue;
+            }
+
             pkg.setArchitecture(arch);
             pkg.setBitness(arch.getBitness());
 
@@ -298,7 +239,10 @@ public class Corretto implements Distribution {
                         break;
                 }
             }
-            if (OperatingSystem.NONE != operatingSystem && operatingSystem != os) { continue; }
+            if (OperatingSystem.NONE == os) {
+                LOGGER.debug("Operating System not found in Corretto for filename: {}", fileName);
+                continue;
+            }
             pkg.setOperatingSystem(os);
             pkgs.add(pkg);
         }

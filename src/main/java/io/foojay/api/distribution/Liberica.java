@@ -60,14 +60,6 @@ public class Liberica implements Distribution {
     private static final Logger                       LOGGER                          = LoggerFactory.getLogger(Liberica.class);
 
     private static final String                       PACKAGE_URL                     = "https://api.bell-sw.com/v1/liberica/releases";
-    private static final List<Architecture>           ARCHITECTURES                   = List.of(ARM, PPC, SPARC, X86);
-    private static final List<OperatingSystem>        OPERATING_SYSTEMS               = List.of(LINUX, LINUX_MUSL, MACOS, SOLARIS, WINDOWS);
-    private static final List<ArchiveType>            ARCHIVE_TYPES                   = List.of(DEB, DMG, MSI, PKG, RPM, SRC_TAR, TAR_GZ, ZIP);
-    private static final List<PackageType>            PACKAGE_TYPES                   = List.of(JDK, JRE);
-    private static final List<ReleaseStatus>          RELEASE_STATUSES                = List.of(EA, GA);
-    private static final List<TermOfSupport>          TERMS_OF_SUPPORT                = List.of(STS, LTS);
-    private static final List<Bitness>                BITNESSES                       = List.of(BIT_32, BIT_64);
-    private static final Boolean                      BUNDLED_WITH_JAVA_FX            = true;
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM              = "arch";
@@ -80,12 +72,12 @@ public class Liberica implements Distribution {
     private static final String                       FX_PARAM                        = "fx";
 
     // Mappings for url parameters
-    private static final Map<Architecture, String>    ARCHITECTURE_MAP                = Map.of(ARM, "arm", PPC, "ppc", SPARC, "sparc", X86, "x86", X64, "x86");
+    private static final Map<Architecture, String>    ARCHITECTURE_MAP                = Map.of(ARM, "arm", PPC, "ppc", SPARC, "sparc", X86, "x86", X64, "x64", AMD64, "amd64", AARCH64, "aarch64");
     private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP            = Map.of(LINUX, "linux", LINUX_MUSL, "linux_musl", MACOS, "macos", WINDOWS, "windows", SOLARIS, "solaris");
     private static final Map<ArchiveType, String>     ARCHIVE_TYPE_MAP                = Map.of(DEB, "deb", DMG, "dmg", MSI, "msi", PKG, "pkg", RPM, "rpm", SRC_TAR, "src.tar.gz", TAR_GZ, "tar.gz", ZIP, "zip");
     private static final Map<PackageType, String>     PACKAGE_TYPE_MAP                = Map.of(JDK, "jdk", JRE, "jre");
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP              = Map.of(EA, "ea", GA, "all");
-    private static final Map<TermOfSupport, String>   TERMS_OF_SUPPORT_MAP            = Map.of(LTS, "lts");
+    private static final Map<TermOfSupport, String>   TERMS_OF_SUPPORT_MAP            = Map.of(STS, "sts", MTS, "mts", LTS, "lts");
     private static final Map<Bitness, String>         BITNESS_MAP                     = Map.of(BIT_32, "32", BIT_64, "64");
     
     // JSON fields
@@ -114,23 +106,6 @@ public class Liberica implements Distribution {
 
     @Override public List<Scope> getScopes() { return List.of(BasicScope.PUBLIC); }
 
-    @Override public List<Architecture> getArchitectures() { return ARCHITECTURES; }
-
-    @Override public List<OperatingSystem> getOperatingSystems() { return OPERATING_SYSTEMS; }
-
-    @Override public List<ArchiveType> getArchiveTypes() { return ARCHIVE_TYPES; }
-
-    @Override public List<PackageType> getPackageTypes() { return PACKAGE_TYPES; }
-
-    @Override public List<ReleaseStatus> getReleaseStatuses() { return RELEASE_STATUSES; }
-
-    @Override public List<TermOfSupport> getTermsOfSupport() { return TERMS_OF_SUPPORT; }
-
-    @Override public List<Bitness> getBitnesses() { return BITNESSES; }
-
-    @Override public Boolean bundledWithJavaFX() { return BUNDLED_WITH_JAVA_FX; }
-
-
     @Override public String getArchitectureParam() { return ARCHITECTURE_PARAM; }
 
     @Override public String getOperatingSystemParam() { return OPERATING_SYSTEM_PARAM; }
@@ -144,21 +119,6 @@ public class Liberica implements Distribution {
     @Override public String getTermOfSupportParam() { return SUPPORT_TERM_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
-
-
-    @Override public Map<Architecture, String> getArchitectureMap() { return ARCHITECTURE_MAP; }
-
-    @Override public Map<OperatingSystem, String> getOperatingSystemMap() { return OPERATING_SYSTEM_MAP; }
-
-    @Override public Map<ArchiveType, String> getArchiveTypeMap() { return ARCHIVE_TYPE_MAP; }
-
-    @Override public Map<PackageType, String> getPackageTypeMap() { return PACKAGE_TYPE_MAP; }
-
-    @Override public Map<ReleaseStatus, String> getReleaseStatusMap() { return RELEASE_STATUS_MAP; }
-
-    @Override public Map<TermOfSupport, String> getTermOfSupportMap() { return TERMS_OF_SUPPORT_MAP; }
-
-    @Override public Map<Bitness, String> getBitnessMap() { return BITNESS_MAP; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -282,16 +242,9 @@ public class Liberica implements Distribution {
 
         TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
         supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
-        if (TermOfSupport.NONE != termOfSupport && termOfSupport != supTerm) { return pkgs; }
 
         if (null != javafxBundled) {
             if (javafxBundled != isFX) { return pkgs; }
-        }
-
-        if (Architecture.NONE != architecture && Architecture.X64 != architecture) {
-            if (!ARCHITECTURE_MAP.containsKey(architecture)) {
-                return pkgs;
-            }
         }
 
         if (OperatingSystem.NONE != operatingSystem && !OPERATING_SYSTEM_MAP.containsKey(operatingSystem)) { return pkgs; }
@@ -321,23 +274,33 @@ public class Liberica implements Distribution {
         if (ArchiveType.SRC_TAR == ext) { return pkgs; }
         pkg.setArchiveType(ArchiveType.fromText(packageType));
 
-        Architecture arch = Architecture.fromText(arc);
-        if (Architecture.NONE != architecture && Architecture.X64 != architecture) {
-            if (architecture != arch) { return pkgs; }
+        Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                                                         .filter(entry -> fileName.contains(entry.getKey()))
+                                                         .findFirst()
+                                                         .map(Entry::getValue)
+                                                         .orElse(Architecture.NONE);
+        Bitness bit = arch.getBitness();
+
+        if (Architecture.NONE == arch) {
+            LOGGER.debug("Architecture not found in Liberica for filename: {}", fileName);
+            return pkgs;
         }
 
-        Bitness bit = Bitness.fromInt(bits);
-
-        if (Bitness.NONE != bitness && bitness != bit) { return pkgs; }
         pkg.setArchitecture(arch);
         pkg.setBitness(bit);
 
-        OperatingSystem osFound = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                              .filter(entry -> fileName.contains(entry.getKey()))
-                                                              .findFirst()
-                                                              .map(Entry::getValue)
-                                                              .orElse(OperatingSystem.NONE);
-        if (OperatingSystem.NONE != operatingSystem && operatingSystem != osFound) { return pkgs; }
+        OperatingSystem osFound = OperatingSystem.fromText(os);
+        if (OperatingSystem.NONE == osFound) {
+            osFound = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
+                                                       .filter(entry -> fileName.contains(entry.getKey()))
+                                                       .findFirst()
+                                                       .map(Entry::getValue)
+                                                       .orElse(OperatingSystem.NONE);
+        }
+        if (OperatingSystem.NONE == osFound) {
+            LOGGER.debug("Operating Sytsem not found in Liberica for filename: {}", fileName);
+            return pkgs;
+        }
         pkg.setOperatingSystem(OperatingSystem.NONE == osFound ? OperatingSystem.fromText(os) : osFound);
 
         pkg.setJavaFXBundled(isFX);

@@ -104,11 +104,8 @@ public class AOJ_OPENJ9 implements Distribution {
     private static final Map<Architecture, String>
                                                       ARCHITECTURE_MAP       = Map.of(AARCH64, "aarch64", ARM, "arm", MIPS, "mips", PPC64, "ppc64", PPC64LE, "ppc64le", SPARCV9, "sparcv9", X64, "x64", X86, "x32");
     private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP   = Map.of(LINUX, "linux", MACOS, "mac", WINDOWS, "windows", SOLARIS, "solaris", AIX, "aix");
-    private static final Map<ArchiveType, String>     ARCHIVE_TYPE_MAP       = Map.of(MSI, "msi", PKG, "pkg", TAR_GZ, "tar.gz", ZIP, "zip");
     private static final Map<PackageType, String>     PACKAGE_TYPE_MAP       = Map.of(JDK, "jdk", JRE, "jre");
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP     = Map.of(EA, "ea", GA, "ga");
-    private static final Map<TermOfSupport, String>   TERMS_OF_SUPPORT_MAP   = Map.of(LTS, "lts");
-    private static final Map<Bitness, String>         BITNESS_MAP            = Map.of(BIT_32, "32", BIT_64, "64");
 
     // JSON fields
     private static final String                       FIELD_BINARIES         = "binaries";
@@ -137,23 +134,6 @@ public class AOJ_OPENJ9 implements Distribution {
 
     @Override public List<Scope> getScopes() { return List.of(BasicScope.PUBLIC); }
 
-    @Override public List<Architecture> getArchitectures() { return ARCHITECTURES; }
-
-    @Override public List<OperatingSystem> getOperatingSystems() { return OPERATING_SYSTEMS; }
-
-    @Override public List<ArchiveType> getArchiveTypes() { return ARCHIVE_TYPES; }
-
-    @Override public List<PackageType> getPackageTypes() { return PACKAGE_TYPES; }
-
-    @Override public List<ReleaseStatus> getReleaseStatuses() { return RELEASE_STATUSES; }
-
-    @Override public List<TermOfSupport> getTermsOfSupport() { return TERMS_OF_SUPPORT; }
-
-    @Override public List<Bitness> getBitnesses() { return BITNESSES; }
-
-    @Override public Boolean bundledWithJavaFX() { return BUNDLED_WITH_JAVA_FX; }
-
-
     @Override public String getArchitectureParam() { return ARCHITECTURE_PARAM; }
 
     @Override public String getOperatingSystemParam() { return OPERATING_SYSTEM_PARAM; }
@@ -167,21 +147,6 @@ public class AOJ_OPENJ9 implements Distribution {
     @Override public String getTermOfSupportParam() { return SUPPORT_TERM_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
-
-
-    @Override public Map<Architecture, String> getArchitectureMap() { return ARCHITECTURE_MAP; }
-
-    @Override public Map<OperatingSystem, String> getOperatingSystemMap() { return OPERATING_SYSTEM_MAP; }
-
-    @Override public Map<ArchiveType, String> getArchiveTypeMap() { return ARCHIVE_TYPE_MAP; }
-
-    @Override public Map<PackageType, String> getPackageTypeMap() { return PACKAGE_TYPE_MAP; }
-
-    @Override public Map<ReleaseStatus, String> getReleaseStatusMap() { return RELEASE_STATUS_MAP; }
-
-    @Override public Map<TermOfSupport, String> getTermOfSupportMap() { return TERMS_OF_SUPPORT_MAP; }
-
-    @Override public Map<Bitness, String> getBitnessMap() { return BITNESS_MAP; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -266,15 +231,8 @@ public class AOJ_OPENJ9 implements Distribution {
 
         if (null != javafxBundled && javafxBundled) { return pkgs; }
 
-        if (Architecture.NONE != architecture && !ARCHITECTURE_MAP.containsKey(architecture)) { return pkgs; }
-
-        if (OperatingSystem.NONE != operatingSystem && !OPERATING_SYSTEM_MAP.containsKey(operatingSystem)) { return pkgs; }
-
-        if (ArchiveType.NONE != archiveType && !ARCHIVE_TYPE_MAP.containsKey(archiveType)) { return pkgs; }
-
         TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
         supTerm = MTS == supTerm ? STS : supTerm;
-        if (TermOfSupport.NONE != termOfSupport && termOfSupport != supTerm) { return pkgs; }
 
         JsonArray binaries = jsonObj.get(FIELD_BINARIES).getAsJsonArray();
         for (int i = 0 ; i < binaries.size() ; i++) {
@@ -295,6 +253,10 @@ public class AOJ_OPENJ9 implements Distribution {
                                                             .findFirst()
                                                             .map(Entry::getValue)
                                                             .orElse(Architecture.NONE);
+            if (Architecture.NONE == arc) {
+                LOGGER.debug("Architecture not found in AOJ for field value: {}", binariesObj.get(FIELD_ARCHITECTURE).getAsString());
+                continue;
+            }
 
             OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
                                                                   .stream()
@@ -302,6 +264,11 @@ public class AOJ_OPENJ9 implements Distribution {
                                                                   .findFirst()
                                                                   .map(Entry::getValue)
                                                                   .orElse(OperatingSystem.NONE);
+
+            if (OperatingSystem.NONE == os) {
+                LOGGER.debug("Operating System not found in AOJ for field value: {}", binariesObj.get(FIELD_OS).getAsString());
+                continue;
+            }
 
             JsonElement installerElement = binariesObj.get(FIELD_INSTALLER);
             if (null != installerElement) {
@@ -336,11 +303,8 @@ public class AOJ_OPENJ9 implements Distribution {
 
                 installerPkg.setArchitecture(arc);
                 installerPkg.setBitness(arc.getBitness());
-                if (Architecture.NONE != architecture && arc != architecture) { continue; }
-                if (Bitness.NONE != bitness && arc.getBitness() != bitness) { continue; }
 
                 installerPkg.setOperatingSystem(os);
-                if (OperatingSystem.NONE != operatingSystem && installerPkg.getOperatingSystem() != operatingSystem) { continue; }
 
                 installerPkg.setReleaseStatus(ReleaseStatus.NONE == releaseStatus ? GA : releaseStatus);
 
@@ -364,8 +328,6 @@ public class AOJ_OPENJ9 implements Distribution {
 
                 String withoutPrefix = packageName.replace("OpenJDK" + vNumber.getFeature().getAsInt() + "U", "");
 
-                String[] nameParts = withoutPrefix.split("_");
-
                 Pkg packagePkg = new Pkg();
                 packagePkg.setDistribution(Distro.AOJ_OPENJ9.get());
                 packagePkg.setVersionNumber(vNumber);
@@ -387,14 +349,10 @@ public class AOJ_OPENJ9 implements Distribution {
                         break;
                 }
 
-
                 packagePkg.setArchitecture(arc);
                 packagePkg.setBitness(arc.getBitness());
-                if (Architecture.NONE != architecture && arc != architecture) { continue; }
-                if (Bitness.NONE != bitness && arc.getBitness() != bitness) { continue; }
 
                 packagePkg.setOperatingSystem(os);
-                if (OperatingSystem.NONE != operatingSystem && os != operatingSystem) { continue; }
 
                 packagePkg.setReleaseStatus(ReleaseStatus.NONE == releaseStatus ? GA : releaseStatus);
 

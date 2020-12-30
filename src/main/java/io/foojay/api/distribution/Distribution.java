@@ -28,14 +28,12 @@ import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.BasicScope;
 import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Scope;
 
 import java.util.List;
-import java.util.Map;
 
 
 public interface Distribution {
@@ -47,22 +45,6 @@ public interface Distribution {
     String getPkgUrl();
 
     List<Scope> getScopes();
-
-    List<Architecture> getArchitectures();
-
-    List<OperatingSystem> getOperatingSystems();
-
-    List<ArchiveType> getArchiveTypes();
-
-    List<PackageType> getPackageTypes();
-
-    List<ReleaseStatus> getReleaseStatuses();
-
-    List<TermOfSupport> getTermsOfSupport();
-
-    List<Bitness> getBitnesses();
-
-    Boolean bundledWithJavaFX();
 
     String getArchitectureParam();
 
@@ -77,20 +59,6 @@ public interface Distribution {
     String getTermOfSupportParam();
 
     String getBitnessParam();
-
-    Map<Architecture, String> getArchitectureMap();
-
-    Map<OperatingSystem, String> getOperatingSystemMap();
-
-    Map<ArchiveType, String> getArchiveTypeMap();
-
-    Map<PackageType, String> getPackageTypeMap();
-
-    Map<ReleaseStatus, String> getReleaseStatusMap();
-
-    Map<TermOfSupport, String> getTermOfSupportMap();
-
-    Map<Bitness, String> getBitnessMap();
 
     List<SemVer> getVersions();
 
