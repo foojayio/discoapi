@@ -22,6 +22,7 @@ package io.foojay.api.pkg;
 public enum Latest {
     OVERALL("overall", "overall"),
     PER_DISTRIBUTION("per distribution", "per_distro"),
+    PER_VERSION("per version", "per_version"),
     NONE("-", ""),
     NOT_FOUND("", "");;
 
@@ -60,6 +61,13 @@ public enum Latest {
             case "IN_GENERAL":
             case "IN-GENERAL":
                 return OVERALL;
+            case "per_version":
+            case "per-version":
+            case "perversion":
+            case "PER_VERSION":
+            case "PER-VERSION":
+            case "PERVERSION":
+                return PER_VERSION;
             default:
                 return NOT_FOUND;
         }
