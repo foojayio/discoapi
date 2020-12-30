@@ -375,7 +375,7 @@ public class VersionNumber implements Comparable<VersionNumber> {
         if (Helper.isPositiveInteger(text)) {
             return Integer.valueOf(text);
         } else {
-            LOGGER.info("Given text {} did not contain positive integer. Full text to parse was: {}", text, fullTextToParse);
+            //LOGGER.info("Given text {} did not contain positive integer. Full text to parse was: {}", text, fullTextToParse);
             return -1;
         }
     }
@@ -392,7 +392,7 @@ public class VersionNumber implements Comparable<VersionNumber> {
     }
 
     /**
-     * Returns 0 if given version number is equal to this. But if just given a number like 11, it will
+     * Returns 0 if given version number is equal to this. But with just a number like 11, it will
      * also return 0 for values like 11.0.2, 11.4.0 etc. This is used in the DiscoService to make sure
      * to filter results for version numbers.
      * @param otherVersionNumber
