@@ -39,6 +39,7 @@ public enum Architecture implements ApiFeature {
     X64("X64", "x64", Bitness.BIT_64),
     X86("X86", "x86", Bitness.BIT_32),
     AMD64("AMD64", "amd64", Bitness.BIT_64),
+    IA64("IA-64", "ia64", Bitness.BIT_64),
     NONE("-", "", Bitness.NONE),
     NOT_FOUND("", "", Bitness.NOT_FOUND);
 
@@ -104,6 +105,7 @@ public enum Architecture implements ApiFeature {
             case "SPARC":
                 return SPARC;
             case "sparcv9":
+            case "SPARCV9":
                 return SPARCV9;
             case "x64":
             case "x86-64":
@@ -117,6 +119,11 @@ public enum Architecture implements ApiFeature {
             case "i686":
             case "x86-32":
                 return X86;
+            case "ia64":
+            case "IA64":
+            case "ia-64":
+            case "IA-64":
+                return IA64;
             default:
                 return NOT_FOUND;
         }
