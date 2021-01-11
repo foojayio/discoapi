@@ -23,9 +23,11 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.distribution.Distribution;
+import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import io.foojay.api.util.OutputFormat;
 
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.OptionalInt;
 
@@ -68,7 +70,7 @@ public class Pkg {
     private              Boolean           latestBuildAvailable;
     private              Boolean           directlyDownloadable;
     private              boolean           headless;
-    private              String            fileName;
+    private              String            filename;
     private              String            directDownloadUri;
     private              String            downloadSiteUri;
 
@@ -77,7 +79,7 @@ public class Pkg {
         this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, false, true, "", "", "");
     }
     public Pkg(final Distribution distribution, final VersionNumber versionNumber, final Architecture architecture, final Bitness bitness, final OperatingSystem operatingSystem, final PackageType packageType,
-               final ReleaseStatus releaseStatus, final ArchiveType archiveType, final TermOfSupport termOfSupport, final boolean javafxBundled, final boolean directlyDownloadable, final String fileName, final String directDownloadUri, final String downloadSiteUri) {
+               final ReleaseStatus releaseStatus, final ArchiveType archiveType, final TermOfSupport termOfSupport, final boolean javafxBundled, final boolean directlyDownloadable, final String filename, final String directDownloadUri, final String downloadSiteUri) {
         this.distribution         = distribution;
         this.versionNumber        = versionNumber;
         this.javaVersion          = new VersionNumber();
@@ -94,7 +96,7 @@ public class Pkg {
         this.javafxBundled        = javafxBundled;
         this.directlyDownloadable = directlyDownloadable;
         this.headless             = false;
-        this.fileName             = fileName;
+        this.filename             = filename;
         this.directDownloadUri    = directDownloadUri;
         this.downloadSiteUri      = downloadSiteUri;
         this.semver               = new SemVer(versionNumber, releaseStatus);
@@ -121,13 +123,21 @@ public class Pkg {
         this.javafxBundled        = json.get(FIELD_JAVAFX_BUNDLED).getAsBoolean();
         this.directlyDownloadable = json.has(FIELD_DIRECTLY_DOWNLOADABLE) ? json.get(FIELD_DIRECTLY_DOWNLOADABLE).getAsBoolean() : true;
         this.headless             = false;
-        this.fileName             = json.get(FIELD_FILENAME).getAsString();
+        this.filename             = json.get(FIELD_FILENAME).getAsString();
         this.directDownloadUri    = json.get(FIELD_DIRECT_DOWNLOAD_URI).getAsString();
         this.downloadSiteUri      = json.get(FIELD_DOWNLOAD_SITE_URI).getAsString();
         this.semver               = new SemVer(versionNumber, releaseStatus);
 
-        if (ArchiveType.NOT_FOUND   == this.archiveType)   { this.archiveType   = ArchiveType.getFromFileName(this.fileName); }
+        if (ArchiveType.NOT_FOUND     == this.archiveType)     { this.archiveType   = ArchiveType.getFromFileName(this.filename); }
         if (TermOfSupport.NOT_FOUND == this.termOfSupport) { this.termOfSupport = Helper.getTermOfSupport(this.versionNumber, distro); }
+        if (OperatingSystem.NOT_FOUND == this.operatingSystem) {
+            this.operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
+                                                                    .stream()
+                                                                    .filter(entry -> this.filename.contains(entry.getKey()))
+                                                                    .findFirst()
+                                                                    .map(Entry::getValue)
+                                                                    .orElse(OperatingSystem.NONE);
+        }
     }
 
 
@@ -202,8 +212,8 @@ public class Pkg {
     public boolean isHeadless() { return headless; }
     public void setHeadless(final boolean headless) { this.headless = headless; }
 
-    public String getFileName() { return fileName; }
-    public void setFileName(final String fileName) { this.fileName = fileName; }
+    public String getFileName() { return filename; }
+    public void setFileName(final String filename) { this.filename = filename; }
 
     public String getDirectDownloadUri() { return directDownloadUri; }
     public void setDirectDownloadUri(final String directDownloadUri) { this.directDownloadUri = directDownloadUri; }
@@ -212,7 +222,7 @@ public class Pkg {
     public void setDownloadSiteUri(final String downloadSiteUri) { this.downloadSiteUri = downloadSiteUri; }
 
     public String getId() {
-        return directlyDownloadable ? Helper.getMD5Hex(directDownloadUri.getBytes()) : Helper.getMD5Hex(String.join("", directDownloadUri, fileName).getBytes());
+        return directlyDownloadable ? Helper.getMD5Hex(directDownloadUri.getBytes()) : Helper.getMD5Hex(String.join("", directDownloadUri, filename).getBytes());
     }
 
     /**
@@ -239,7 +249,7 @@ public class Pkg {
                                           .append("  \"").append(FIELD_PACKAGE_TYPE).append("\"").append(":").append("\"").append(packageType.getApiString()).append("\"").append(",\n")
                                           .append("  \"").append(FIELD_JAVAFX_BUNDLED).append("\"").append(":").append(javafxBundled).append(",\n")
                                           .append("  \"").append(FIELD_DIRECTLY_DOWNLOADABLE).append("\"").append(":").append(directlyDownloadable).append(",\n")
-                                          .append("  \"").append(FIELD_FILENAME).append("\"").append(":").append("\"").append(fileName).append("\"").append(",\n")
+                                          .append("  \"").append(FIELD_FILENAME).append("\"").append(":").append("\"").append(filename).append("\"").append(",\n")
                                           .append("  \"").append(FIELD_DIRECT_DOWNLOAD_URI).append("\"").append(":").append("\"").append(directDownloadUri).append("\"").append(",\n")
                                           .append("  \"").append(FIELD_DOWNLOAD_SITE_URI).append("\"").append(":").append("\"").append(downloadSiteUri).append("\"").append("\n")
                                           .append("}")
@@ -261,7 +271,7 @@ public class Pkg {
                                           .append("  \"").append(FIELD_PACKAGE_TYPE).append("\"").append(":").append("\"").append(packageType.getApiString()).append("\"").append(",\n")
                                           .append("  \"").append(FIELD_JAVAFX_BUNDLED).append("\"").append(":").append(javafxBundled).append(",\n")
                                           .append("  \"").append(FIELD_DIRECTLY_DOWNLOADABLE).append("\"").append(":").append(directlyDownloadable).append(",\n")
-                                          .append("  \"").append(FIELD_FILENAME).append("\"").append(":").append("\"").append(fileName).append("\"").append(",\n")
+                                          .append("  \"").append(FIELD_FILENAME).append("\"").append(":").append("\"").append(filename).append("\"").append(",\n")
                                           .append("  \"").append(FIELD_EPHEMERAL_ID).append("\"").append(":").append("\"").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append("\"").append("\n")
                                           .append("}")
                                           .toString();
@@ -282,7 +292,7 @@ public class Pkg {
                                           .append("\"").append(FIELD_PACKAGE_TYPE).append("\"").append(":").append("\"").append(packageType.getApiString()).append("\"").append(",")
                                           .append("\"").append(FIELD_JAVAFX_BUNDLED).append("\"").append(":").append(javafxBundled).append(",")
                                           .append("\"").append(FIELD_DIRECTLY_DOWNLOADABLE).append("\"").append(":").append(directlyDownloadable).append(",")
-                                          .append("\"").append(FIELD_FILENAME).append("\"").append(":").append("\"").append(fileName).append("\"").append(",")
+                                          .append("\"").append(FIELD_FILENAME).append("\"").append(":").append("\"").append(filename).append("\"").append(",")
                                           .append("\"").append(FIELD_DIRECT_DOWNLOAD_URI).append("\"").append(":").append("\"").append(directDownloadUri).append("\"").append(",")
                                           .append("\"").append(FIELD_DOWNLOAD_SITE_URI).append("\"").append(":").append("\"").append(downloadSiteUri).append("\"")
                                           .append("}")
@@ -305,7 +315,7 @@ public class Pkg {
                                           .append("\"").append(FIELD_PACKAGE_TYPE).append("\"").append(":").append("\"").append(packageType.getApiString()).append("\"").append(",")
                                           .append("\"").append(FIELD_JAVAFX_BUNDLED).append("\"").append(":").append(javafxBundled).append(",")
                                           .append("\"").append(FIELD_DIRECTLY_DOWNLOADABLE).append("\"").append(":").append(directlyDownloadable).append(",")
-                                          .append("\"").append(FIELD_FILENAME).append("\"").append(":").append("\"").append(fileName).append("\"").append(",")
+                                          .append("\"").append(FIELD_FILENAME).append("\"").append(":").append("\"").append(filename).append("\"").append(",")
                                           .append("\"").append(FIELD_EPHEMERAL_ID).append("\"").append(":").append("\"").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append("\"")
                                           .append("}")
                                           .toString();
@@ -318,12 +328,12 @@ public class Pkg {
         Pkg pkg = (Pkg) o;
         return javafxBundled == pkg.javafxBundled && directlyDownloadable == pkg.directlyDownloadable && distribution.equals(pkg.distribution) && versionNumber.equals(pkg.versionNumber) &&
                architecture == pkg.architecture && bitness == pkg.bitness && operatingSystem == pkg.operatingSystem && packageType == pkg.packageType &&
-               releaseStatus == pkg.releaseStatus && archiveType == pkg.archiveType && termOfSupport == pkg.termOfSupport && fileName.equals(pkg.fileName) &&
+               releaseStatus == pkg.releaseStatus && archiveType == pkg.archiveType && termOfSupport == pkg.termOfSupport && filename.equals(pkg.filename) &&
                directDownloadUri.equals(pkg.directDownloadUri);
     }
 
     @Override public int hashCode() {
-        return Objects.hash(distribution, versionNumber, architecture, bitness, operatingSystem, packageType, releaseStatus, archiveType, termOfSupport, javafxBundled, directlyDownloadable, fileName,
+        return Objects.hash(distribution, versionNumber, architecture, bitness, operatingSystem, packageType, releaseStatus, archiveType, termOfSupport, javafxBundled, directlyDownloadable, filename,
                             directDownloadUri);
     }
 
