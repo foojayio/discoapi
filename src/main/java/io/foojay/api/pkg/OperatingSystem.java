@@ -60,14 +60,6 @@ public enum OperatingSystem implements ApiFeature {
 
     public static OperatingSystem fromText(final String text) {
         switch (text) {
-            case "-win":
-            case "windows":
-            case "Windows":
-            case "WINDOWS":
-            case "win":
-            case "Win":
-            case "WIN":
-                return WINDOWS;
             case "-linux":
             case "linux":
             case "Linux":
@@ -121,6 +113,14 @@ public enum OperatingSystem implements ApiFeature {
             case "Mac OSX":
             case "mac osx":
                 return MACOS;
+            case "-win":
+            case "windows":
+            case "Windows":
+            case "WINDOWS":
+            case "win":
+            case "Win":
+            case "WIN":
+                return WINDOWS;
             default:
                 return NOT_FOUND;
         }
