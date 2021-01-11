@@ -125,6 +125,7 @@ public class Constants {
     }};
 
     public static final LinkedHashMap<String, OperatingSystem> OPERATING_SYSTEM_LOOKUP = new LinkedHashMap<>() {{
+        put("darwin", OperatingSystem.MACOS);
         put("windows", OperatingSystem.WINDOWS);
         put("Windows", OperatingSystem.WINDOWS);
         put("win", OperatingSystem.WINDOWS);
@@ -137,7 +138,6 @@ public class Constants {
         put("solaris", OperatingSystem.SOLARIS);
         put("qnx", OperatingSystem.QNX);
         put("aix", OperatingSystem.AIX);
-        put("darwin", OperatingSystem.MACOS);
         put("macosx", OperatingSystem.MACOS);
         put("macos", OperatingSystem.MACOS);
         put("osx", OperatingSystem.MACOS);
