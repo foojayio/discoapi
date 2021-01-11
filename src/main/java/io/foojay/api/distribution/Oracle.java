@@ -171,7 +171,8 @@ public class Oracle implements Distribution {
             Bitness         bitness;
             ArchiveType     archiveType;
             TermOfSupport   termOfSupport;
-            if (filename.contains("_")) {
+            boolean         javafxBundled;
+            if (filename.contains("_") && !filename.contains("javafx")) {
                 // > JDK 8
                 packageType = filename.startsWith("jdk") ? PackageType.JDK : PackageType.JRE;
                 nameParts       = filename.split("_");
@@ -201,6 +202,7 @@ public class Oracle implements Distribution {
                                                            .map(Entry::getValue)
                                                            .orElse(ArchiveType.NONE);
                 termOfSupport = Helper.getTermOfSupport(versionNumber);
+                javafxBundled = versionNumber.getMajorVersion().getAsInt() < 11;
             } else {
                 // <= JDK 8
                 packageType = filename.startsWith("jdk") ? PackageType.JDK : PackageType.JRE;
@@ -215,7 +217,14 @@ public class Oracle implements Distribution {
                 }
 
                 versionNumber   = VersionNumber.fromText(nameParts[0]);
-                operatingSystem = OperatingSystem.fromText(nameParts[1]);
+
+                operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
+                                                                   .stream()
+                                                                   .filter(entry -> filename.contains(entry.getKey()))
+                                                                   .findFirst()
+                                                                   .map(Entry::getValue)
+                                                                   .orElse(OperatingSystem.NONE);
+
                 architecture    = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
                                                                .filter(entry -> filename.contains(entry.getKey()))
                                                                .findFirst()
@@ -229,6 +238,13 @@ public class Oracle implements Distribution {
                                                            .map(Entry::getValue)
                                                            .orElse(ArchiveType.NONE);
                 termOfSupport = Helper.getTermOfSupport(versionNumber);
+                if (filename.contains("javafx")) {
+                    javafxBundled = true;
+                } else if (versionNumber.getMajorVersion().getAsInt() >= 7) {
+                    javafxBundled = true;
+                } else {
+                    javafxBundled = false;
+                }
             }
             if (ArchiveType.NONE == archiveType) {
                 LOGGER.debug("Archive Type not found in Oracle for filename: {}", filename);
@@ -257,7 +273,7 @@ public class Oracle implements Distribution {
             pkg.setFileName(filename);
             pkg.setArchiveType(archiveType);
             pkg.setDownloadSiteUri(packageUrl);
-            pkg.setJavaFXBundled(false);
+            pkg.setJavaFXBundled(javafxBundled);
             pkg.setDirectlyDownloadable(false);
 
             pkgs.add(pkg);
