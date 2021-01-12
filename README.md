@@ -1,10 +1,8 @@
-# Disco API
+# foojay Disco API
 
 ![Logo](https://github.com/foojay2020/discoapi/raw/main/discoduke.png)
 
-## Disco API is a general purpose JDK/JRE discovery api
-
-The foojay discovery api (disco api) is made to discover builds of OpenJDK (jre/jdk) from different distributions.
+The foojay Disco API is a general purpose api to disover builds of OpenJDK from different distributions
 
 #### At the moment the following distributions are supported by the api:
 * AdoptOpenJDK
@@ -12,6 +10,7 @@ The foojay discovery api (disco api) is made to discover builds of OpenJDK (jre/
 * Corretto
 * Dragonwell
 * Liberica
+* GraalVM CE  
 * Oracle (contains only links to download site)
 * Oracle OpenJDK
 * Red Hat (contains only links to download site)
