@@ -76,9 +76,9 @@ public class SAPMachine implements Distribution {
     private static final String                       GITHUB_REPOSITORY       = "SapMachine";
     private static final String                       PACKAGE_URL             = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases";
     private static final String                       PACKAGE_JSON_URL        = "https://sap.github.io/SapMachine/assets/data/sapmachine_releases.json";
-    public  static final List<String>                 PACKAGE_URLS            = List.of("https://github.com/SAP/SapMachine/releases/tag/sapmachine-10.0.2%2B13-1",
-                                                                                        "https://github.com/SAP/SapMachine/releases/tag/sapmachine-12.0.2",
-                                                                                        "https://github.com/SAP/SapMachine/releases/tag/sapmachine-13.0.2");
+    public  static final List<String>                 PACKAGE_URLS            = List.of("https://github.com/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases/tag/sapmachine-10.0.2%2B13-1",
+                                                                                        "https://github.com/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases/tag/sapmachine-12.0.2",
+                                                                                        "https://github.com/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases/tag/sapmachine-13.0.2");
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM      = "";
