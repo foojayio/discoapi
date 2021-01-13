@@ -91,7 +91,7 @@ public enum DiscoService {
                     if (null == versionNumber || versionNumber.getFeature().isEmpty()) {
                         Optional<Pkg> pkgWithMaxVersionNumber = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                                                               .stream()
-                                                                                              .filter(pkg -> distributions.isEmpty()                    ? pkg.getDistribution()        != null          : distributions.contains(pkg.getDistribution()))
+                                                                                              .filter(pkg -> distributions.isEmpty()                    ? (pkg.getDistribution() != null && !pkg.getDistribution().getName().equals(Distro.GRAALVM_CE8.getUiString()) && !pkg.getDistribution().getName().equals(Distro.GRAALVM_CE11.getUiString())) : distributions.contains(pkg.getDistribution()))
                                                                                               .filter(pkg -> scopes.containsAll(pkg.getDistribution().getScopes()))
                                                                                               .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
                                                                                               .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
