@@ -20,9 +20,9 @@ The foojay Disco API is a general purpose api to disover builds of OpenJDK from 
   
 ---
 ### Terms that are used in this document:
-* LTS stands for Long Term Stable. It means the version will receive security updates for a long time
-* MTS stands for Mid Term Stable. It means the version will receive security updates at least until the next LTS will be released
-* STS stands for Short Term Stable. It means the version will receive updates for the next 6 months (Dec 2020)
+* LTS stands for Long Term Support. It means the version will receive security updates for a long time
+* MTS stands for Mid Term Support. It means the version will receive security updates at least until the next LTS will be released
+* STS stands for Short Term Support. It means the version will receive updates for the next 6 months (Dec 2020)
 * GA stands for General Availability. It means that the release is stable
 * EA stands for Early Access. It means that the release is not stable and will change probably every week
 * Bitness describes 32- or 64-bit architecture
@@ -49,6 +49,12 @@ Please find more information here:
 [foojay API Swagger doc](https://api.foojay.io/swagger-ui)
 
 ---
+
+### How to download a package ?
+1. Search for a package using the api (e.g. JDK 1.8.0_275 from Zulu for Windows as msi incl. JavaFX => https://api.foojay.io/disco/v1.0/packages?version=1.8.0_275&distro=zulu&archive_type=msi&package_type=jdk&operating_system=windows&javafx_bundled=true&latest=per_version)
+2. Once you have found the package of your choice, get it's ephemeral id from the json response
+3. Call the endpoint https://api.foojay.io/ephemeral_ids/PACKAGE_EPHEMERAL_ID
+4. Get the download link from the json response
 
 ### Here are some use cases and ways how to handle them using the disco api:
 
