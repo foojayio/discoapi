@@ -27,6 +27,7 @@ import io.foojay.api.distribution.Dragonwell;
 import io.foojay.api.distribution.GraalVMCE11;
 import io.foojay.api.distribution.GraalVMCE8;
 import io.foojay.api.distribution.Liberica;
+import io.foojay.api.distribution.OJDKBuild;
 import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.distribution.RedHat;
@@ -46,6 +47,7 @@ public enum Distro implements ApiFeature {
     GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 12),
     GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 12),
     LIBERICA("Liberica", "liberica", new Liberica(), 1),
+    OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 12),
     ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 6),
     ORACLE("Oracle", "oracle", new Oracle(), 1),
     RED_HAT("Red Hat", "redhat", new RedHat(), 12),
@@ -181,6 +183,11 @@ public enum Distro implements ApiFeature {
             case "Red-Hat":
             case "RED-HAT":
                 return RED_HAT;
+            case "ojdk_build":
+            case "OJDK_BUILD":
+            case "ojdkbuild":
+            case "OJDKBuild":
+                return OJDK_BUILD;
             default:
                 return NOT_FOUND;
         }

@@ -25,6 +25,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.distribution.AOJ_OPENJ9;
+import io.foojay.api.distribution.OJDKBuild;
 import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
@@ -106,6 +107,10 @@ public class Helper {
             case RED_HAT:
                 RedHat redhat = (RedHat) distro.get();
                 pkgs.addAll(redhat.getAllPkgs());
+                break;
+            case OJDK_BUILD:
+                OJDKBuild ojdkBuild = (OJDKBuild) distro.get();
+                pkgs.addAll(ojdkBuild.getAllPkgs());
                 break;
             case ORACLE_OPEN_JDK:
                 OracleOpenJDK oracleOpenJDK = (OracleOpenJDK) distro.get();

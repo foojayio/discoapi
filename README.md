@@ -10,13 +10,14 @@ The foojay Disco API is a general purpose api to disover builds of OpenJDK from 
 * Corretto
 * Dragonwell
 * Liberica
-* GraalVM CE  
+* GraalVM CE
+* OJDKBuild  
 * Oracle (contains only links to download site)
 * Oracle OpenJDK
 * Red Hat (contains only links to download site)
 * SAP Machine
 * Zulu
-
+  
 ---
 ### Terms that are used in this document:
 * LTS stands for Long Term Stable. It means the version will receive security updates for a long time
