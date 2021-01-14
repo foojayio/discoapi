@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
@@ -60,10 +61,11 @@ public enum DiscoService {
                                       final Bitness bitness, final Boolean javafxBundled, final Boolean directlyDownloadable, final List<Scope> scopes) {
         final VersionNumber minVersionNumber = null == fromVersionNumber ? new VersionNumber(6)                                : fromVersionNumber;
         final VersionNumber maxVersionNumber = null == toVersionNumber   ? new VersionNumber(MajorVersion.getLatest(true).getAsInt()) : toVersionNumber;
+
         List<Pkg> pkgsFound = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                             .stream()
                                                             .filter(pkg -> distributions.isEmpty()                  ? pkg.getDistribution()        != null         : distributions.contains(pkg.getDistribution()))
-                                                            .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).containsAll(scopes))
+                                                            .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scope -> scopes.contains(scope)))
                                                             .filter(pkg -> architectures.isEmpty()                  ? pkg.getArchitecture()        != null         : architectures.contains(pkg.getArchitecture()))
                                                             .filter(pkg -> archiveTypes.isEmpty()                   ? pkg.getArchiveType()         != null         : archiveTypes.contains(pkg.getArchiveType()))
                                                             .filter(pkg -> operatingSystems.isEmpty()               ? pkg.getOperatingSystem()     != null         : operatingSystems.contains(pkg.getOperatingSystem()))
@@ -93,7 +95,7 @@ public enum DiscoService {
                         Optional<Pkg> pkgWithMaxVersionNumber = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                                                               .stream()
                                                                                               .filter(pkg -> distributions.isEmpty()                    ? (pkg.getDistribution() != null && !pkg.getDistribution().getName().equals(Distro.GRAALVM_CE8.getUiString()) && !pkg.getDistribution().getName().equals(Distro.GRAALVM_CE11.getUiString())) : distributions.contains(pkg.getDistribution()))
-                                                                                              .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).containsAll(scopes))
+                                                                                              .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scope -> scopes.contains(scope)))
                                                                                               .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
                                                                                               .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
                                                                                               .filter(pkg -> operatingSystems.isEmpty()                 ? pkg.getOperatingSystem()     != null          : operatingSystems.contains(pkg.getOperatingSystem()))
@@ -115,7 +117,7 @@ public enum DiscoService {
                         Optional<Pkg> pkgWithMaxVersionNumber = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                                                               .stream()
                                                                                               .filter(pkg -> distributions.isEmpty()                    ? pkg.getDistribution()        != null          : distributions.contains(pkg.getDistribution()))
-                                                                                              .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).containsAll(scopes))
+                                                                                              .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scope -> scopes.contains(scope)))
                                                                                               .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
                                                                                               .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
                                                                                               .filter(pkg -> operatingSystems.isEmpty()                 ? pkg.getOperatingSystem()     != null          : operatingSystems.contains(pkg.getOperatingSystem()))
@@ -137,7 +139,7 @@ public enum DiscoService {
                     pkgsFound = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                               .stream()
                                                               .filter(pkg -> distributions.isEmpty()                    ? pkg.getDistribution()        != null          : distributions.contains(pkg.getDistribution()))
-                                                              .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).containsAll(scopes))
+                                                              .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scope -> scopes.contains(scope)))
                                                               .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
                                                               .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
                                                               .filter(pkg -> operatingSystems.isEmpty()                 ? pkg.getOperatingSystem()     != null          : operatingSystems.contains(pkg.getOperatingSystem()))
@@ -153,7 +155,7 @@ public enum DiscoService {
                                                               .collect(Collectors.toList());
                     break;
                 case PER_DISTRIBUTION:
-                    List<Distribution>               distributionsToCheck      = distributions.isEmpty() ? Distro.getAsList().stream().filter(distro -> Constants.SCOPE_LOOKUP.get(distro).containsAll(scopes)).map(distro -> distro.get()).collect(Collectors.toList()) : distributions.stream().filter(distro -> scopes.containsAll(Constants.SCOPE_LOOKUP.get(distro.getDistro().get()))).collect(Collectors.toList());
+                    List<Distribution>               distributionsToCheck      = distributions.isEmpty() ? Distro.getAsList().stream().filter(distro -> Constants.SCOPE_LOOKUP.get(distro).stream().anyMatch(scope -> scopes.contains(scope))).map(distro -> distro.get()).collect(Collectors.toList()) : distributions.stream().filter(distro -> Constants.SCOPE_LOOKUP.get(distro.getDistro()).stream().anyMatch(scope -> scopes.contains(scope))).collect(Collectors.toList());
                     List<Pkg>                        pkgs                      = new ArrayList<>();
                     Map<Distribution, VersionNumber> maxVersionPerDistribution = new ConcurrentHashMap<>();
                     distributionsToCheck.forEach(distro -> maxVersionPerDistribution.put(distro, CacheManager.INSTANCE.pkgCache.getPkgs()
@@ -176,7 +178,7 @@ public enum DiscoService {
                     distributionsToCheck.forEach(distro -> pkgs.addAll(CacheManager.INSTANCE.pkgCache.getPkgs()
                                                                                                      .stream()
                                                                                                      .filter(pkg -> pkg.getDistribution().equals(distro))
-                                                                                                     .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).containsAll(scopes))
+                                                                                                     .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scope -> scopes.contains(scope)))
                                                                                                      .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
                                                                                                      .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
                                                                                                      .filter(pkg -> operatingSystems.isEmpty()                 ? pkg.getOperatingSystem()     != null          : operatingSystems.contains(pkg.getOperatingSystem()))
@@ -196,7 +198,7 @@ public enum DiscoService {
                     pkgsFound = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                               .stream()
                                                               .filter(pkg -> distributions.isEmpty()                    ? pkg.getDistribution()        != null          : distributions.contains(pkg.getDistribution()))
-                                                              .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).containsAll(scopes))
+                                                              .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scope -> scopes.contains(scope)))
                                                               .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
                                                               .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
                                                               .filter(pkg -> operatingSystems.isEmpty()                 ? pkg.getOperatingSystem()     != null          : operatingSystems.contains(pkg.getOperatingSystem()))
@@ -218,7 +220,7 @@ public enum DiscoService {
                     pkgsFound = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                               .stream()
                                                               .filter(pkg -> distributions.isEmpty()                    ? pkg.getDistribution()        != null          : distributions.contains(pkg.getDistribution()))
-                                                              .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).containsAll(scopes))
+                                                              .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scope -> scopes.contains(scope)))
                                                               .filter(pkg -> pkg.getVersionNumber() != null)
                                                               .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
                                                               .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
@@ -315,7 +317,7 @@ public enum DiscoService {
             pkgsFound = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                       .stream()
                                                       .filter(pkg -> distributions.isEmpty()                  ? pkg.getDistribution()        != null          : distributions.contains(pkg.getDistribution()))
-                                                      .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).containsAll(scopes))
+                                                      .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scope -> scopes.contains(scope)))
                                                       .filter(pkg -> architectures.isEmpty()                  ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
                                                       .filter(pkg -> archiveTypes.isEmpty()                   ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
                                                       .filter(pkg -> operatingSystems.isEmpty()               ? pkg.getOperatingSystem()     != null          : operatingSystems.contains(pkg.getOperatingSystem()))
