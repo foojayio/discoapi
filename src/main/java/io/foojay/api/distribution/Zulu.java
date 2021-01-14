@@ -23,21 +23,19 @@ package io.foojay.api.distribution;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.BasicScope;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.pkg.Architecture;
+import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
-import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.OperatingSystem;
+import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
+import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.TermOfSupport;
+import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
-import io.foojay.api.util.Scope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,13 +49,35 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.Architecture.*;
-import static io.foojay.api.pkg.OperatingSystem.*;
-import static io.foojay.api.pkg.ArchiveType.*;
-import static io.foojay.api.pkg.PackageType.*;
-import static io.foojay.api.pkg.ReleaseStatus.*;
-import static io.foojay.api.pkg.TermOfSupport.*;
-import static io.foojay.api.pkg.Bitness.*;
+import static io.foojay.api.pkg.Architecture.ARM;
+import static io.foojay.api.pkg.Architecture.MIPS;
+import static io.foojay.api.pkg.Architecture.PPC;
+import static io.foojay.api.pkg.Architecture.SPARCV9;
+import static io.foojay.api.pkg.Architecture.X64;
+import static io.foojay.api.pkg.Architecture.X86;
+import static io.foojay.api.pkg.ArchiveType.CAB;
+import static io.foojay.api.pkg.ArchiveType.DEB;
+import static io.foojay.api.pkg.ArchiveType.DMG;
+import static io.foojay.api.pkg.ArchiveType.MSI;
+import static io.foojay.api.pkg.ArchiveType.RPM;
+import static io.foojay.api.pkg.ArchiveType.TAR_GZ;
+import static io.foojay.api.pkg.ArchiveType.ZIP;
+import static io.foojay.api.pkg.Bitness.BIT_32;
+import static io.foojay.api.pkg.Bitness.BIT_64;
+import static io.foojay.api.pkg.OperatingSystem.ALPINE_LINUX;
+import static io.foojay.api.pkg.OperatingSystem.LINUX;
+import static io.foojay.api.pkg.OperatingSystem.LINUX_MUSL;
+import static io.foojay.api.pkg.OperatingSystem.MACOS;
+import static io.foojay.api.pkg.OperatingSystem.QNX;
+import static io.foojay.api.pkg.OperatingSystem.SOLARIS;
+import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
+import static io.foojay.api.pkg.PackageType.JDK;
+import static io.foojay.api.pkg.PackageType.JRE;
+import static io.foojay.api.pkg.ReleaseStatus.EA;
+import static io.foojay.api.pkg.ReleaseStatus.GA;
+import static io.foojay.api.pkg.TermOfSupport.LTS;
+import static io.foojay.api.pkg.TermOfSupport.MTS;
+import static io.foojay.api.pkg.TermOfSupport.STS;
 
 
 public class Zulu implements Distribution {
@@ -110,8 +130,6 @@ public class Zulu implements Distribution {
     @Override public String getName() { return getDistro().getUiString(); }
 
     @Override public String getPkgUrl() { return PACKAGE_URL; }
-
-    @Override public List<Scope> getScopes() { return List.of(BasicScope.PUBLIC); }
 
     @Override public String getArchitectureParam() { return ARCHITECTURE_PARAM; }
 

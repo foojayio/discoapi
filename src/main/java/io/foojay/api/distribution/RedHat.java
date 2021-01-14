@@ -23,7 +23,6 @@ import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.BasicScope;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.OperatingSystem;
@@ -35,7 +34,6 @@ import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
-import io.foojay.api.util.Scope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,8 +80,6 @@ public class RedHat implements Distribution {
     @Override public String getName() { return getDistro().getUiString(); }
 
     @Override public String getPkgUrl() { return PACKAGE_URL; }
-
-    @Override public List<Scope> getScopes() { return List.of(BasicScope.PUBLIC); }
 
     @Override public String getArchitectureParam() { return ARCHITECTURE_PARAM; }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -17,9 +17,9 @@
  *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.foojay.api.pkg;
+package io.foojay.api.scopes;
 
-import io.foojay.api.util.Scope;
+import io.foojay.api.pkg.ApiFeature;
 
 import java.util.Arrays;
 import java.util.List;
@@ -53,6 +53,7 @@ public enum BasicScope implements Scope, ApiFeature {
     @Override public String getName() { return uiString; }
 
     @Override public String getToken() { return apiString; }
+
 
     public static BasicScope fromToken(final String token) { return "public".equals(token) ? PUBLIC : NOT_FOUND; }
 

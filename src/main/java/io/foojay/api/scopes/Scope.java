@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -17,7 +17,7 @@
  *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.foojay.api.util;
+package io.foojay.api.scopes;
 
 public interface Scope {
     Scope NOT_FOUND = new Scope() {

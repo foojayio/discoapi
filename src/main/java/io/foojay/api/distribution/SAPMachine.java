@@ -27,19 +27,17 @@ import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
-import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.MajorVersion;
+import io.foojay.api.pkg.OperatingSystem;
+import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.BasicScope;
 import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
-import io.foojay.api.util.Scope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,11 +57,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.Architecture.*;
-import static io.foojay.api.pkg.Bitness.*;
-import static io.foojay.api.pkg.PackageType.*;
-import static io.foojay.api.pkg.OperatingSystem.*;
-import static io.foojay.api.pkg.ReleaseStatus.*;
+import static io.foojay.api.pkg.Architecture.AARCH64;
+import static io.foojay.api.pkg.Architecture.PPC64;
+import static io.foojay.api.pkg.Architecture.PPC64LE;
+import static io.foojay.api.pkg.Architecture.X64;
+import static io.foojay.api.pkg.Bitness.BIT_64;
+import static io.foojay.api.pkg.OperatingSystem.LINUX;
+import static io.foojay.api.pkg.OperatingSystem.MACOS;
+import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
+import static io.foojay.api.pkg.PackageType.JDK;
+import static io.foojay.api.pkg.PackageType.JRE;
+import static io.foojay.api.pkg.ReleaseStatus.EA;
+import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
 public class SAPMachine implements Distribution {
@@ -95,8 +100,6 @@ public class SAPMachine implements Distribution {
     @Override public String getName() { return getDistro().getUiString(); }
 
     @Override public String getPkgUrl() { return PACKAGE_URL; }
-
-    @Override public List<Scope> getScopes() { return List.of(BasicScope.PUBLIC); }
 
     @Override public String getArchitectureParam() { return ARCHITECTURE_PARAM; }
 
@@ -486,7 +489,7 @@ public class SAPMachine implements Distribution {
                 pkgs.addAll(getAllPkgsFromHtml(html, packageUrl));
             }
         } catch (Exception e) {
-            LOGGER.error("Error fetching all packages from Oracle. {}", e);
+            LOGGER.error("Error fetching all packages from SAP Machine. {}", e);
         }
         return pkgs;
     }
@@ -518,10 +521,10 @@ public class SAPMachine implements Distribution {
 
             final Architecture architecture = Constants.ARCHITECTURE_LOOKUP.entrySet()
                                                                            .stream()
-                                                                           .filter(entry -> withoutPrefix.contains(entry.getKey()))
-                                                                           .findFirst()
-                                                                           .map(Entry::getValue)
-                                                                           .orElse(Architecture.NONE);
+                                                                                            .filter(entry -> withoutPrefix.contains(entry.getKey()))
+                                                                                            .findFirst()
+                                                                                            .map(Entry::getValue)
+                                                                                            .orElse(Architecture.NONE);
             if (Architecture.NONE == architecture) {
                 LOGGER.debug("Architecture not found in SAP Machine for filename: {}", filename);
                 continue;

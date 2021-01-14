@@ -31,7 +31,7 @@ import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
-import io.foojay.api.util.Scope;
+import io.foojay.api.scopes.Scope;
 
 import java.util.List;
 
@@ -43,8 +43,6 @@ public interface Distribution {
     String getName();
 
     String getPkgUrl();
-
-    List<Scope> getScopes();
 
     String getArchitectureParam();
 
