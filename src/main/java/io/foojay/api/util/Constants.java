@@ -29,7 +29,6 @@ import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.scopes.DownloadScope;
-import io.foojay.api.scopes.IDEScope;
 import io.foojay.api.scopes.BasicScope;
 import io.foojay.api.scopes.Scope;
 
