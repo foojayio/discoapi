@@ -42,6 +42,12 @@ public class SemVerParser {
 
         // Remove leading "1." to get correct version number e.g. 1.8u262 -> 8u262
         String versionText1 = text.startsWith("1.") ? text.replace("1.", "") : text;
+        if (versionText1.contains("_")) {
+            versionText1 = versionText1.replace("_", ".");
+        }
+        if (versionText1.matches("[0-9]+u[0-9]+.*")) {
+            versionText1 = versionText1.replace("u", ".0.");
+        }
 
         SEM_VER_MATCHER.reset(versionText1);
         final List<MatchResult> results = SEM_VER_MATCHER.results().collect(Collectors.toList());
