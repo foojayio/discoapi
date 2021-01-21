@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 
 public class SemVerParser {
     private static final Pattern SEM_VER_PATTERN = Pattern.compile("^(<|<=|>|>=|=)?v?([0-9]+)(\\.[0-9]+)?(\\.[0-9]+)?(\\.[0-9]+)?(-([0-9A-Za-z\\-]+(\\.[0-9A-Za-z\\-]+)*))?(\\+([0-9A-Za-z\\-]+(\\.[0-9A-Za-z\\-]+)*))?((<|<=|>|>=|=)?v?([0-9]+)(\\.[0-9]+)?(\\.[0-9]+)?(\\.[0-9]+)?(-([0-9A-Za-z\\-]+(\\.[0-9A-Za-z\\-]+)*))?(\\+([0-9A-Za-z\\-]+(\\.[0-9A-Za-z\\-]+)*))?)?$");
-    private static final Matcher SEM_VER_MATCHER = SEM_VER_PATTERN.matcher("");
 
 
     public static SemVerParsingResult fromText(final String text) {
@@ -49,8 +48,8 @@ public class SemVerParser {
             versionText1 = versionText1.replace("u", ".0.");
         }
 
-        SEM_VER_MATCHER.reset(versionText1);
-        final List<MatchResult> results = SEM_VER_MATCHER.results().collect(Collectors.toList());
+        final Matcher           semverMatcher = SEM_VER_PATTERN.matcher(versionText1);
+        final List<MatchResult> results       = semverMatcher.results().collect(Collectors.toList());
 
         if (results.isEmpty()) {
             parsingResult.setError1(new Error("Invalid semver: " + versionText1));

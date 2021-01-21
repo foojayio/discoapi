@@ -41,7 +41,6 @@ public class VersionNumber implements Comparable<VersionNumber> {
     private static final Logger LOGGER = LoggerFactory.getLogger(VersionNumber.class);
 
     public static final Pattern VERSION_NO_PATTERN  = Pattern.compile("([1-9]\\d*)((u(\\d+))|(\\.?(\\d+)?\\.?(\\d+)?\\.?(\\d+)?\\.(\\d+)))?((_|b)(\\d+))?((-|\\+|\\.)([a-zA-Z0-9\\-\\+]+))?");
-    public static final Matcher VERSION_NO_MATCHER  = VERSION_NO_PATTERN.matcher("");
     public static final Pattern LEADING_INT_PATTERN = Pattern.compile("^[0-9]*");
 
     @NotNull
@@ -170,8 +169,8 @@ public class VersionNumber implements Comparable<VersionNumber> {
         // Remove leading "1." to get correct version number e.g. 1.8u262 -> 8u262
         String version = text.startsWith("1.") ? text.replace("1.", "") : text;
 
-        VERSION_NO_MATCHER.reset(version);
-        final List<MatchResult> results      = VERSION_NO_MATCHER.results().collect(Collectors.toList());
+        final Matcher           versionNoMatcher = VERSION_NO_PATTERN.matcher(version);
+        final List<MatchResult> results          = versionNoMatcher.results().collect(Collectors.toList());
         final int               noOfResults  = results.size();
         final int               resultToTake = noOfResults > resultToMatch ? resultToMatch : 0;
         List<VersionNumber>     numbersFound = new ArrayList<>();
