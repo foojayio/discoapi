@@ -88,6 +88,7 @@ public class Helper {
     public  static final Pattern FILE_URL_PATTERN      = Pattern.compile("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)");
     public  static final Pattern HREF_FILE_PATTERN     = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
     public  static final Pattern HREF_DOWNLOAD_PATTERN = Pattern.compile("(>)(\\s?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(<)");
+    public  static final Pattern NUMBER_IN_TEXT_PATTERN = Pattern.compile("(.*)?([0-9]+)(.*)?");
     public  static final Matcher FILE_URL_MATCHER      = FILE_URL_PATTERN.matcher("");
     public  static final Matcher HREF_FILE_MATCHER     = HREF_FILE_PATTERN.matcher("");
     public  static final Matcher HREF_DOWNLOAD_MATCHER = HREF_DOWNLOAD_PATTERN.matcher("");
@@ -616,5 +617,14 @@ public class Helper {
                                                                                 .filter(p -> featureVersion         == pkg.getVersionNumber().getFeature().getAsInt())
                                                                                 .max(Comparator.comparing(Pkg::getVersionNumber));
         return pkgWithMaxVersionNumber;
+    }
+
+    public static Integer getPositiveIntFromText(final String text) {
+        if (Helper.isPositiveInteger(text)) {
+            return Integer.valueOf(text);
+        } else {
+            //LOGGER.info("Given text {} did not contain positive integer. Full text to parse was: {}", text, fullTextToParse);
+            return -1;
+        }
     }
 }

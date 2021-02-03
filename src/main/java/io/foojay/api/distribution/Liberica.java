@@ -239,7 +239,7 @@ public class Liberica implements Distribution {
         VersionNumber vNumber       = new VersionNumber(jsonObj.get(FIELD_FEATURE_VERSION).getAsInt(), jsonObj.get(FIELD_INTERIM_VERSION).getAsInt(), jsonObj.get(FIELD_UPDATE_VERSION).getAsInt(), jsonObj.get(FIELD_PATCH_VERSION).getAsInt());
         VersionNumber dNumber       = new VersionNumber(versionNumber);
         Integer       buildVersion  = jsonObj.get(FIELD_BUILD_VERSION).getAsInt();
-        dNumber.setVendorSpecific("+" + buildVersion);
+        dNumber.setBuild(buildVersion);
         vNumber.setBuild(buildVersion);
         String        packageType   = jsonObj.get(FIELD_PACKAGE_TYPE).toString().replaceAll("\"", "");
         String        bundleTyp     = jsonObj.get(FIELD_BUNDLE_TYPE).toString().replaceAll("\"", "");

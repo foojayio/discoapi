@@ -140,23 +140,25 @@ public class VersionNumberTest {
         final String versionNumber26String = "11+28";                    // 11 b28
         final String versionNumber27String = "14.0.0-ea.28";             // 14.0.0.0 ea build 28
         final String versionNumber28String = "15.0.0-ea";                // 15.0.0. ea
+        final String versionNumber29String = "11.0.9.1.5.2";             // 11.0.9.1.5.2
+        final String versionNumber30String = "11.0.9.1.5.2-ea";          // 11.0.9.1.5.2 ea
 
         final VersionNumber versionNumber1  = new VersionNumber(8);
         final VersionNumber versionNumber2  = new VersionNumber(8, 2);
         final VersionNumber versionNumber3  = new VersionNumber(2, 3);
         final VersionNumber versionNumber4  = new VersionNumber(8, 2, 3, 4);
-        final VersionNumber versionNumber5  = new VersionNumber(11, 26, 2, null,"-DEBUG");
-        final VersionNumber versionNumber6  = new VersionNumber(11, 0, 2, null, "+13-LTS");
-        final VersionNumber versionNumber7  = new VersionNumber(7, 5, 4, 3);
+        final VersionNumber versionNumber5  = new VersionNumber(11, 26, 2, null);
+        final VersionNumber versionNumber6  = new VersionNumber(11, 0, 2, null);
+        final VersionNumber versionNumber7  = new VersionNumber(7, 5, 4, 3, 2, 1);
         final VersionNumber versionNumber8  = new VersionNumber(20, 30, 0);
-        final VersionNumber versionNumber9  = new VersionNumber(11, 25, 3, null, "DEBUG");
+        final VersionNumber versionNumber9  = new VersionNumber(11, 25, 3, null);
         final VersionNumber versionNumber10 = new VersionNumber(8, 0, 262);
         final VersionNumber versionNumber11 = new VersionNumber(8, 0, 262);
         final VersionNumber versionNumber12 = new VersionNumber(8, 0, 262);
         final VersionNumber versionNumber13 = new VersionNumber(11);
         final VersionNumber versionNumber14 = new VersionNumber(8, 0, 272);
         final VersionNumber versionNumber15 = new VersionNumber(8, 0, 275);
-        final VersionNumber versionNumber16 = new VersionNumber(8, 0, 272,0, "b09");
+        final VersionNumber versionNumber16 = new VersionNumber(8, 0, 272,0);
         final VersionNumber versionNumber17 = new VersionNumber(11, 0, 9, 1);
         final VersionNumber versionNumber18 = new VersionNumber(11, 0, 9, 12);
         final VersionNumber versionNumber19 = new VersionNumber(13, 0, 5, 1);
@@ -164,15 +166,13 @@ public class VersionNumberTest {
         final VersionNumber versionNumber21 = new VersionNumber(7, 0, 25, 0);
         final VersionNumber versionNumber22 = new VersionNumber(7, 0, 25, 0);
         final VersionNumber versionNumber23 = new VersionNumber(8, 0, 172, 0);
-        versionNumber23.setBuild(11);
         final VersionNumber versionNumber24 = new VersionNumber(8, 0, 162, 0);
-        versionNumber24.setBuild(12);
         final VersionNumber versionNumber25 = new VersionNumber(11, 0, 1, 0);
-        versionNumber25.setBuild(13);
         final VersionNumber versionNumber26 = new VersionNumber(11, 0, 0, 0);
-        versionNumber26.setBuild(28);
         final VersionNumber versionNumber27 = new VersionNumber(14, 0, 0);
         final VersionNumber versionNumber28 = new VersionNumber(15, 0, 0);
+        final VersionNumber versionNumber29 = new VersionNumber(11, 0, 9, 1, 5, 2);
+        final VersionNumber versionNumber30 = new VersionNumber(11, 0, 9, 1, 5, 2);
 
         assert versionNumber1.compareTo(VersionNumber.fromText(versionNumber1String))   == 0;
         assert versionNumber2.compareTo(VersionNumber.fromText(versionNumber2String))   == 0;
@@ -202,6 +202,8 @@ public class VersionNumberTest {
         assert versionNumber26.compareTo(VersionNumber.fromText(versionNumber26String)) == 0;
         assert versionNumber27.compareTo(VersionNumber.fromText(versionNumber27String)) == 0;
         assert versionNumber28.compareTo(VersionNumber.fromText(versionNumber28String)) == 0;
+        assert versionNumber29.compareTo(VersionNumber.fromText(versionNumber29String)) == 0;
+        assert versionNumber30.compareTo(VersionNumber.fromText(versionNumber30String)) == 0;
     }
 
     @Test
@@ -229,12 +231,12 @@ public class VersionNumberTest {
         VersionNumber v6 = new VersionNumber(1,0,0,0);
         VersionNumber v7 = new VersionNumber(1,0,0,4);
 
-        assert v1.toString(OutputFormat.REDUCED).equals("1.2.3.4");
-        assert v2.toString(OutputFormat.REDUCED).equals("1.2.3");
-        assert v3.toString(OutputFormat.REDUCED).equals("1.2.0.4");
-        assert v4.toString(OutputFormat.REDUCED).equals("1.0.3.4");
-        assert v5.toString(OutputFormat.REDUCED).equals("1.2");
-        assert v6.toString(OutputFormat.REDUCED).equals("1");
-        assert v7.toString(OutputFormat.REDUCED).equals("1.0.0.4");
+        assert v1.toString(OutputFormat.REDUCED, true).equals("1.2.3.4");
+        assert v2.toString(OutputFormat.REDUCED, true).equals("1.2.3");
+        assert v3.toString(OutputFormat.REDUCED, true).equals("1.2.0.4");
+        assert v4.toString(OutputFormat.REDUCED, true).equals("1.0.3.4");
+        assert v5.toString(OutputFormat.REDUCED, true).equals("1.2");
+        assert v6.toString(OutputFormat.REDUCED, true).equals("1");
+        assert v7.toString(OutputFormat.REDUCED, true).equals("1.0.0.4");
     }
 }

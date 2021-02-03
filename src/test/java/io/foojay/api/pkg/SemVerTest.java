@@ -39,10 +39,10 @@ public class SemVerTest {
         String t1 = ">=11.0.9.0-ea+b1";
         SemVer semVer1 = SemVerParser.fromText(t1).getSemVer1();
         assert semVer1.toString().equals(">=11.0.9-ea+b1");
-        assert semVer1.getVersionNumber().toString(OutputFormat.REDUCED).equals("11.0.9");
+        assert semVer1.getVersionNumber().toString(OutputFormat.REDUCED, true).equals("11.0.9");
         assert ReleaseStatus.EA == semVer1.getReleaseStatus();
-        assert semVer1.getPre().equals("ea");
-        assert semVer1.getMetadata().equals("b1");
+        assert semVer1.getPre().equals("-ea");
+        assert semVer1.getMetadata().equals("+b1");
         assert Comparison.GREATER_THAN_OR_EQUAL == semVer1.getComparison();
 
         String t2 = "1.8.0.252-ea";
@@ -81,5 +81,25 @@ public class SemVerTest {
         SemVer semVer3 = new SemVer(new VersionNumber(11, 0, 8, 0), ReleaseStatus.EA);
         SemVer semVer4 = new SemVer(new VersionNumber(11, 0, 8, 0), ReleaseStatus.EA, "meta");
         assert semVer3.equalTo(semVer4);
+        assert semVer3.toString().equals("11.0.8-ea");
+        assert semVer4.toString().equals("11.0.8-ea+meta");
+
+        String              t6                  = "11.0.8.0.1-ea+meta";
+        SemVerParsingResult result6             = SemVerParser.fromText(t6);
+        SemVer              semVer6             = result6.getSemVer1();
+
+        assert semVer6.toString(false).equals("11.0.8.0.1-ea+meta");
+
+        String              t7                  = "12.0.9.0.5.1-ea+meta";
+        SemVerParsingResult result7             = SemVerParser.fromText(t7);
+        SemVer              semVer7             = result7.getSemVer1();
+        assert semVer7.toString(false).equals("12.0.9.0.5.1-ea+meta");
+    }
+
+    @Test
+    public void semVerToStringTest() {
+        SemVer semVer = new SemVer(new VersionNumber(11, 0, 9, 1, 0, 5), ReleaseStatus.EA,"", "+b1");
+        assert "11.0.9.1-ea+b1".equals(semVer.toString());
+        assert "11.0.9.1.0.5-ea+b1".equals(semVer.toString(false));
     }
 }

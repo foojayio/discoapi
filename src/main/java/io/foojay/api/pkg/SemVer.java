@@ -21,9 +21,12 @@ package io.foojay.api.pkg;
 
 import io.foojay.api.util.Comparison;
 import io.foojay.api.util.Error;
+import io.foojay.api.util.Helper;
 import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.SemVerParser;
 import io.foojay.api.util.SemVerParsingResult;
+
+import java.util.regex.Matcher;
 
 
 public class SemVer implements Comparable<SemVer> {
@@ -49,9 +52,24 @@ public class SemVer implements Comparable<SemVer> {
     public SemVer(final VersionNumber versionNumber, final ReleaseStatus releaseStatus, final String pre, final String metadata) {
         this.versionNumber = versionNumber;
         this.releaseStatus = releaseStatus;
-        this.pre           = null == pre      ? "" : pre;
+        this.pre           = null == pre      ? ReleaseStatus.EA == releaseStatus ? "-ea": "" : pre;
         this.metadata      = null == metadata ? "" : metadata;
         this.comparison    = Comparison.EQUAL;
+
+        if (null != this.pre && !this.pre.isEmpty() && !this.pre.startsWith("+") && !this.pre.startsWith("-")) {
+            this.pre = "-" + pre;
+        }
+        if (null != this.metadata && !this.metadata.isEmpty() && !this.metadata.startsWith("-") && !this.metadata.startsWith("+")) {
+            this.metadata = "+" + metadata;
+        }
+
+        if (!this.pre.isEmpty() && !this.pre.startsWith("-")) { throw new IllegalArgumentException("pre-release argument has to start with \"-\""); }
+        if (!this.metadata.isEmpty() && !this.metadata.startsWith("+")) { throw new IllegalArgumentException("metadata argument has to start with \"+\""); }
+        if (ReleaseStatus.EA == this.releaseStatus && !this.pre.isEmpty() && !this.pre.equalsIgnoreCase("-ea")) { throw new IllegalArgumentException("ReleaseStatus and pre-release argument cannot be different"); }
+        if (ReleaseStatus.GA == this.releaseStatus && !this.pre.isEmpty() && this.pre.equalsIgnoreCase("-ea")) { throw new IllegalArgumentException("ReleaseStatus and pre-release argument cannot be different"); }
+
+        Matcher m = Helper.NUMBER_IN_TEXT_PATTERN.matcher(metadata);
+        if (m.find()) { versionNumber.setBuild(Integer.valueOf(m.group(2))); }
     }
 
 
@@ -68,6 +86,12 @@ public class SemVer implements Comparable<SemVer> {
 
     public int getPatch() { return versionNumber.getPatch().isPresent() ? versionNumber.getPatch().getAsInt() : 0; }
     public void setPatch(final int patch) { versionNumber.setPatch(patch); }
+
+    public int getFifth() { return versionNumber.getFifth().isPresent() ? versionNumber.getFifth().getAsInt() : 0; }
+    public void setFifth(final int fifth) { versionNumber.setFifth(fifth); }
+
+    public int getSixth() { return versionNumber.getSixth().isPresent() ? versionNumber.getSixth().getAsInt() : 0; }
+    public void setSixth(final int sixth) { versionNumber.setSixth(sixth); }
 
     public ReleaseStatus getReleaseStatus() { return releaseStatus; }
 
@@ -99,17 +123,34 @@ public class SemVer implements Comparable<SemVer> {
     public Comparison getComparison() { return comparison; }
     public void setComparison(final Comparison comparison) { this.comparison = comparison; }
 
-    public SemVer incPatch() {
+    public SemVer incSixth() {
         SemVer vNext = SemVer.this;
         if (null != pre && !pre.isEmpty()) {
             vNext.setMetadata("");
             vNext.setPre("");
-
         } else {
             vNext.metadata = "";
             vNext.pre      = "";
-            vNext.setPatch(getPatch() + 1);
+            vNext.setSixth(getSixth() + 1);
         }
+        return vNext;
+    }
+
+    public SemVer incFifth() {
+        SemVer vNext = SemVer.this;
+        vNext.setMetadata("");
+        vNext.setPre("");
+        vNext.setSixth(0);
+        vNext.setFifth(getFifth() + 1);
+        return vNext;
+    }
+
+    public SemVer incPatch() {
+        SemVer vNext = SemVer.this;
+        vNext.setMetadata("");
+        vNext.setPre("");
+        vNext.setFifth(0);
+        vNext.setPatch(getPatch() + 1);
         return vNext;
     }
 
@@ -197,6 +238,12 @@ public class SemVer implements Comparable<SemVer> {
         if (d != 0) { return d; }
 
         d = compareSegment(getPatch(), semVer.getPatch());
+        if (d != 0) { return d; }
+
+        d = compareSegment(getFifth(), semVer.getFifth());
+        if (d != 0) { return d; }
+
+        d = compareSegment(getSixth(), semVer.getSixth());
         if (d != 0) { return d; }
 
         if ((null != pre && pre.isEmpty()) && (null != semVer.getPre() && semVer.getPre().isEmpty())) { return 0; }
@@ -289,12 +336,18 @@ public class SemVer implements Comparable<SemVer> {
         return -1;
     }
 
-    @Override public String toString() {
+    public String toString(final boolean javaFormat) {
         StringBuilder versionBuilder = new StringBuilder();
         versionBuilder.append(Comparison.EQUAL != comparison ? comparison.getOperator() : "");
-        versionBuilder.append(versionNumber.toString(OutputFormat.REDUCED));
+        versionBuilder.append(versionNumber.toString(OutputFormat.REDUCED, javaFormat));
         versionBuilder.append(ReleaseStatus.EA == releaseStatus ? "-ea" : "");
-        versionBuilder.append(metadata != null && !metadata.isEmpty() ? ("+" + metadata) : "");
+        if (null != metadata && !metadata.isEmpty()) {
+            versionBuilder.append(metadata.startsWith("+") ? metadata : ("+" + metadata));
+        }
         return versionBuilder.toString();
+    }
+
+    @Override public String toString() {
+        return toString(true);
     }
 }

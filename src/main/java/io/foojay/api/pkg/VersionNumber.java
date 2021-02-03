@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 public class VersionNumber implements Comparable<VersionNumber> {
     private static final Logger LOGGER = LoggerFactory.getLogger(VersionNumber.class);
 
-    public static final Pattern VERSION_NO_PATTERN  = Pattern.compile("([1-9]\\d*)((u(\\d+))|(\\.?(\\d+)?\\.?(\\d+)?\\.?(\\d+)?\\.(\\d+)))?((_|b)(\\d+))?((-|\\+|\\.)([a-zA-Z0-9\\-\\+]+))?");
+    public static final Pattern VERSION_NO_PATTERN  = Pattern.compile("([1-9]\\d*)((u(\\d+))|(\\.?(\\d+)?\\.?(\\d+)?\\.?(\\d+)?\\.?(\\d+)?\\.(\\d+)))?((_|b)(\\d+))?((-|\\+|\\.)([a-zA-Z0-9\\-\\+]+))?");
     public static final Pattern LEADING_INT_PATTERN = Pattern.compile("^[0-9]*");
 
     @NotNull
@@ -52,7 +52,11 @@ public class VersionNumber implements Comparable<VersionNumber> {
     private OptionalInt update;
     @Positive
     private OptionalInt patch;
-    private String      vendorSpecific;
+    @Positive
+    private OptionalInt fifth;
+    @Positive
+    private OptionalInt sixth;
+    @Positive
     private OptionalInt build;
 
 
@@ -61,42 +65,50 @@ public class VersionNumber implements Comparable<VersionNumber> {
         this.interim        = OptionalInt.empty();
         this.update         = OptionalInt.empty();
         this.patch          = OptionalInt.empty();
-        this.vendorSpecific = "";
+        this.build   = OptionalInt.empty();
     }
     public VersionNumber(@NotNull VersionNumber versionNumber) {
-        this(versionNumber.getFeature(), versionNumber.getInterim(), versionNumber.getUpdate(), versionNumber.getPatch(), versionNumber.getVendorSpecific());
+        this(versionNumber.getFeature(), versionNumber.getInterim(), versionNumber.getUpdate(), versionNumber.getPatch(), versionNumber.getFifth(), versionNumber.getSixth());
     }
     public VersionNumber(@NotNull @Positive final Integer feature) {
-        this(feature, 0, 0, 0, "");
+        this(feature, 0, 0, 0, 0, 0);
     }
     public VersionNumber(@NotNull @Positive final Integer feature, @Positive final Integer interim) {
-        this(feature, interim, 0, 0, "");
+        this(feature, interim, 0, 0, 0, 0);
     }
     public VersionNumber(@NotNull @Positive final Integer feature, @Positive final Integer interim, @Positive final Integer update) {
-        this(feature, interim, update, 0, "");
+        this(feature, interim, update, 0, 0, 0);
     }
-    public VersionNumber(@NotNull @Positive final Integer feature, @Positive final Integer interim, @Positive final Integer update, @Positive final Integer patch) {
-        this(feature, interim, update, patch, "");
+    public VersionNumber(@NotNull @Positive final Integer feature, @Positive final Integer interim, @Positive final Integer update, @Positive final Integer patch) throws IllegalArgumentException {
+        this(feature, interim, update, patch, 0, 0);
     }
-    public VersionNumber(@NotNull @Positive final Integer feature, @Positive final Integer interim, @Positive final Integer update, @Positive final Integer patch, final String vendorSpecific) throws IllegalArgumentException {
+    public VersionNumber(@NotNull @Positive final Integer feature, @Positive final Integer interim, @Positive final Integer update, @Positive final Integer patch, @Positive final Integer fifth, @Positive final Integer sixth) throws IllegalArgumentException {
         if (null == feature) { throw new IllegalArgumentException("Feature version cannot be null"); }
         if (0 >= feature) { throw new IllegalArgumentException("Feature version cannot be smaller than 0"); }
         if (null != interim && 0 > interim) { throw new IllegalArgumentException("Interim version cannot be smaller than 0"); }
         if (null != update && 0 > update) { throw new IllegalArgumentException("Update version cannot be smaller than 0"); }
         if (null != patch && 0 > patch) { throw new IllegalArgumentException("Patch version cannot be smaller than 0"); }
+        if (null != fifth && 0 > fifth)     { throw new IllegalArgumentException("Fifth number cannot be smaller than 0"); }
+        if (null != sixth && 0 > sixth)     { throw new IllegalArgumentException("Sixth number cannot be smaller than 0"); }
         this.feature        = OptionalInt.of(feature);
         this.interim        = null == interim        ? OptionalInt.of(0) : OptionalInt.of(interim);
         this.update         = null == update         ? OptionalInt.of(0) : OptionalInt.of(update);
         this.patch          = null == patch          ? OptionalInt.of(0) : OptionalInt.of(patch);
-        this.vendorSpecific = null == vendorSpecific ? "" : vendorSpecific;
+        this.fifth   = null == fifth   ? OptionalInt.of(0) : OptionalInt.of(fifth);
+        this.sixth   = null == sixth   ? OptionalInt.of(0) : OptionalInt.of(sixth);
+        this.build   = OptionalInt.of(0);
     }
-    public VersionNumber(final OptionalInt feature, final OptionalInt interim, final OptionalInt update, final OptionalInt patch, final String vendorSpecific) {
+    public VersionNumber(final OptionalInt feature, final OptionalInt interim, final OptionalInt update, final OptionalInt patch) {
+        this(feature, interim, update, patch, OptionalInt.of(0), OptionalInt.of(0));
+    }
+    public VersionNumber(final OptionalInt feature, final OptionalInt interim, final OptionalInt update, final OptionalInt patch, final OptionalInt fifth, final OptionalInt sixth) {
         this.feature         = null == feature        ? OptionalInt.empty() : feature;
         this.interim         = null == interim        ? OptionalInt.of(0)   : interim;
         this.update          = null == update         ? OptionalInt.of(0)   : update;
         this.patch           = null == patch          ? OptionalInt.of(0)   : patch;
-        this.vendorSpecific  = null == vendorSpecific ? "" : vendorSpecific;
-        this.build           = OptionalInt.empty();
+        this.fifth   = null == fifth   ? OptionalInt.of(0)   : fifth;
+        this.sixth   = null == sixth   ? OptionalInt.of(0)   : sixth;
+        this.build   = OptionalInt.of(0);
     }
 
     public OptionalInt getFeature() { return feature; }
@@ -124,12 +136,21 @@ public class VersionNumber implements Comparable<VersionNumber> {
         this.patch = null == patch ? OptionalInt.empty() : OptionalInt.of(patch);
     }
 
-    public String getVendorSpecific() { return vendorSpecific; }
-    public void setVendorSpecific(final String vendorSpecific) { this.vendorSpecific = vendorSpecific; }
+    public OptionalInt getFifth() { return fifth; }
+    public void setFifth(final Integer fifth) throws IllegalArgumentException {
+        if (null != fifth && 0 > fifth) { throw new IllegalArgumentException("Fifth number cannot be smaller than 0"); }
+        this.fifth = null == fifth ? OptionalInt.empty() : OptionalInt.of(fifth);
+    }
+
+    public OptionalInt getSixth() { return sixth; }
+    public void setSixth(final Integer sixth) throws IllegalArgumentException {
+        if (null != sixth && 0 > sixth) { throw new IllegalArgumentException("Sixth number cannot be smaller than 0"); }
+        this.sixth = null == sixth ? OptionalInt.empty() : OptionalInt.of(sixth);
+    }
 
     public OptionalInt getBuild() { return build; }
     public void setBuild(final Integer build) throws IllegalArgumentException {
-        if (null != build && 0 > build) { throw new IllegalArgumentException("Build version cannot be smaller than 0"); }
+        if (null != build && 0 > build) { throw new IllegalArgumentException("Build number cannot be smaller than 0"); }
         this.build = null == build ? OptionalInt.empty() : OptionalInt.of(build);
     }
 
@@ -145,6 +166,8 @@ public class VersionNumber implements Comparable<VersionNumber> {
         versionBuilder.append(".").append(interim.isPresent() ? interim.getAsInt() : "0");
         versionBuilder.append(".").append(update.isPresent() ? update.getAsInt() : "0");
         versionBuilder.append(".").append(patch.isPresent() ? patch.getAsInt() : "0");
+        versionBuilder.append(".").append(fifth.isPresent() ? fifth.getAsInt() : "0");
+        versionBuilder.append(".").append(sixth.isPresent() ? sixth.getAsInt() : "0");
         return versionBuilder.toString();
     }
 
@@ -182,160 +205,92 @@ public class VersionNumber implements Comparable<VersionNumber> {
                 versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
                 versionNumber.setUpdate(getPositiveIntFromText(result.group(7), version));
                 versionNumber.setPatch(getPositiveIntFromText(result.group(9), version));
-                if (result.group(12).toLowerCase().startsWith("b")) {
-                    String withOutLeadingB = result.group(12).replace("b", "");
-                    Matcher matcher = LEADING_INT_PATTERN.matcher(withOutLeadingB);
-                    if (matcher.find()) {
-                        versionNumber.setBuild(Integer.valueOf(matcher.group(0)));
-                    }
-                } else {
-                    if (-1 == getPositiveIntFromText(result.group(12), version)) {
-                        versionNumber.setVendorSpecific(result.group(12));
-                    } else {
-                        versionNumber.setBuild(getPositiveIntFromText(result.group(12), version));
-                    }
-                }
-            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(9) && null != result.group(10) && null != result.group(11) && null != result.group(12) && null != result.group(13) && null != result.group(14) && null != result.group(15)) {
-                //System.out.println("match: 1, 2, 5, 9, 10, 11, 12, 13, 14, 15");
-                versionNumber.setInterim(getPositiveIntFromText(result.group(9), version));
-                versionNumber.setUpdate(getPositiveIntFromText(result.group(12), version));
-                versionNumber.setPatch(0);
-                if (result.group(15).toLowerCase().startsWith("b")) {
-                    String withOutLeadingB = result.group(15).replace("b", "");
-                    Matcher matcher = LEADING_INT_PATTERN.matcher(withOutLeadingB);
-                    if (matcher.find()) {
-                        versionNumber.setBuild(Integer.valueOf(matcher.group(0)));
-                    }
-                }
-            } else if (null != result.group(1) && null != result.group(5) && null != result.group(6) && null != result.group(7) && null != result.group(8) && null != result.group(9) && null != result.group(13) && null != result.group(14) && null != result.group(15)) {
-                //System.out.println("match: 1, 5, 6, 7, 8, 9, 13, 14, 15");
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(7) && null != result.group(10) && null != result.group(11) && null != result.group(12) && null != result.group(13) && null != result.group(14) && null != result.group(15) && null != result.group(16)) {
+                //System.out.println("match: 1, 2, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16");
+                versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
+                versionNumber.setUpdate(getPositiveIntFromText(result.group(7), version));
+                versionNumber.setPatch(getPositiveIntFromText(result.group(10), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(7) && null != result.group(8) && null != result.group(9) && null != result.group(10) && null != result.group(14) && null != result.group(15) && null != result.group(16)) {
+                //System.out.println("match: 1, 2, 5, 6, 7, 8, 9, 10, 14, 15, 16");
                 versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
                 versionNumber.setUpdate(getPositiveIntFromText(result.group(7), version));
                 versionNumber.setPatch(getPositiveIntFromText(result.group(8), version));
-                versionNumber.setVendorSpecific(result.group(9));
-            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(7) && null != result.group(9) && null != result.group(10) && null != result.group(11) && null != result.group(12)) {
-                //System.out.println("match: 1, 2, 5, 6, 7, 9, 10, 11, 12");
+                versionNumber.setFifth(getPositiveIntFromText(result.group(9), version));
+                versionNumber.setSixth(getPositiveIntFromText(result.group(10), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(7) && null != result.group(8) && null != result.group(10) && null != result.group(14) && null != result.group(15) && null != result.group(16)) {
+                //System.out.println("match: 1, 2, 5, 6, 7, 8, 10, 14, 15, 16");
                 versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
                 versionNumber.setUpdate(getPositiveIntFromText(result.group(7), version));
-                versionNumber.setPatch(getPositiveIntFromText(result.group(9), version));
-                versionNumber.setVendorSpecific(result.group(12));
-            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(7) && null != result.group(9) && null != result.group(13) && null != result.group(14) && null != result.group(15)) {
-                //System.out.println("match: 1, 2, 5, 6, 7, 9, 13, 14, 15");
+                versionNumber.setPatch(getPositiveIntFromText(result.group(8), version));
+                versionNumber.setFifth(getPositiveIntFromText(result.group(10), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(10) && null != result.group(11) && null != result.group(12) && null != result.group(13) && null != result.group(14) && null != result.group(15) && null != result.group(16)) {
+                //System.out.println("match: 1, 2, 5, 10, 11, 12, 13, 14, 15, 16");
+                versionNumber.setInterim(getPositiveIntFromText(result.group(10), version));
+                versionNumber.setUpdate(getPositiveIntFromText(result.group(13), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(7) && null != result.group(10) && null != result.group(14) && null != result.group(15) && null != result.group(16)) {
+                //System.out.println("match: 1, 2, 5, 6, 7, 10, 14, 15, 16");
                 versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
                 versionNumber.setUpdate(getPositiveIntFromText(result.group(7), version));
-                versionNumber.setPatch(getPositiveIntFromText(result.group(9), version));
-                if (result.group(15).toLowerCase().startsWith("b")) {
-                    String withOutLeadingB = result.group(15).replace("b", "");
-                    Matcher matcher = LEADING_INT_PATTERN.matcher(withOutLeadingB);
-                    if (matcher.find() && Helper.isPositiveInteger(matcher.group(0))) {
-                        versionNumber.setBuild(Integer.valueOf(matcher.group(0)));
-                    }
-                } else {
-                    if (-1 == getPositiveIntFromText(result.group(15), version)) {
-                        versionNumber.setVendorSpecific(result.group(15));
-                    } else {
-                        versionNumber.setBuild(getPositiveIntFromText(result.group(15), version));
-                    }
-                }
-            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(9) && null != result.group(13) && null != result.group(14) && null != result.group(15)) {
-                //System.out.println("match: 1, 2, 5, 6, 9, 13, 14, 15");
+                versionNumber.setPatch(getPositiveIntFromText(result.group(10), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(10) && null != result.group(14) && null != result.group(15) && null != result.group(16)) {
+                //System.out.println("match: 1, 2, 5, 6, 10, 14, 15, 16");
                 versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
-                versionNumber.setUpdate(getPositiveIntFromText(result.group(9), version));
-                versionNumber.setPatch(0);
-                if (result.group(15).toLowerCase().startsWith("b")) {
-                    String withOutLeadingB = result.group(15).replace("b", "");
-                    Matcher matcher = LEADING_INT_PATTERN.matcher(withOutLeadingB);
-                    if (matcher.find() && Helper.isPositiveInteger(matcher.group(0))) {
-                        versionNumber.setBuild(Integer.valueOf(matcher.group(0)));
-                    }
-                } else {
-                    if (getPositiveIntFromText(result.group(15), version) > 0) {
-                        versionNumber.setBuild(getPositiveIntFromText(result.group(15), version));
-                    } else if (getLeadingIntFromText(result.group(15), version) >= 0) {
-                        versionNumber.setBuild(getLeadingIntFromText(result.group(15), version));
-                    } else {
-                        versionNumber.setVendorSpecific(result.group(15));
-                    }
-                }
-            } else if (null != result.group(1) && null != result.group(5) && null != result.group(9) && null != result.group(11) && null != result.group(12) && null != result.group(14) && null != result.group(15)) {
-                //System.out.println("match: 1, 5, 9, 11, 12, 14, 15");
-                versionNumber.setInterim(getPositiveIntFromText(result.group(9), version));
-                versionNumber.setUpdate(getPositiveIntFromText(result.group(12), version));
-                versionNumber.setVendorSpecific(result.group(15));
-            } else if (null != result.group(1) && null != result.group(2) && null != result.group(3) && null != result.group(4) && null != result.group(10) && null != result.group(11) && null != result.group(12)) {
-                //System.out.println("match: 1, 2, 3, 4, 10, 11, 12");
-                versionNumber.setInterim(0);
-                versionNumber.setUpdate(getPositiveIntFromText(result.group(4), version));
-                if (result.group(10).toLowerCase().startsWith("b")) {
-                    String withOutLeadingB = result.group(10).replace("b", "");
-                    Matcher matcher = LEADING_INT_PATTERN.matcher(withOutLeadingB);
-                    if (matcher.find() && Helper.isPositiveInteger(matcher.group(0))) {
-                        versionNumber.setBuild(Integer.valueOf(matcher.group(0)));
-                    }
-                }
-            } else if (null != result.group(1) && null != result.group(2) && null != result.group(3) && null != result.group(4) && null != result.group(13) && null != result.group(14) && null != result.group(15)) {
-                //System.out.println("match: 1, 2, 3, 4, 13, 14, 15");
-                versionNumber.setInterim(0);
-                versionNumber.setUpdate(getPositiveIntFromText(result.group(4), version));
-                if (result.group(15).toLowerCase().startsWith("b")) {
-                    String withOutLeadingB = result.group(15).replace("b", "");
-                    Matcher matcher = LEADING_INT_PATTERN.matcher(withOutLeadingB);
-                    if (matcher.find() && Helper.isPositiveInteger(matcher.group(0))) {
-                        versionNumber.setBuild(Integer.valueOf(matcher.group(0)));
-                    }
-                }
-            } else if (null != result.group(1) && null != result.group(3) && null != result.group(4) && null != result.group(11) && null != result.group(12) && null != result.group(14) && null != result.group(15)) {
-                //System.out.println("match: 1, 3, 4, 11, 12, 14, 15");
-                versionNumber.setInterim(0);
-                versionNumber.setUpdate(getPositiveIntFromText(result.group(4), version));
-                versionNumber.setVendorSpecific(result.group(11) + result.group(12));
-            } else if (null != result.group(1) && null != result.group(5) && null != result.group(6) && null != result.group(9) && null != result.group(11) && null != result.group(12)) {
-                //System.out.println("match: 1, 5, 6, 9, 11, 12");
-                versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
-                versionNumber.setUpdate(getPositiveIntFromText(result.group(9), version));
-                versionNumber.setVendorSpecific(result.group(11) + result.group(12));
-            } else if (null != result.group(1) && null != result.group(5) && null != result.group(6) && null != result.group(9) && null != result.group(14) && null != result.group(15)) {
-                //System.out.println("match: 1, 5, 6, 9, 14, 15");
-                versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
-                versionNumber.setUpdate(getPositiveIntFromText(result.group(9), version));
-                versionNumber.setVendorSpecific(result.group(15));
-            } else if (null != result.group(1) && null != result.group(5) && null != result.group(9) && null != result.group(11) && null != result.group(12)) {
-                //System.out.println("match: 1, 5, 9, 11, 12");
-                versionNumber.setInterim(getPositiveIntFromText(result.group(9), version));
-                versionNumber.setUpdate(getPositiveIntFromText(result.group(12), version));
-            } else if (null != result.group(1) && null != result.group(3) && null != result.group(4) && null != result.group(11) && null != result.group(12)) {
-                //System.out.println("match: 1, 3, 4, 11, 12");
-                versionNumber.setInterim(0);
-                versionNumber.setUpdate(getPositiveIntFromText(result.group(4), version));
-                versionNumber.setVendorSpecific(result.group(11) + result.group(12));
-            } else if (null != result.group(1) && null != result.group(5) && null != result.group(6) && null != result.group(7) && null != result.group(9)) {
-                //System.out.println("match: 1, 5, 6, 7, 9");
+                versionNumber.setUpdate(getPositiveIntFromText(result.group(10), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(7) && null != result.group(8) && null != result.group(9) && null != result.group(10)) {
+                //System.out.println("match: 1, 2, 5, 6, 7, 8, 9, 10");
                 versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
                 versionNumber.setUpdate(getPositiveIntFromText(result.group(7), version));
-                versionNumber.setPatch(getPositiveIntFromText(result.group(9), version));
-            } else if (null != result.group(1) && null != result.group(3) && null != result.group(4) && null != result.group(14) && null != result.group(15)) {
-                //System.out.println("match: 1, 3, 4, 14, 15");
-                versionNumber.setInterim(0);
-                versionNumber.setUpdate(getPositiveIntFromText(result.group(4), version));
-                versionNumber.setVendorSpecific(result.group(15));
-            } else if (null != result.group(1) && null != result.group(13) && null != result.group(14) && null != result.group(15)) {
-                //System.out.println("match: 1, 13, 14, 15");
-                if (-1 == getPositiveIntFromText(result.group(15), version)) {
-                    versionNumber.setVendorSpecific(result.group(15));
-                } else {
-                    versionNumber.setBuild(getPositiveIntFromText(result.group(15), version));
-                }
-            } else if (null != result.group(1) && null != result.group(5) && null != result.group(6) && null != result.group(9)) {
-                //System.out.println("match: 1, 5, 6, 9");
+                versionNumber.setPatch(getPositiveIntFromText(result.group(8), version));
+                versionNumber.setFifth(getPositiveIntFromText(result.group(9), version));
+                versionNumber.setSixth(getPositiveIntFromText(result.group(10), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(7) && null != result.group(8) && null != result.group(10)) {
+                //System.out.println("match: 1, 2, 5, 6, 7, 8, 10");
                 versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
-                versionNumber.setUpdate(getPositiveIntFromText(result.group(9), version));
-            } else if (null != result.group(1) && null != result.group(3) && null != result.group(4)) {
-                //System.out.println("match: 1, 3, 4");
+                versionNumber.setUpdate(getPositiveIntFromText(result.group(7), version));
+                versionNumber.setPatch(getPositiveIntFromText(result.group(8), version));
+                versionNumber.setFifth(getPositiveIntFromText(result.group(10), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(3) && null != result.group(4) && null != result.group(14) && null != result.group(15) && null != result.group(16)) {
+                //System.out.println("match: 1, 2, 3, 4, 14, 15, 16");
                 versionNumber.setInterim(0);
                 versionNumber.setUpdate(getPositiveIntFromText(result.group(4), version));
-            } else if (null != result.group(1) && null != result.group(5) && null != result.group(9)) {
-                //System.out.println("match: 1, 5, 9");
-                versionNumber.setInterim(getPositiveIntFromText(result.group(9), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(3) && null != result.group(4) && null != result.group(11) && null != result.group(12) && null != result.group(13)) {
+                //System.out.println("match: 1, 2, 3, 4, 11, 12, 13");
+                versionNumber.setInterim(0);
+                versionNumber.setUpdate(getPositiveIntFromText(result.group(4), version));
+            } /*else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(10) && null != result.group(14) && null != result.group(15) && null != result.group(16)) {
+                //System.out.println("match: 1, 2, 5, 6, 10, 14, 15, 16");
+                versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
+                versionNumber.setUpdate(getPositiveIntFromText(result.group(10), version));
+            } */else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(10) && null != result.group(14) && null != result.group(15) && null != result.group(16)) {
+                //System.out.println("match: 1, 2, 5, 6, 10, 14, 15, 16");
+                versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
+                versionNumber.setUpdate(getPositiveIntFromText(result.group(10), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(10) && null != result.group(11) && null != result.group(12) && null != result.group(13)) {
+                //System.out.println("match: 1, 2, 5, 10, 11, 12, 13");
+                versionNumber.setInterim(0);
+                versionNumber.setUpdate(getPositiveIntFromText(result.group(13), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(7) && null != result.group(10)) {
+                //System.out.println("match: 1, 2, 5, 6, 7, 10");
+                versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
+                versionNumber.setUpdate(getPositiveIntFromText(result.group(7), version));
+                versionNumber.setPatch(getPositiveIntFromText(result.group(10), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(10)) {
+                //System.out.println("match: 1, 2, 5, 6, 10");
+                versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
+                versionNumber.setUpdate(getPositiveIntFromText(result.group(10), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(6) && null != result.group(10)) {
+                //System.out.println("match: 1, 2, 5, 6, 10");
+                versionNumber.setInterim(getPositiveIntFromText(result.group(6), version));
+                versionNumber.setUpdate(getPositiveIntFromText(result.group(10), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(3) && null != result.group(4)) {
+                //System.out.println("match: 1, 2, 3, 4");
+                versionNumber.setInterim(0);
+                versionNumber.setUpdate(getPositiveIntFromText(result.group(4), version));
+            } else if (null != result.group(1) && null != result.group(2) && null != result.group(5) && null != result.group(10)) {
+                //System.out.println("match: 1, 2, 5, 9");
+                versionNumber.setInterim(getPositiveIntFromText(result.group(10), version));
+            } else if (null != result.group(1) && null != result.group(14) && null != result.group(15) && null != result.group(16)) {
+                //System.out.println("match: 1, 14, 15, 16");
             }
 
             if (!versionNumber.getInterim().isPresent() || versionNumber.getInterim().isEmpty()) {
@@ -346,6 +301,12 @@ public class VersionNumber implements Comparable<VersionNumber> {
             }
             if (!versionNumber.getPatch().isPresent() || versionNumber.getPatch().isEmpty()) {
                 versionNumber.setPatch(0);
+            }
+            if (!versionNumber.getFifth().isPresent() || versionNumber.getFifth().isEmpty()) {
+                versionNumber.setFifth(0);
+            }
+            if (!versionNumber.getSixth().isPresent() || versionNumber.getSixth().isEmpty()) {
+                versionNumber.setSixth(0);
             }
 
             numbersFound.add(versionNumber);
@@ -433,7 +394,31 @@ public class VersionNumber implements Comparable<VersionNumber> {
                                 if (update.getAsInt() == other.getUpdate().getAsInt()) {
                                     if (patch.isPresent()) {
                                         if (other.getPatch().isPresent()) {
-                                            return patch.getAsInt() == other.getPatch().getAsInt();
+                                            if (patch.getAsInt() == other.getPatch().getAsInt()) {
+                                                if (fifth.isPresent()) {
+                                                    if (other.getFifth().isPresent()) {
+                                                        if (fifth.getAsInt() == other.getFifth().getAsInt()) {
+                                                            if (sixth.isPresent()) {
+                                                                if (other.getSixth().isPresent()) {
+                                                                    return sixth.getAsInt() == other.getSixth().getAsInt();
+                                                                } else {
+                                                                    return false;
+                                                                }
+                                                            } else {
+                                                                return true;
+                                                            }
+                                                        } else {
+                                                            return false;
+                                                        }
+                                        } else {
+                                            return false;
+                                        }
+                                    } else {
+                                        return true;
+                                    }
+                                } else {
+                                    return false;
+                                }
                                         } else {
                                             return false;
                                         }
@@ -463,17 +448,39 @@ public class VersionNumber implements Comparable<VersionNumber> {
         }
     }
 
-    public String toStringInclVendorSpecific() {
-        return (vendorSpecific == null || vendorSpecific.isEmpty()) ? toString() : toString() + vendorSpecific;
+    public String toStringInclBuild(final boolean javaFormat) {
+        StringBuilder versionBuilder = new StringBuilder();
+        versionBuilder.append(toString(OutputFormat.REDUCED, javaFormat));
+        if (build.isPresent()) {
+            versionBuilder.append("b").append(build.getAsInt());
+        }
+        return versionBuilder.toString();
     }
 
-    public String toString(final OutputFormat outputFormat) {
+    public String toString(final OutputFormat outputFormat, final boolean javaFormat) {
         StringBuilder versionBuilder = new StringBuilder();
         switch(outputFormat) {
             case REDUCED:
             case REDUCED_COMPRESSED:
                 if (feature.isPresent()) { versionBuilder.append(feature.getAsInt()); }
-                if (patch.isPresent() && patch.getAsInt() != 0) {
+                if (sixth.isPresent() && sixth.getAsInt() != 0) {
+                    if (interim.isPresent()) { versionBuilder.append(".").append(interim.getAsInt()); }
+                    if (update.isPresent())  { versionBuilder.append(".").append(update.getAsInt()); }
+                    if (patch.isPresent())   { versionBuilder.append(".").append(patch.getAsInt()); }
+                    if (!javaFormat) {
+                        if (fifth.isPresent()) { versionBuilder.append(".").append(fifth.getAsInt()); }
+                        if (sixth.isPresent()) { versionBuilder.append(".").append(sixth.getAsInt()); }
+                    }
+                    return versionBuilder.toString();
+                } else if (fifth.isPresent() && fifth.getAsInt() != 0) {
+                    if (interim.isPresent()) { versionBuilder.append(".").append(interim.getAsInt()); }
+                    if (update.isPresent())  { versionBuilder.append(".").append(update.getAsInt()); }
+                    if (patch.isPresent())   { versionBuilder.append(".").append(patch.getAsInt()); }
+                    if (!javaFormat) {
+                        if (fifth.isPresent()) { versionBuilder.append(".").append(fifth.getAsInt()); }
+                    }
+                    return versionBuilder.toString();
+                } else if (patch.isPresent() && patch.getAsInt() != 0) {
                     if (interim.isPresent()) { versionBuilder.append(".").append(interim.getAsInt()); }
                     if (update.isPresent()) { versionBuilder.append(".").append(update.getAsInt()); }
                     if (patch.isPresent()) { versionBuilder.append(".").append(patch.getAsInt()); }
@@ -495,19 +502,23 @@ public class VersionNumber implements Comparable<VersionNumber> {
                 if (interim.isPresent()) { versionBuilder.append(".").append(interim.getAsInt()); }
                 if (update.isPresent()) { versionBuilder.append(".").append(update.getAsInt()); }
                 if (patch.isPresent()) { versionBuilder.append(".").append(patch.getAsInt()); }
+                if (!javaFormat) {
+                    if (fifth.isPresent()) { versionBuilder.append(".").append(fifth.getAsInt()); }
+                    if (sixth.isPresent()) { versionBuilder.append(".").append(sixth.getAsInt()); }
+                }
                 return versionBuilder.toString();
         }
     }
 
     @Override public String toString() {
-        return toString(OutputFormat.FULL);
+        return toString(OutputFormat.FULL, true);
     }
 
     @Override public int compareTo(final VersionNumber otherVersionNumber) {
         final int equal       = 0;
         final int smallerThan = -1;
         final int largerThan  = 1;
-        
+
         if (feature.isPresent() && otherVersionNumber.getFeature().isPresent()) {
             if (feature.getAsInt() > otherVersionNumber.getFeature().getAsInt()) {
                 return largerThan;
@@ -532,7 +543,35 @@ public class VersionNumber implements Comparable<VersionNumber> {
                                     } else if (patch.getAsInt() < otherVersionNumber.getPatch().getAsInt()) {
                                         return smallerThan;
                                     } else {
+                                        if (fifth.isPresent() && otherVersionNumber.getFifth().isPresent()) {
+                                            if (fifth.getAsInt() > otherVersionNumber.getFifth().getAsInt()) {
+                                                return largerThan;
+                                            } else if (fifth.getAsInt() < otherVersionNumber.getFifth().getAsInt()) {
+                                                return smallerThan;
+                                            } else {
+                                                if (sixth.isPresent() && otherVersionNumber.getSixth().isPresent()) {
+                                                    if (sixth.getAsInt() > otherVersionNumber.getSixth().getAsInt()) {
+                                                        return largerThan;
+                                                    } else if (sixth.getAsInt() < otherVersionNumber.getSixth().getAsInt()) {
+                                                        return smallerThan;
+                                                    } else {
                                         return equal;
+                                    }
+                                                } else if (sixth.isPresent() && !otherVersionNumber.getSixth().isPresent()) {
+                                                    return largerThan;
+                                                } else if (!sixth.isPresent() && otherVersionNumber.getSixth().isPresent()) {
+                                                    return smallerThan;
+                                                } else {
+                                                    return equal;
+                                                }
+                                            }
+                                        } else if (fifth.isPresent() && !otherVersionNumber.getFifth().isPresent()) {
+                                            return largerThan;
+                                        } else if (!fifth.isPresent() && otherVersionNumber.getFifth().isPresent()) {
+                                            return smallerThan;
+                                        } else {
+                                        return equal;
+                                    }
                                     }
                                 } else if (patch.isPresent() && !otherVersionNumber.getPatch().isPresent()) {
                                     return largerThan;
@@ -548,7 +587,7 @@ public class VersionNumber implements Comparable<VersionNumber> {
                             return smallerThan;
                         } else {
                             return equal;
-                        }       
+                        }
                     }
                 } else if (interim.isPresent() && !otherVersionNumber.getInterim().isPresent()) {
                     return largerThan;
