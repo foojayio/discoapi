@@ -451,8 +451,8 @@ public class VersionNumber implements Comparable<VersionNumber> {
     public String toStringInclBuild(final boolean javaFormat) {
         StringBuilder versionBuilder = new StringBuilder();
         versionBuilder.append(toString(OutputFormat.REDUCED, javaFormat));
-        if (build.isPresent()) {
-            versionBuilder.append("b").append(build.getAsInt());
+        if (build.isPresent() && build.getAsInt() != 0) {
+            versionBuilder.append("+b").append(build.getAsInt());
         }
         return versionBuilder.toString();
     }
