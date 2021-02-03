@@ -344,7 +344,7 @@ public class VersionNumber implements Comparable<VersionNumber> {
             if (!versionNumber.getUpdate().isPresent() || versionNumber.getUpdate().isEmpty()) {
                 versionNumber.setUpdate(0);
             }
-            if (!versionNumber.getPatch().isPresent() || versionNumber.getUpdate().isEmpty()) {
+            if (!versionNumber.getPatch().isPresent() || versionNumber.getPatch().isEmpty()) {
                 versionNumber.setPatch(0);
             }
 
