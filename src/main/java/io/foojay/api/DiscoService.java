@@ -155,7 +155,7 @@ public enum DiscoService {
                                                               .collect(Collectors.toList());
                     break;
                 case PER_DISTRIBUTION:
-                    List<Distribution>               distributionsToCheck      = distributions.isEmpty() ? Distro.getAsList().stream().filter(distro -> Constants.SCOPE_LOOKUP.get(distro).containsAll(scopes)).map(distro -> distro.get()).collect(Collectors.toList()) : distributions.stream().filter(distro -> Constants.SCOPE_LOOKUP.get(distro.getDistro()).containsAll(scopes)).collect(Collectors.toList());
+                    List<Distribution>               distributionsToCheck      = distributions.isEmpty() ? Distro.getDistributions().stream().filter(distribution -> Constants.SCOPE_LOOKUP.get(distribution.getDistro()).containsAll(scopes)).collect(Collectors.toList()) : distributions.stream().filter(distribution -> Constants.SCOPE_LOOKUP.get(distribution.getDistro()).containsAll(scopes)).collect(Collectors.toList());
                     List<Pkg>                        pkgs                      = new ArrayList<>();
                     Map<Distribution, VersionNumber> maxVersionPerDistribution = new ConcurrentHashMap<>();
                     distributionsToCheck.forEach(distro -> maxVersionPerDistribution.put(distro, CacheManager.INSTANCE.pkgCache.getPkgs()
