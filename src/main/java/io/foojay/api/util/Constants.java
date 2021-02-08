@@ -138,7 +138,14 @@ public class Constants {
         put("win", OperatingSystem.WINDOWS);
         put("alpine-linux", OperatingSystem.ALPINE_LINUX);
         put("Alpine-Linux", OperatingSystem.ALPINE_LINUX);
+        put("alpine_linux", OperatingSystem.ALPINE_LINUX);
+        put("Alpine_Linux", OperatingSystem.ALPINE_LINUX);
         put("linux-musl", OperatingSystem.ALPINE_LINUX);
+        put("Linux-MUSL", OperatingSystem.ALPINE_LINUX);
+        put("Linux-Musl", OperatingSystem.ALPINE_LINUX);
+        put("linux_musl", OperatingSystem.ALPINE_LINUX);
+        put("Linux_MUSL", OperatingSystem.LINUX_MUSL);
+        put("Linux_Musl", OperatingSystem.LINUX_MUSL);
         put("musl", OperatingSystem.ALPINE_LINUX);
         put("linux", OperatingSystem.LINUX);
         put("Linux", OperatingSystem.LINUX);
