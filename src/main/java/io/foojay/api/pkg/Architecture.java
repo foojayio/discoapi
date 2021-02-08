@@ -25,33 +25,90 @@ import java.util.List;
 
 
 public enum Architecture implements ApiFeature {
-    AARCH64("AARCH64", "aarch64", Bitness.BIT_64),
-    ARM("Arm", "arm", Bitness.BIT_32),
-    ARM64("Arm64", "arm64", Bitness.BIT_64),
-    MIPS("Mips", "mips", Bitness.BIT_32),
-    PPC("Power PC", "ppc", Bitness.BIT_32),
-    PPC64("PPC64", "ppc64", Bitness.BIT_64),
-    PPC64LE("PPC64LE", "ppc64le", Bitness.BIT_64),
-    RISCV64("RISCv64", "riscv64", Bitness.BIT_64),
-    S390X("S390X", "s390x", Bitness.BIT_64),
-    SPARC("Sparc", "sparc", Bitness.BIT_32),
-    SPARCV9("Sparc V9", "sparcv9", Bitness.BIT_64),
-    X64("X64", "x64", Bitness.BIT_64),
-    X86("X86", "x86", Bitness.BIT_32),
-    AMD64("AMD64", "amd64", Bitness.BIT_64),
-    IA64("IA-64", "ia64", Bitness.BIT_64),
-    NONE("-", "", Bitness.NONE),
-    NOT_FOUND("", "", Bitness.NOT_FOUND);
+    AARCH64("AARCH64", "aarch64", Bitness.BIT_64, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.ARM64); }
+        },
+    AARCH32("AARCH32", "aarch32", Bitness.BIT_32, false) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.ARM, Architecture.ARM32); }
+    },
+    ARM("Arm", "arm", Bitness.BIT_32, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.ARM32, Architecture.AARCH32); }
+        },
+    ARM32("Arm32", "arm32", Bitness.BIT_32, false) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.ARM, Architecture.AARCH32); }
+    },
+    ARM64("Arm64", "arm64", Bitness.BIT_64, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.AARCH64); }
+    },
+    MIPS("Mips", "mips", Bitness.BIT_32, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    PPC("Power PC", "ppc", Bitness.BIT_32, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    PPC64("PPC64", "ppc64", Bitness.BIT_64, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    PPC64LE("PPC64LE", "ppc64le", Bitness.BIT_64, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    RISCV64("RISCv64", "riscv64", Bitness.BIT_64, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    S390X("S390X", "s390x", Bitness.BIT_64, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    SPARC("Sparc", "sparc", Bitness.BIT_32, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    SPARCV9("Sparc V9", "sparcv9", Bitness.BIT_64, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    X64("X64", "x64", Bitness.BIT_64, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.AMD64, Architecture.X86_64); }
+    },
+    X32("X32", "x32", Bitness.BIT_32, false) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.X86, Architecture.I386, Architecture.I586, Architecture.I686); }
+    },
+    I386("I386", "i386", Bitness.BIT_32, false) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.X86, Architecture.X32, Architecture.I586, Architecture.I686); }
+    },
+    I586("I586", "i386", Bitness.BIT_32, false) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.X86, Architecture.X32, Architecture.I386, Architecture.I686); }
+    },
+    I686("I686", "i386", Bitness.BIT_32, false) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.X86, Architecture.X32, Architecture.I386, Architecture.I686); }
+    },
+    X86("X86", "x86", Bitness.BIT_32, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.X32, Architecture.I386, Architecture.I586, Architecture.I686); }
+    },
+    X86_64("X86_64", "x86_64", Bitness.BIT_64, false) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.X64, Architecture.AMD64); }
+    },
+    AMD64("AMD64", "amd64", Bitness.BIT_64, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(Architecture.X64, Architecture.X86_64); }
+    },
+    IA64("IA-64", "ia64", Bitness.BIT_64, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    NONE("-", "", Bitness.NONE, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    NOT_FOUND("", "", Bitness.NOT_FOUND, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    };
 
     private final String   uiString;
     private final String   apiString;
     private final Bitness  bitness;
+    private final boolean standard;
 
 
-    Architecture(final String uiString, final String apiString, final Bitness bitness) {
+    Architecture(final String uiString, final String apiString, final Bitness bitness, final boolean standard) {
         this.uiString  = uiString;
         this.apiString = apiString;
         this.bitness   = bitness;
+        this.standard  = standard;
     }
 
 
@@ -63,7 +120,7 @@ public enum Architecture implements ApiFeature {
 
     @Override public Architecture getNotFound() { return Architecture.NOT_FOUND; }
 
-    @Override public Architecture[] getAll() { return values(); }
+    @Override public Architecture[] getAll() { return Arrays.stream(values()).filter(Architecture::isStandard).toArray(Architecture[]::new); }
 
     public static Architecture fromText(final String text) {
         switch (text) {
@@ -131,5 +188,9 @@ public enum Architecture implements ApiFeature {
 
     public Bitness getBitness() { return bitness; }
 
+    public boolean isStandard() { return standard; }
+
     public static List<Architecture> getAsList() { return Arrays.asList(values()); }
+
+    public abstract List<Architecture> getSynonyms();
 }
