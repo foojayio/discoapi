@@ -131,6 +131,10 @@ public enum Architecture implements ApiFeature {
             case "AMD64":
             case "_amd64":
                 return AMD64;
+            case "aarch32":
+            case "AARCH32":
+            case "arm32":
+            case "ARM32":
             case "arm":
             case "ARM":
                 return ARM;
@@ -165,8 +169,11 @@ public enum Architecture implements ApiFeature {
             case "SPARCV9":
                 return SPARCV9;
             case "x64":
-            case "x86-64":
             case "X64":
+            case "x86-64":
+            case "X86-64":
+            case "x86_64":
+            case "X86_64":
                 return X64;
             case "x86":
             case "X86":
