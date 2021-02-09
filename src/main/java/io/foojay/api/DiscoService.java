@@ -158,7 +158,8 @@ public enum DiscoService {
                     List<Distribution>               distributionsToCheck      = distributions.isEmpty() ? Distro.getDistributions().stream().filter(distribution -> Constants.SCOPE_LOOKUP.get(distribution.getDistro()).containsAll(scopes)).collect(Collectors.toList()) : distributions.stream().filter(distribution -> Constants.SCOPE_LOOKUP.get(distribution.getDistro()).containsAll(scopes)).collect(Collectors.toList());
                     List<Pkg>                        pkgs                      = new ArrayList<>();
                     Map<Distribution, VersionNumber> maxVersionPerDistribution = new ConcurrentHashMap<>();
-                    distributionsToCheck.forEach(distro -> maxVersionPerDistribution.put(distro, CacheManager.INSTANCE.pkgCache.getPkgs()
+                    distributionsToCheck.forEach(distro -> {
+                        Optional<Pkg> pkgFound = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                                                                                                .stream()
                                                                                                                                .filter(pkg -> pkg.getDistribution().equals(distro))
                                                                                                                                .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
@@ -171,9 +172,9 @@ public enum DiscoService {
                                                                                                                                .filter(pkg -> Bitness.NONE       == bitness              ? pkg.getBitness()             != bitness       : pkg.getBitness()             == bitness)
                                                                                                                                .filter(pkg -> null               == javafxBundled        ? pkg.isJavaFXBundled()        != null          : pkg.isJavaFXBundled()        == javafxBundled)
                                                                                                                                .filter(pkg -> null               == directlyDownloadable ? pkg.isDirectlyDownloadable() != null          : pkg.isDirectlyDownloadable() == directlyDownloadable)
-                                                                                                                               .max(Comparator.comparing(Pkg::getVersionNumber))
-                                                                                                                               .get()
-                                                                                                                               .getVersionNumber()));
+                                                                               .max(Comparator.comparing(Pkg::getVersionNumber));
+                        if (pkgFound.isPresent()) { maxVersionPerDistribution.put(distro, pkgFound.get().getVersionNumber()); }
+                    });
 
                     distributionsToCheck.forEach(distro -> pkgs.addAll(CacheManager.INSTANCE.pkgCache.getPkgs()
                                                                                                      .stream()
@@ -234,6 +235,7 @@ public enum DiscoService {
                                                               .filter(pkg -> null               == directlyDownloadable ? pkg.isDirectlyDownloadable() != null          : pkg.isDirectlyDownloadable() == directlyDownloadable)
                                                               .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getVersionNumber).reversed()))
                                                               .collect(Collectors.toList());
+                    
                     if (null != versionNumber) {
                         int featureVersion = versionNumber.getFeature().getAsInt();
                         int interimVersion = versionNumber.getInterim().getAsInt();
