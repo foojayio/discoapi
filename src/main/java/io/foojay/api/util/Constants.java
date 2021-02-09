@@ -103,6 +103,7 @@ public class Constants {
         put("aarch64", Architecture.AARCH64);
         put("aarch32sf", Architecture.ARM);
         put("aarch32hf", Architecture.ARM);
+        put("aarch32", Architecture.ARM);
         put("x86-32", Architecture.X86);
         put("x86_32", Architecture.X86);
         put("x86-64", Architecture.X64);
@@ -117,6 +118,7 @@ public class Constants {
         put("arm", Architecture.ARM);
         put("mips", Architecture.MIPS);
         put("i386", Architecture.X86);
+        put("i486", Architecture.X86);
         put("i586", Architecture.X86);
         put("i686", Architecture.X86);
         put("s390x", Architecture.S390X);
@@ -128,7 +130,6 @@ public class Constants {
         put("riscv64", Architecture.RISCV64);
         put("sparcv9", Architecture.SPARCV9);
         put("sparc", Architecture.SPARC);
-        put("musl", Architecture.X64);
     }};
 
     public static final LinkedHashMap<String, OperatingSystem> OPERATING_SYSTEM_LOOKUP = new LinkedHashMap<>() {{
@@ -144,8 +145,8 @@ public class Constants {
         put("Linux-MUSL", OperatingSystem.ALPINE_LINUX);
         put("Linux-Musl", OperatingSystem.ALPINE_LINUX);
         put("linux_musl", OperatingSystem.ALPINE_LINUX);
-        put("Linux_MUSL", OperatingSystem.LINUX_MUSL);
-        put("Linux_Musl", OperatingSystem.LINUX_MUSL);
+        put("Linux_MUSL", OperatingSystem.ALPINE_LINUX);
+        put("Linux_Musl", OperatingSystem.ALPINE_LINUX);
         put("musl", OperatingSystem.ALPINE_LINUX);
         put("linux", OperatingSystem.LINUX);
         put("Linux", OperatingSystem.LINUX);
