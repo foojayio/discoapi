@@ -1,10 +1,11 @@
 # foojay Disco API
 
+
 ![Logo](https://github.com/foojay2020/discoapi/raw/main/discoduke.png)
 
-The foojay Disco API is a general purpose api to disover builds of OpenJDK from different distributions
+The foojay Disco API is a general purpose API to discover builds of OpenJDK from different distributions
 
-#### At the moment the following distributions are supported by the api:
+#### At the moment the following distributions are supported by the API:
 * AdoptOpenJDK
 * AdoptOpenJDK OpenJ9
 * Corretto
@@ -27,7 +28,7 @@ The foojay Disco API is a general purpose api to disover builds of OpenJDK from 
 * EA stands for Early Access. It means that the release is not stable and will change probably every week
 * Bitness describes 32- or 64-bit architecture
 ---
-### Terms and parameters used in the disco api:
+### Terms and parameters used in the disco API:
 * **archive_type** stands more or less for the file extension of the package e.g. tar.gz, zip, dmg, msi etc.
 * **distribution** stands for the name of the distribution (aoj, corretto, dragonwell, liberica, oracle, oracle_open_jdk, sap_machine, zulu etc.)
 * **major_version** stands for the major version of a package e.g. 8, 11, 13, 15 (it is the feature version in the [JEP 322](https://openjdk.java.net/jeps/322))
@@ -36,11 +37,11 @@ The foojay Disco API is a general purpose api to disover builds of OpenJDK from 
 * **release_status** stands for the status of the release which can be either GA (General Availability) or EA (Early Access)
 * **term_of_support** stands for the time the version will be supported with updates (e.g. STS, MTS, LTS)
 * **operating_system** stands for the operating system the package was build for (e.g. linux, windows, macos etc.)
-* **lib_c_type** stands for the tpye of the standard c library that is used for the build (e.g. glibc, libc, musl or c_std_lib)
+* **lib_c_type** stands for the type of the standard c library that is used for the build (e.g. glibc, libc, musl or c_std_lib)
 * **architecture** stands for the architecture that the package was build for (e.g. aarch64, arm, x64, x86 etc.)
 * **package_type** stands for the type of package (e.g. jdk or jre)
 * **javafx_bundled** indicates if the package comes bundled with javafx (e.g. true, false)
-* **directly_downloadable** indicates if the package can directly be donwloaded or if you have to go to the download page of the distribution to get it
+* **directly_downloadable** indicates if the package can directly be downloaded or if you have to go to the download page of the distribution to get it
 * **ephemeral_id** stands for an id that changes every 10 min and will be used to get the real download link (this is done to be able to count download numbers)
 ---
 There are different endpoints that can be used to drill down to the package the user would like to download.
@@ -51,14 +52,14 @@ Please find more information here:
 ---
 
 ### How to download a package ?
-1. Search for a package using the api (e.g. JDK 1.8.0_275 from Zulu for Windows as msi incl. JavaFX => https://api.foojay.io/disco/v1.0/packages?version=1.8.0_275&distro=zulu&archive_type=msi&package_type=jdk&operating_system=windows&javafx_bundled=true&latest=per_version)
+1. Search for a package using the API (e.g. JDK 1.8.0_275 from Zulu for Windows as msi incl. JavaFX => https://api.foojay.io/disco/v1.0/packages?version=1.8.0_275&distro=zulu&archive_type=msi&package_type=jdk&operating_system=windows&javafx_bundled=true&latest=per_version)
 2. Once you have found the package of your choice, get it's ephemeral id from the json response
 3. Call the endpoint https://api.foojay.io/ephemeral_ids/PACKAGE_EPHEMERAL_ID
 4. Get the download link from the json response
 
-The plan is to provide useful statistics about download numbers. For that reason we store the ip address in combination with the package names when packages will be downloaded via the api. At the moment we evaluating if this information is valuable and we will add these statistics to the packages soon.
+The plan is to provide useful statistics about download numbers. For that reason we store the ip address in combination with the package names when packages will be downloaded via the API. At the moment we evaluating if this information is valuable and we will add these statistics to the packages soon.
 
-### Here are some use cases and ways how to handle them using the disco api:
+### Here are some use cases and ways how to handle them using the disco API:
 
 #### 1. What major versions are available incl. early access builds?
 ```console
