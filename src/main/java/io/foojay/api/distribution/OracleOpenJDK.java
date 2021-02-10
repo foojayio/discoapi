@@ -538,6 +538,14 @@ public class OracleOpenJDK implements Distribution {
                     String[] osArchParts = fileNameParts[1].split("-");
                     os = OperatingSystem.fromText(osArchParts[0]);
                     pkg.setOperatingSystem(os);
+
+                    SemVer semVer = SemVer.fromText(fileNameParts[0].replace("openjdk", "")).getSemVer1();
+                    if (null != semVer) {
+                        pkg.setReleaseStatus(semVer.getReleaseStatus());
+                    }
+                }
+                if (keyParts.length > 1 && keyParts[1].equals("rc")) {
+                    pkg.setReleaseStatus(EA);
                 }
 
                 pkgs.add(pkg);
