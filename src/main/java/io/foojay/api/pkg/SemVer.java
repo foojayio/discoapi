@@ -33,6 +33,7 @@ public class SemVer implements Comparable<SemVer> {
     private VersionNumber versionNumber;
     private ReleaseStatus releaseStatus;
     private String        pre;
+    private String        preBuild;
     private String        metadata;
     private Comparison    comparison;
 
@@ -55,6 +56,19 @@ public class SemVer implements Comparable<SemVer> {
         this.pre           = null == pre      ? ReleaseStatus.EA == releaseStatus ? "-ea": "" : pre;
         this.metadata      = null == metadata ? "" : metadata;
         this.comparison    = Comparison.EQUAL;
+        this.preBuild      = "";
+
+        String[] eparts = pre.split("\\.");
+        if (eparts.length > 1) {
+            this.pre = eparts[0];
+            String p = eparts[1];
+            if (p.matches("[0-9]+")) {
+                if (p.length() > 1 && p.startsWith("0")) {
+                    p = p.replaceFirst("^0+(?!$)", "");
+                }
+                this.preBuild = p;
+            }
+        }
 
         if (null != this.pre && !this.pre.isEmpty() && !this.pre.startsWith("+") && !this.pre.startsWith("-")) {
             this.pre = "-" + pre;
@@ -65,8 +79,8 @@ public class SemVer implements Comparable<SemVer> {
 
         if (!this.pre.isEmpty() && !this.pre.startsWith("-")) { throw new IllegalArgumentException("pre-release argument has to start with \"-\""); }
         if (!this.metadata.isEmpty() && !this.metadata.startsWith("+")) { throw new IllegalArgumentException("metadata argument has to start with \"+\""); }
-        if (ReleaseStatus.EA == this.releaseStatus && !this.pre.isEmpty() && !this.pre.equalsIgnoreCase("-ea")) { throw new IllegalArgumentException("ReleaseStatus and pre-release argument cannot be different"); }
-        if (ReleaseStatus.GA == this.releaseStatus && !this.pre.isEmpty() && this.pre.equalsIgnoreCase("-ea")) { throw new IllegalArgumentException("ReleaseStatus and pre-release argument cannot be different"); }
+        if (ReleaseStatus.EA == this.releaseStatus && !this.pre.isEmpty() && !this.pre.toLowerCase().startsWith("-ea")) { throw new IllegalArgumentException("ReleaseStatus and pre-release argument cannot be different"); }
+        if (ReleaseStatus.GA == this.releaseStatus && !this.pre.isEmpty() && this.pre.toLowerCase().startsWith("-ea")) { throw new IllegalArgumentException("ReleaseStatus and pre-release argument cannot be different"); }
 
         Matcher m = Helper.NUMBER_IN_TEXT_PATTERN.matcher(metadata);
         if (m.find()) { versionNumber.setBuild(Integer.valueOf(m.group(2))); }
@@ -107,6 +121,18 @@ public class SemVer implements Comparable<SemVer> {
         }
         this.pre           = null == pre ? "" : pre;
         this.releaseStatus = (null == pre || pre.isEmpty()) ? ReleaseStatus.GA : ReleaseStatus.EA;
+    }
+
+    public String getPreBuild() { return preBuild; }
+    public void setPreBuild(final String preBuild) {
+        if (preBuild.matches("[0-9]+")) {
+            if (preBuild.length() > 1 && preBuild.startsWith("0")) {
+                throw new IllegalArgumentException("preBuild cannot starts with 0: " + preBuild);
+            }
+            this.preBuild = preBuild;
+        } else {
+            throw new IllegalArgumentException("Invalid preBuild: " + preBuild);
+        }
     }
 
     public String getMetadata() { return metadata; }
@@ -265,8 +291,8 @@ public class SemVer implements Comparable<SemVer> {
     }
 
     private int comparePrerelease(final String pre1, final String pre2) {
-        String[] preParts1 = pre1.split(".");
-        String[] preParts2 = pre2.split(".");
+        String[] preParts1 = pre1.split("\\.");
+        String[] preParts2 = pre2.split("\\.");
 
         int preParts1Length = preParts1.length;
         int preParts2Length = preParts2.length;
@@ -340,7 +366,9 @@ public class SemVer implements Comparable<SemVer> {
         StringBuilder versionBuilder = new StringBuilder();
         versionBuilder.append(Comparison.EQUAL != comparison ? comparison.getOperator() : "");
         versionBuilder.append(versionNumber.toString(OutputFormat.REDUCED, javaFormat));
-        versionBuilder.append(ReleaseStatus.EA == releaseStatus ? "-ea" : "");
+        if (ReleaseStatus.EA == releaseStatus) {
+            versionBuilder.append("-ea").append(preBuild.isEmpty() ? "" : ("." + preBuild));
+        }
         if (null != metadata && !metadata.isEmpty()) {
             versionBuilder.append(metadata.startsWith("+") ? metadata : ("+" + metadata));
         }

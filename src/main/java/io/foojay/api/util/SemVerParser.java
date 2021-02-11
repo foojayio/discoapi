@@ -142,7 +142,6 @@ public class SemVerParser {
             return parsingResult;
         }
 
-
         // Validate prerelease
         Error err1;
         if (null != pre1 && !pre1.isEmpty()) {
@@ -323,24 +322,24 @@ public class SemVerParser {
         return parsingResult;
     }
 
-    private static Error validatePrerelease(final String prerelease) {
-        String[] eparts = prerelease.split(".");
+    private static Error validatePrerelease(final String preRelease) {
+        String[] eparts = preRelease.split("\\.");
         for (String p : eparts) {
             if (p.matches("[0-9]+")) {
                 if (p.length() > 1 && p.startsWith("0")) {
                     return new Error("Segment starts with 0: " + p);
                 }
             } else if (!p.matches("[a-zA-Z-0-9]+")) {
-                return new Error("Invalid prerelease: " + prerelease);
+                return new Error("Invalid preRelease: " + preRelease);
             }
         }
         return null;
     }
 
     private static Error validateMetadata(final String metadata) {
-        String[] eparts = metadata.split(".");
+        String[] eparts = metadata.split("\\.");
         for (String p : eparts) {
-            if (!p.matches("[a-zA-Z-0-9]")) {
+            if (!p.matches("[a-zA-Z-0-9]+")) {
                 return new Error("Invalid metadata: " + metadata);
             }
         }
