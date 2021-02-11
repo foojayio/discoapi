@@ -23,6 +23,7 @@ public enum Latest {
     OVERALL("overall", "overall"),
     PER_DISTRIBUTION("per distribution", "per_distro"),
     PER_VERSION("per version", "per_version"),
+    EXPLICIT("explicit", "explicit"),
     NONE("-", ""),
     NOT_FOUND("", "");;
 
@@ -68,6 +69,9 @@ public enum Latest {
             case "PER-VERSION":
             case "PERVERSION":
                 return PER_VERSION;
+            case "explicit":
+            case "EXPLICIT":
+                return EXPLICIT;
             default:
                 return NOT_FOUND;
         }
