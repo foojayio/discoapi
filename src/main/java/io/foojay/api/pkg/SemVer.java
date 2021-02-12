@@ -52,7 +52,7 @@ public class SemVer implements Comparable<SemVer> {
     }
     public SemVer(final VersionNumber versionNumber, final ReleaseStatus releaseStatus, final String pre, final String metadata) {
         this.versionNumber = versionNumber;
-        this.releaseStatus = releaseStatus;
+        this.releaseStatus = versionNumber.getReleaseStatus().isPresent() ? versionNumber.getReleaseStatus().get() : releaseStatus;
         this.pre           = null == pre      ? ReleaseStatus.EA == releaseStatus ? "-ea": "" : pre;
         this.metadata      = null == metadata ? "" : metadata;
         this.comparison    = Comparison.EQUAL;
@@ -69,6 +69,8 @@ public class SemVer implements Comparable<SemVer> {
                 this.preBuild = p;
             }
         }
+        this.versionNumber.setReleaseStatus(this.releaseStatus);
+        if (!this.preBuild.isEmpty()) { this.versionNumber.setBuild(Integer.parseInt(this.preBuild)); }
 
         if (null != this.pre && !this.pre.isEmpty() && !this.pre.startsWith("+") && !this.pre.startsWith("-")) {
             this.pre = "-" + pre;
@@ -365,7 +367,7 @@ public class SemVer implements Comparable<SemVer> {
     public String toString(final boolean javaFormat) {
         StringBuilder versionBuilder = new StringBuilder();
         versionBuilder.append(Comparison.EQUAL != comparison ? comparison.getOperator() : "");
-        versionBuilder.append(versionNumber.toString(OutputFormat.REDUCED, javaFormat));
+        versionBuilder.append(versionNumber.toString(OutputFormat.REDUCED, javaFormat, false));
         if (ReleaseStatus.EA == releaseStatus) {
             versionBuilder.append("-ea").append(preBuild.isEmpty() ? "" : ("." + preBuild));
         }

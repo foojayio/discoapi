@@ -99,7 +99,7 @@ public class Pkg {
         this.filename             = filename;
         this.directDownloadUri    = directDownloadUri;
         this.downloadSiteUri      = downloadSiteUri;
-        this.semver               = new SemVer(versionNumber, releaseStatus);
+        this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
     }
     public Pkg(final String jsonText) {
         if (null == jsonText || jsonText.isEmpty()) { throw new IllegalArgumentException("Json text cannot be null or empty"); }
@@ -126,7 +126,7 @@ public class Pkg {
         this.filename             = json.get(FIELD_FILENAME).getAsString();
         this.directDownloadUri    = json.get(FIELD_DIRECT_DOWNLOAD_URI).getAsString();
         this.downloadSiteUri      = json.get(FIELD_DOWNLOAD_SITE_URI).getAsString();
-        this.semver               = new SemVer(versionNumber, releaseStatus);
+        this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
 
         if (ArchiveType.NOT_FOUND     == this.archiveType)     { this.archiveType   = ArchiveType.getFromFileName(this.filename); }
         if (TermOfSupport.NOT_FOUND == this.termOfSupport) { this.termOfSupport = Helper.getTermOfSupport(this.versionNumber, distro); }
@@ -151,7 +151,7 @@ public class Pkg {
     public VersionNumber getVersionNumber() { return versionNumber; }
     public void setVersionNumber(final VersionNumber versionNumber) {
         this.versionNumber = versionNumber;
-        this.semver        = new SemVer(versionNumber, getReleaseStatus());
+        this.semver        = SemVer.fromText(versionNumber.toString()).getSemVer1();
     }
 
     public VersionNumber getJavaVersion() { return javaVersion; }
@@ -194,7 +194,8 @@ public class Pkg {
     public ReleaseStatus getReleaseStatus() { return releaseStatus; }
     public void setReleaseStatus(final ReleaseStatus releaseStatus) {
         this.releaseStatus = releaseStatus;
-        this.semver        = new SemVer(versionNumber, releaseStatus);
+        this.versionNumber.setReleaseStatus(releaseStatus);
+        this.semver        = SemVer.fromText(versionNumber.toString()).getSemVer1();
     }
 
     public ArchiveType getArchiveType() { return archiveType; }
