@@ -128,16 +128,14 @@ public class Pkg {
         this.downloadSiteUri      = json.get(FIELD_DOWNLOAD_SITE_URI).getAsString();
         this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
 
-        if (ArchiveType.NOT_FOUND     == this.archiveType)     { this.archiveType   = ArchiveType.getFromFileName(this.filename); }
-        if (TermOfSupport.NOT_FOUND == this.termOfSupport) { this.termOfSupport = Helper.getTermOfSupport(this.versionNumber, distro); }
-        if (OperatingSystem.NOT_FOUND == this.operatingSystem) {
-            this.operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
-                                                                    .stream()
-                                                                    .filter(entry -> this.filename.contains(entry.getKey()))
-                                                                    .findFirst()
-                                                                    .map(Entry::getValue)
-                                                                    .orElse(OperatingSystem.NONE);
-        }
+        if (ArchiveType.NOT_FOUND     == this.archiveType)     { this.archiveType     = ArchiveType.getFromFileName(this.filename); }
+        if (TermOfSupport.NOT_FOUND   == this.termOfSupport)   { this.termOfSupport   = Helper.getTermOfSupport(this.versionNumber, distro); }
+        if (OperatingSystem.NOT_FOUND == this.operatingSystem) { this.operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
+                                                                                                                         .stream()
+                                                                                                                         .filter(entry -> this.filename.contains(entry.getKey()))
+                                                                                                                         .findFirst()
+                                                                                                                         .map(Entry::getValue)
+                                                                                                                         .orElse(OperatingSystem.NONE); }
     }
 
 

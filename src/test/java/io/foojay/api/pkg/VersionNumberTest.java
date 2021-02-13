@@ -84,6 +84,12 @@ public class VersionNumberTest {
 
         assert versionNumber11.compareTo(versionNumber13) < 0;
         assert versionNumber13.compareTo(versionNumber11) > 0;
+
+        VersionNumber versionNumber14 = VersionNumber.fromText("16-ea.30");
+        VersionNumber versionNumber15 = new VersionNumber(16, null, null, null, null, null, ReleaseStatus.EA, 30);
+        VersionNumber versionNumber16 = VersionNumber.fromText("16-ea");
+        assert versionNumber14.compareTo(versionNumber15) == 0;
+        assert versionNumber14.compareTo(versionNumber16) != 0;
     }
 
     @Test
