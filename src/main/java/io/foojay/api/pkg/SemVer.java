@@ -21,15 +21,21 @@ package io.foojay.api.pkg;
 
 import io.foojay.api.util.Comparison;
 import io.foojay.api.util.Error;
-import io.foojay.api.util.Helper;
 import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.SemVerParser;
 import io.foojay.api.util.SemVerParsingResult;
 
+import java.util.List;
+import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 
 public class SemVer implements Comparable<SemVer> {
+    public static final Pattern EA_PATTERN           = Pattern.compile("(ea|EA)((\\.|\\+|\\-)([0-9]+))?");
+    public static final Pattern BUILD_NUMBER_PATTERN = Pattern.compile("\\+?(b|B)([0-9]+)");
+
     private VersionNumber versionNumber;
     private ReleaseStatus releaseStatus;
     private String        pre;
@@ -39,7 +45,7 @@ public class SemVer implements Comparable<SemVer> {
 
 
     public SemVer(final VersionNumber versionNumber) {
-        this(versionNumber, ReleaseStatus.GA, "","");
+        this(versionNumber, versionNumber.getReleaseStatus() != null && versionNumber.getReleaseStatus().isPresent() ? versionNumber.getReleaseStatus().get() : ReleaseStatus.GA, versionNumber.getPreBuild() != null && versionNumber.getPreBuild().isPresent() ? "-ea." + versionNumber.getPreBuild().getAsInt() : "", versionNumber.getBuild() != null && versionNumber.getBuild().isPresent() ? "+b" + versionNumber.getBuild().getAsInt() : "");
     }
     public SemVer(final VersionNumber versionNumber, final ReleaseStatus releaseStatus) {
         this(versionNumber, releaseStatus, ReleaseStatus.EA == releaseStatus ? "ea" : "", "");
@@ -58,19 +64,27 @@ public class SemVer implements Comparable<SemVer> {
         this.comparison    = Comparison.EQUAL;
         this.preBuild      = "";
 
-        String[] eparts = pre.split("\\.");
-        if (eparts.length > 1) {
-            this.pre = eparts[0];
-            String p = eparts[1];
-            if (p.matches("[0-9]+")) {
-                if (p.length() > 1 && p.startsWith("0")) {
-                    p = p.replaceFirst("^0+(?!$)", "");
+        if (null != this.versionNumber.getReleaseStatus() && this.versionNumber.getReleaseStatus().isPresent() && this.versionNumber.getReleaseStatus().get() != this.releaseStatus) {
+            this.versionNumber.setReleaseStatus(this.releaseStatus);
+        }
+
+        // Extract early access preBuild
+        if (null != this.pre) {
+            final Matcher           eaMatcher = EA_PATTERN.matcher(this.pre);
+            final List<MatchResult> eaResults = eaMatcher.results().collect(Collectors.toList());
+            if (eaResults.size() > 0) {
+                final MatchResult eaResult = eaResults.get(0);
+                if (null != eaResult.group(1)) {
+                    this.versionNumber.setReleaseStatus(ReleaseStatus.EA);
+                    if (null != eaResult.group(4)) {
+                        this.preBuild = eaResult.group(4);
+                        if (null == this.versionNumber.getPreBuild() || this.versionNumber.getPreBuild().isEmpty()) {
+                            this.versionNumber.setPreBuild(Integer.parseInt(this.preBuild));
+                        }
+                    }
                 }
-                this.preBuild = p;
             }
         }
-        this.versionNumber.setReleaseStatus(this.releaseStatus);
-        if (!this.preBuild.isEmpty()) { this.versionNumber.setBuild(Integer.parseInt(this.preBuild)); }
 
         if (null != this.pre && !this.pre.isEmpty() && !this.pre.startsWith("+") && !this.pre.startsWith("-")) {
             this.pre = "-" + pre;
@@ -84,8 +98,21 @@ public class SemVer implements Comparable<SemVer> {
         if (ReleaseStatus.EA == this.releaseStatus && !this.pre.isEmpty() && !this.pre.toLowerCase().startsWith("-ea")) { throw new IllegalArgumentException("ReleaseStatus and pre-release argument cannot be different"); }
         if (ReleaseStatus.GA == this.releaseStatus && !this.pre.isEmpty() && this.pre.toLowerCase().startsWith("-ea")) { throw new IllegalArgumentException("ReleaseStatus and pre-release argument cannot be different"); }
 
-        Matcher m = Helper.NUMBER_IN_TEXT_PATTERN.matcher(metadata);
-        if (m.find()) { versionNumber.setBuild(Integer.valueOf(m.group(2))); }
+        // Extract metadata e.g. build number
+        if (null != this.metadata) {
+            final Matcher           buildNumberMatcher = BUILD_NUMBER_PATTERN.matcher(this.metadata);
+            final List<MatchResult> buildNumberResults = buildNumberMatcher.results().collect(Collectors.toList());
+            if (buildNumberResults.size() > 0) {
+                final MatchResult buildNumberResult = buildNumberResults.get(0);
+                if (null != buildNumberResult.group(1)) {
+                    if (null != buildNumberResult.group(2)) {
+                        if (null == this.versionNumber.getBuild() || this.versionNumber.getBuild().isEmpty()) {
+                            this.versionNumber.setBuild(Integer.parseInt(buildNumberResult.group(2)));
+                        }
+                    }
+                }
+            }
+        }
     }
 
 

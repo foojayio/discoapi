@@ -111,7 +111,7 @@ public class SemVerTest {
 
     @Test
     public void semVerEqualsToOtherSemVerTest() {
-        SemVer semver1 = SemVer.fromText(new VersionNumber(17, null, null, null, null, null, ReleaseStatus.EA, 28).toString()).getSemVer1();
+        SemVer semver1 = SemVer.fromText(new VersionNumber(17, null, null, null, null, null, null, ReleaseStatus.EA, 28).toString()).getSemVer1();
         SemVer semver2 = SemVer.fromText("17-ea.28").getSemVer1();
         SemVer semver3 = SemVer.fromText("17-ea.34").getSemVer1();
 
@@ -123,5 +123,12 @@ public class SemVerTest {
 
         assert semver1.compareTo(semver3) < 0;
         assert semver3.compareTo(semver1) > 0;
+    }
+
+    @Test
+    public void semVerConstructorTest() {
+        VersionNumber versionNumber = new VersionNumber(11, 0, 0, 0, 0, 0, 13, ReleaseStatus.EA, 5);
+        SemVer        semver        = new SemVer(versionNumber);
+        assert versionNumber.toString(OutputFormat.REDUCED, true, true).equals(semver.toString(true));
     }
 }
