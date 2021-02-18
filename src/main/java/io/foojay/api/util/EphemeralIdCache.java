@@ -31,46 +31,46 @@ import java.util.concurrent.ConcurrentHashMap;
 public class EphemeralIdCache<T extends String, U extends String> implements Cache<T, U> {
     private static final Logger LOGGER = LoggerFactory.getLogger(EphemeralIdCache.class);
 
-    private final ConcurrentHashMap<T, U> bundleInfoCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<T, U> ephemeralIdCache = new ConcurrentHashMap<>();
 
-    @Override public void add(final T bundleInfoId, final U id) {
-        if (null == bundleInfoId) { return; }
-        if (null == id) {
-            LOGGER.debug("bundleInfoId cannot be null -> removed key {}", bundleInfoId);
-            bundleInfoCache.remove(bundleInfoId);
+    @Override public void add(final T ephemeralId, final U pkgId) {
+        if (null == ephemeralId) { return; }
+        if (null == pkgId) {
+            LOGGER.debug("EphemeralId cannot be null -> removed key {}", ephemeralId);
+            ephemeralIdCache.remove(ephemeralId);
         } else {
-            bundleInfoCache.put(bundleInfoId, id);
+            ephemeralIdCache.put(ephemeralId, pkgId);
         }
     }
 
-    @Override public U get(final T bundleInfoId) {
-        if (null == bundleInfoId || !bundleInfoCache.containsKey(bundleInfoId)) { return null; }
-        return bundleInfoCache.get(bundleInfoId);
+    @Override public U get(final T ephemeralId) {
+        if (null == ephemeralId || !ephemeralIdCache.containsKey(ephemeralId)) { return null; }
+        return ephemeralIdCache.get(ephemeralId);
     }
 
     @Override public void remove(final T bundleInfoId) {
-        bundleInfoCache.remove(bundleInfoId);
+        ephemeralIdCache.remove(bundleInfoId);
     }
 
     @Override public void clear() {
-        LOGGER.debug("BundleInfo cache cleared");
-        bundleInfoCache.clear();
+        LOGGER.debug("EphemeralID cache cleared");
+        ephemeralIdCache.clear();
     }
 
     @Override public long size() {
-        return bundleInfoCache.size();
+        return ephemeralIdCache.size();
     }
 
-    @Override public boolean isEmpty() { return bundleInfoCache.isEmpty(); }
+    @Override public boolean isEmpty() { return ephemeralIdCache.isEmpty(); }
 
-    public boolean containsEphemeralId(final T bundleInfoId) { return bundleInfoCache.containsKey(bundleInfoId); }
+    public boolean containsEphemeralId(final T ephemeralId) { return ephemeralIdCache.containsKey(ephemeralId); }
 
-    public T getEphemeralIdForPkgId(final U id) {
-        Optional<Entry<T, U>> optionalEntry = bundleInfoCache.entrySet().stream().filter(entry -> entry.getValue().equals(id)).findFirst();
+    public T getEphemeralIdForPkgId(final U pkgId) {
+        Optional<Entry<T, U>> optionalEntry = ephemeralIdCache.entrySet().stream().filter(entry -> entry.getValue().equals(pkgId)).findFirst();
         return optionalEntry.isPresent() ? optionalEntry.get().getKey() : null;
     }
 
-    public Collection<T> getBundleInfoIds() { return bundleInfoCache.keySet(); }
+    public Collection<T> getEphemeralIds() { return ephemeralIdCache.keySet(); }
 
-    public Collection<U> getIds() { return bundleInfoCache.values(); }
+    public Collection<U> getPkgIds() { return ephemeralIdCache.values(); }
 }
