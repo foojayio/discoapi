@@ -54,7 +54,7 @@ Please find more information here:
 ### How to download a package ?
 1. Search for a package using the API (e.g. JDK 1.8.0_275 from Zulu for Windows as msi incl. JavaFX => https://api.foojay.io/disco/v1.0/packages?version=1.8.0_275&distro=zulu&archive_type=msi&package_type=jdk&operating_system=windows&javafx_bundled=true&latest=per_version)
 2. Once you have found the package of your choice, get it's ephemeral id from the json response
-3. Call the endpoint https://api.foojay.io/ephemeral_ids/PACKAGE_EPHEMERAL_ID
+3. Call the endpoint https://api.foojay.io/disco/v1.0/ephemeral_ids/PACKAGE_EPHEMERAL_ID
 4. Get the download link from the json response
 
 The plan is to provide useful statistics about download numbers. For that reason we store the ip address in combination with the package names when packages will be downloaded via the API. At the moment we evaluating if this information is valuable and we will add these statistics to the packages soon.
