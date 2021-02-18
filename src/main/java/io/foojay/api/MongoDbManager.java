@@ -124,6 +124,10 @@ public enum MongoDbManager {
         init();
     }
 
+    /**
+     * Returns list of all packages in the packages collection
+     * @return list of all packages in the packages collection
+     */
     public List<Pkg> getPkgs() {
         if (!connected) { init(); }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
@@ -148,6 +152,10 @@ public enum MongoDbManager {
         return result;
     }
 
+    /**
+     * Inserts given list of packages to packages collection
+     * @param pkgs
+     */
     public void insertAllPkgs(final Collection<Pkg> pkgs) {
         if (!connected) { init(); }
         if (null == pkgs || pkgs.isEmpty()) {
@@ -179,6 +187,11 @@ public enum MongoDbManager {
         LOGGER.debug("Successfully inserted {} packages to mongodb.", pkgs.size());
     }
 
+    /**
+     * Adds the given list of packages to the packages collection where existing packages will be updated
+     * @param pkgs
+     * @return true when packages have been added successfully
+     */
     public boolean addNewPkgs(final Collection<Pkg> pkgs) {
         if (!connected) { init(); }
         if (null == pkgs || pkgs.isEmpty()) {
@@ -212,6 +225,11 @@ public enum MongoDbManager {
         return true;
     }
 
+    /**
+     * Removes the given list of packages from the packages collection
+     * @param pkgs
+     * @return true when packages have been removed successfully
+     */
     public boolean removePkgs(final Collection<Pkg> pkgs) {
         if (!connected) { init(); }
         if (null == pkgs || pkgs.isEmpty()) {
@@ -269,7 +287,12 @@ public enum MongoDbManager {
         return downloads;
     }
 
-    public void upsertDownloadForId(final String id, final Long noOfDownloads) {
+    /**
+     * Update number of downloads for given packageId
+     * @param pkgId
+     * @param noOfDownloads
+     */
+    public void upsertDownloadForId(final String pkgId, final Long noOfDownloads) {
         if (!connected) { init(); }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
             LOGGER.debug("Could not upsert download because FOOJAY_MONGODB_DATABASE environment variable was not set.");
@@ -284,12 +307,12 @@ public enum MongoDbManager {
             return;
         }
         database.getCollection(Constants.DOWNLOADS_COLLECTION)
-                .updateOne(eq(FIELD_PACKAGE_ID, id), combine(set(FIELD_PACKAGE_ID, id), set(FIELD_DOWNLOADS, noOfDownloads)), new UpdateOptions().upsert(true));
+                .updateOne(eq(FIELD_PACKAGE_ID, pkgId), combine(set(FIELD_PACKAGE_ID, pkgId), set(FIELD_DOWNLOADS, noOfDownloads)), new UpdateOptions().upsert(true));
 
-        LOGGER.debug("Successfully updated no of downloads for id {}", id);
+        LOGGER.debug("Successfully updated no of downloads for id {}", pkgId);
     }
 
-    public void addDownloadForIp(final String id, final String ipAddress) {
+    public void addDownloadForIp(final String pkgId, final String ipAddress) {
         if (!connected) { init(); }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
             LOGGER.debug("Download not added because FOOJAY_MONGODB_DATABASE environment variable was not set.");
@@ -306,12 +329,12 @@ public enum MongoDbManager {
         final MongoCollection<Document> collection = database.getCollection(Constants.DOWNLOADS_IP_COLLECTION);
 
         Document document = new Document();
-        document.put(FIELD_PACKAGE_ID, id);
+        document.put(FIELD_PACKAGE_ID, pkgId);
         document.put(FIELD_IP_ADDRESS, ipAddress);
         document.put(FIELD_TIMESTAMP, Instant.now().toEpochMilli());
 
         collection.insertOne(document);
-        LOGGER.debug("Successfully stored ip-address {} for download of package id {} to mongodb.", ipAddress, id);
+        LOGGER.debug("Successfully stored ip-address {} for download of package id {} to mongodb.", ipAddress, pkgId);
     }
 
     public void updateLatestBuildAvailable(final List<Pkg> pkgs) {
