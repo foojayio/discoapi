@@ -70,6 +70,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -83,15 +84,15 @@ import static java.util.stream.Collectors.toCollection;
 
 
 public class Helper {
-    private static final Logger  LOGGER                = LoggerFactory.getLogger(Helper.class);
-    private static final Random  RND                   = new Random();
-    public  static final Pattern FILE_URL_PATTERN      = Pattern.compile("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)");
-    public  static final Pattern HREF_FILE_PATTERN     = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
-    public  static final Pattern HREF_DOWNLOAD_PATTERN = Pattern.compile("(>)(\\s?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(<)");
+    private static final Logger  LOGGER                 = LoggerFactory.getLogger(Helper.class);
+    private static final Random  RND                    = new Random();
+    public  static final Pattern FILE_URL_PATTERN       = Pattern.compile("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)");
+    public  static final Pattern HREF_FILE_PATTERN      = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
+    public  static final Pattern HREF_DOWNLOAD_PATTERN  = Pattern.compile("(>)(\\s?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(<)");
     public  static final Pattern NUMBER_IN_TEXT_PATTERN = Pattern.compile("(.*)?([0-9]+)(.*)?");
-    public  static final Matcher FILE_URL_MATCHER      = FILE_URL_PATTERN.matcher("");
-    public  static final Matcher HREF_FILE_MATCHER     = HREF_FILE_PATTERN.matcher("");
-    public  static final Matcher HREF_DOWNLOAD_MATCHER = HREF_DOWNLOAD_PATTERN.matcher("");
+    public  static final Matcher FILE_URL_MATCHER       = FILE_URL_PATTERN.matcher("");
+    public  static final Matcher HREF_FILE_MATCHER      = HREF_FILE_PATTERN.matcher("");
+    public  static final Matcher HREF_DOWNLOAD_MATCHER  = HREF_DOWNLOAD_PATTERN.matcher("");
 
 
     public static Callable<List<Pkg>> createTask(final Distro distro) {
@@ -230,8 +231,15 @@ public class Helper {
 
         if (query.isEmpty()) { return List.of(); }
 
-        HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(query)).setHeader("User-Agent", "DiscoAPI").GET().build();
+        HttpClient  client  = HttpClient.newBuilder()
+                                        .followRedirects(Redirect.NEVER)
+                                        .version(java.net.http.HttpClient.Version.HTTP_2)
+                                        .build();
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri(URI.create(query))
+                                         .setHeader("User-Agent", "DiscoAPI")
+                                         .GET()
+                                         .build();
         List<Pkg>   pkgs    = new LinkedList<>();
         try {
             List<Pkg> pkgsFound = new ArrayList<>();
@@ -286,8 +294,15 @@ public class Helper {
                                           final Architecture architecture, final Bitness bitness, final ArchiveType archiveType,
                                           final PackageType packageType, final boolean javaFX, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         String      query   = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, javaFX, releaseStatus, termOfSupport);
-        HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_1_1).build();
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(query)).setHeader("User-Agent", "DiscoAPI").GET().build();
+        HttpClient  client  = HttpClient.newBuilder()
+                                        .followRedirects(Redirect.NEVER)
+                                        .version(java.net.http.HttpClient.Version.HTTP_1_1)
+                                        .build();
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri(URI.create(query))
+                                         .setHeader("User-Agent", "DiscoAPI")
+                                         .GET()
+                                         .build();
         List<Pkg>   pkgs    = new LinkedList<>();
         try {
             String      body     = getResponseAsync(client, request);
@@ -626,5 +641,37 @@ public class Helper {
             //LOGGER.info("Given text {} did not contain positive integer. Full text to parse was: {}", text, fullTextToParse);
             return -1;
         }
+    }
+    
+    
+    // ******************** REST calls ****************************************
+    public static final String get(final String uri) {
+        HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri(URI.create(uri))
+                                         .build();
+        try {
+            HttpResponse<String> response  = client.send(request, BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                return response.body();
+            } else {
+                // Problem with url request
+                LOGGER.debug("Error executing get request {}", uri);
+                LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
+                return "";
+            }
+        } catch (InterruptedException | IOException e) {
+            LOGGER.error("Error executing get request {} : {}", uri, e.getMessage());
+            return "";
+        }
+    }
+
+    public static final CompletableFuture<String> getAsync(final String uri) {
+        HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri(URI.create(uri))
+                                         .build();
+        return client.sendAsync(request, BodyHandlers.ofString())
+                     .thenApply(HttpResponse::body);
     }
 }
