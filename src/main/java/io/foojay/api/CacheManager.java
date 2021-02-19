@@ -171,6 +171,7 @@ public enum CacheManager {
             executor = Executors.newSingleThreadExecutor();
             service  = new ExecutorCompletionService<>(executor);
         }
+
         long start = System.currentTimeMillis();
         LOGGER.debug("Started updating package cache");
         pkgCacheIsUpdating.set(true);
@@ -286,8 +287,6 @@ public enum CacheManager {
         // Finally add all new packages to pkgCache
         pkgs.forEach(pkg -> pkgCache.add(pkg.getId(), pkg));
 
-        pkgCacheIsUpdating.set(false);
-
         // Add the delta to mongodb
         if (!deltaPkgs.isEmpty()) {
             // Insert new packages into database
@@ -295,9 +294,14 @@ public enum CacheManager {
             if (successfullyAddedToMongoDb) { deltaPkgs.clear(); }
         }
 
-        LOGGER.info("Cache updated in {} ms, no of packages in cache {}", (System.currentTimeMillis() - start), pkgCache.size());
+        //updateDistributionSpecificLatestBuild();
 
-        updateDistributionSpecificLatestBuild();
+        updateLatestBuild(ReleaseStatus.GA);
+        updateLatestBuild(ReleaseStatus.EA);
+        LOGGER.info("Latest build info updated for GA and EA releases with Java version number in package cache.");
+
+        LOGGER.info("Cache updated in {} ms, no of packages in cache {}", (System.currentTimeMillis() - start), pkgCache.size());
+        pkgCacheIsUpdating.set(false);
 
         // Check latest builds for GraalVM and set latest_build_available=true
         for (int i = 19 ; i <= 30 ; i++) {
@@ -320,6 +324,7 @@ public enum CacheManager {
                       }
                   });
         }
+        LOGGER.info("\"Latest build info updated GraalVM versions in package cache.");
 
         // Synchronize latestBuildAvailable in mongodb database with cache
         MongoDbManager.INSTANCE.syncLatestBuildAvailableInDatabaseWithCache(pkgCache.getPkgs());
@@ -454,11 +459,11 @@ public enum CacheManager {
                                                                         .max(Comparator.comparing(Pkg::getDistributionVersion));
             if (pkgWithMaxBuildNumberCorretto.isPresent()) {
                 VersionNumber maxBuildNumber = pkgWithMaxBuildNumberCorretto.get().getDistributionVersion();
-                CacheManager.INSTANCE.pkgCache.getPkgs()
-                                                                            .stream()
-                                                                            .filter(p -> p.getDistributionName().equals(Distro.CORRETTO.getName()))
-                                                                            .filter(pkg -> pkg.getDistributionVersion().compareTo(maxBuildNumber) == 0)
-                                              .forEach(pkg -> pkg.setLatestBuildAvailable(true));
+                pkgCache.getPkgs()
+                        .stream()
+                        .filter(p -> p.getDistributionName().equals(Distro.CORRETTO.getName()))
+                        .filter(pkg -> pkg.getDistributionVersion().compareTo(maxBuildNumber) == 0)
+                        .forEach(pkg -> pkg.setLatestBuildAvailable(true));
             }
 
             // SAP Machine
@@ -468,11 +473,11 @@ public enum CacheManager {
                                                                             .max(Comparator.comparing(Pkg::getJavaVersion));
             if (pkgWithMaxVersionNumberSapMachine.isPresent()) {
                 VersionNumber maxVersionNumber = pkgWithMaxVersionNumberSapMachine.get().getVersionNumber();
-                List<Pkg> maxVersionsSapMachine = CacheManager.INSTANCE.pkgCache.getPkgs()
-                                                                                .stream()
-                                                                                .filter(p -> p.getDistributionName().equals(Distro.SAP_MACHINE.getName()))
-                                                                                .filter(pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) == 0)
-                                                                                .collect(Collectors.toList());
+                List<Pkg> maxVersionsSapMachine = pkgCache.getPkgs()
+                                                          .stream()
+                                                          .filter(p -> p.getDistributionName().equals(Distro.SAP_MACHINE.getName()))
+                                                          .filter(pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) == 0)
+                                                          .collect(Collectors.toList());
 
                 Matcher           eaMatcher = SAPMachine.SAP_MACHINE_EA_PATTERN.matcher("");
                 Map<Pkg, Integer> map       = new HashMap<>();
@@ -508,11 +513,11 @@ public enum CacheManager {
             if (pkgWithMaxBuildNumberZulu.isPresent()) {
                 VersionNumber maxBuildNumber = pkgWithMaxBuildNumberZulu.get().getDistributionVersion();
 
-                CacheManager.INSTANCE.pkgCache.getPkgs()
-                                                                        .stream()
-                                                                        .filter(p -> p.getDistributionName().equals(Distro.ZULU.getName()))
-                                                                        .filter(pkg -> pkg.getDistributionVersion().compareTo(maxBuildNumber) == 0)
-                                              .forEach(pkg -> pkg.setLatestBuildAvailable(true));
+                pkgCache.getPkgs()
+                        .stream()
+                        .filter(p -> p.getDistributionName().equals(Distro.ZULU.getName()))
+                        .filter(pkg -> pkg.getDistributionVersion().compareTo(maxBuildNumber) == 0)
+                        .forEach(pkg -> pkg.setLatestBuildAvailable(true));
             }
         }
 
@@ -553,6 +558,30 @@ public enum CacheManager {
         }
 
         LOGGER.info("Updated latest build available for all packages.");
+    }
+
+    private void updateLatestBuild(final ReleaseStatus releaseStatus) {
+        Distro.getDistrosWithJavaVersioning()
+              .stream()
+              .forEach(distro -> {
+                  MajorVersion.getAllMajorVersions().forEach(majorVersion -> {
+                      final int mv   = majorVersion.getAsInt();
+                      List<Pkg> pkgs = pkgCache.getPkgs()
+                                               .stream()
+                                               .filter(pkg -> pkg.getReleaseStatus() == releaseStatus)
+                                               .filter(pkg -> pkg.getDistribution().getDistro() == distro)
+                                               .filter(pkg -> pkg.getJavaVersion().getMajorVersion().getAsInt() == mv)
+                                               .collect(Collectors.toList());
+                      SemVer maxSemVer = pkgs.stream().max(Comparator.comparing(Pkg::getSemver)).map(pkg -> pkg.getSemver()).orElse(null);
+                      if (null != maxSemVer) {
+                          pkgs.forEach(pkg -> pkg.setLatestBuildAvailable(false));
+                          pkgs.stream()
+                              .filter(pkg -> pkg.getSemver().compareTo(maxSemVer) == 0)
+                              .collect(Collectors.toList())
+                              .forEach(pkg -> pkg.setLatestBuildAvailable(true));
+                      }
+                  });
+              });
     }
 
     public void updateEphemeralIdCache() {
@@ -609,8 +638,8 @@ public enum CacheManager {
         }
     }
 
-    public String getEphemeralIdForPkg(final String id) {
-        return ephemeralIdCache.getEphemeralIdForPkgId(id);
+    public String getEphemeralIdForPkg(final String pkgId) {
+        return ephemeralIdCache.getEphemeralIdForPkgId(pkgId);
     }
 
     public List<MajorVersion> getMajorVersions() {
