@@ -206,6 +206,15 @@ public enum Distro implements ApiFeature {
 
     public static List<Distro> getAsList() { return Arrays.asList(values()); }
 
+    public static List<Distro> getDistrosWithJavaVersioning() {
+        return Arrays.stream(values())
+                     .filter(distro -> Distro.NONE         != distro)
+                     .filter(distro -> Distro.NOT_FOUND    != distro)
+                     .filter(distro -> Distro.GRAALVM_CE11 != distro)
+                     .filter(distro -> Distro.GRAALVM_CE8  != distro)
+                     .collect(Collectors.toList());
+    }
+
     @Override public String toString() {
         if (Distro.NOT_FOUND == Distro.this || Distro.NONE == Distro.this) { return ""; }
         final List<SemVer> versions = get().getVersions();
