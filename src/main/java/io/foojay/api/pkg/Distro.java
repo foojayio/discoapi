@@ -27,6 +27,7 @@ import io.foojay.api.distribution.Dragonwell;
 import io.foojay.api.distribution.GraalVMCE11;
 import io.foojay.api.distribution.GraalVMCE8;
 import io.foojay.api.distribution.Liberica;
+import io.foojay.api.distribution.Mandrel;
 import io.foojay.api.distribution.OJDKBuild;
 import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
@@ -47,6 +48,7 @@ public enum Distro implements ApiFeature {
     GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 12),
     GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 12),
     LIBERICA("Liberica", "liberica", new Liberica(), 1),
+    MANDREL("Mandrel", "mandrel", new Mandrel(), 6),
     OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 12),
     ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 6),
     ORACLE("Oracle", "oracle", new Oracle(), 1),
@@ -120,6 +122,10 @@ public enum Distro implements ApiFeature {
             case "LIBERICA":
             case "Liberica":
                 return LIBERICA;
+            case "mandrel":
+            case "MANDREL":
+            case "Mandrel":
+                return MANDREL;
             case "graalvm_ce8":
             case "graalvmce8":
             case "GraalVM CE 8":
@@ -212,6 +218,27 @@ public enum Distro implements ApiFeature {
                      .filter(distro -> Distro.NOT_FOUND    != distro)
                      .filter(distro -> Distro.GRAALVM_CE11 != distro)
                      .filter(distro -> Distro.GRAALVM_CE8  != distro)
+                     .filter(distro -> Distro.MANDREL != distro)
+                     .collect(Collectors.toList());
+    }
+
+    public static List<Distro> getDistributionsBasedOnOpenJDK() {
+        return Arrays.stream(values())
+                     .filter(distro -> Distro.NONE != distro)
+                     .filter(distro -> Distro.NOT_FOUND != distro)
+                     .filter(distro -> Distro.GRAALVM_CE11 != distro)
+                     .filter(distro -> Distro.GRAALVM_CE8 != distro)
+                     .filter(distro -> Distro.MANDREL != distro)
+                     .collect(Collectors.toList());
+    }
+
+    public static List<Distro> getDistributionsBasedOnGraalVm() {
+        return Arrays.stream(values())
+                     .filter(distro -> Distro.NONE == distro)
+                     .filter(distro -> Distro.NOT_FOUND == distro)
+                     .filter(distro -> Distro.GRAALVM_CE11 == distro)
+                     .filter(distro -> Distro.GRAALVM_CE8 == distro)
+                     .filter(distro -> Distro.MANDREL == distro)
                      .collect(Collectors.toList());
     }
 

@@ -9,8 +9,9 @@ The foojay Disco API is a general purpose api to disover builds of OpenJDK from 
 * AdoptOpenJDK OpenJ9
 * Corretto
 * Dragonwell
-* Liberica
 * GraalVM CE
+* Liberica
+* Mandrel  
 * OJDKBuild  
 * Oracle (contains only links to download site)
 * Oracle OpenJDK

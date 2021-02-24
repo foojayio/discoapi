@@ -308,17 +308,19 @@ public enum CacheManager {
             int featureVersion = i;
             Distro.getDistributions()
                   .stream()
-                  .filter(distribution -> distribution.equals(Distro.GRAALVM_CE8.get()) || distribution.equals(Distro.GRAALVM_CE11.get()))
+                  .filter(distribution -> distribution.getDistro() == Distro.GRAALVM_CE8 ||
+                                          distribution.getDistro() == Distro.GRAALVM_CE11 ||
+                                          distribution.getDistro() == Distro.MANDREL)
                   .forEach(distribution -> {
                       Optional<Pkg> pkgWithMaxVersion = pkgs.stream()
-                                                            .filter(pkg -> pkg.getDistributionName().equals(distribution.getDistro().getName()))
+                                                            .filter(pkg -> pkg.getDistribution().getDistro() == distribution.getDistro())
                                                             .filter(pkg -> featureVersion   == pkg.getJavaVersion().getFeature().getAsInt())
                                                             .filter(pkg -> ReleaseStatus.GA == pkg.getReleaseStatus())
                                                             .max(Comparator.comparing(Pkg::getJavaVersion));
                       if (pkgWithMaxVersion.isPresent()) {
                           SemVer maxVersion = pkgWithMaxVersion.get().getSemver();
                           pkgs.stream()
-                              .filter(pkg  -> pkg.getDistributionName().equals(distribution.getDistro().getName()))
+                              .filter(pkg  -> pkg.getDistribution().getDistro() == distribution.getDistro())
                               .filter(pkg  -> maxVersion.compareTo(pkg.getSemver()) == 0)
                               .forEach(pkg -> pkg.setLatestBuildAvailable(true));
                       }
@@ -613,8 +615,9 @@ public enum CacheManager {
         majorVersions.clear(); 
         majorVersions.addAll(pkgCache.getPkgs()
                                      .stream()
-                                     .filter(pkg -> !pkg.getDistribution().equals(Distro.GRAALVM_CE8.get()))
-                                     .filter(pkg -> !pkg.getDistribution().equals(Distro.GRAALVM_CE11.get()))
+                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8)
+                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11)
+                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.MANDREL)
                                                             .map(pkg -> pkg.getVersionNumber().getFeature().getAsInt())
                                                             .distinct()
                                                             .map(majorVersion -> new MajorVersion(majorVersion))
