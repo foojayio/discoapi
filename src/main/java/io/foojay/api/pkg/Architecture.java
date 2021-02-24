@@ -174,6 +174,8 @@ public enum Architecture implements ApiFeature {
             case "X86-64":
             case "x86_64":
             case "X86_64":
+            case "x86lx64":
+            case "X86LX64":
                 return X64;
             case "x86":
             case "X86":
@@ -182,6 +184,8 @@ public enum Architecture implements ApiFeature {
             case "i586":
             case "i686":
             case "x86-32":
+            case "x86lx32":
+            case "X86LX32":
                 return X86;
             case "ia64":
             case "IA64":

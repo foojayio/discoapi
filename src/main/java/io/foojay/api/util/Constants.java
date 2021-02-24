@@ -65,6 +65,8 @@ public class Constants {
 
     public static final String        FILE_ENDING_JAR           = "jar";
     public static final String        FILE_ENDING_TXT           = "txt";
+    public static final String        FILE_ENDING_SHA1          = "sha1";
+    public static final String        FILE_ENDING_SHA256        = "sha256";
 
     public static final long          EPHEMERAL_ID_DELAY        = 120; // [sec]
     public static final long          EPHEMERAL_ID_TIMEOUT      = 600; // [sec]
@@ -73,7 +75,7 @@ public class Constants {
         put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
         put(Pkg.FIELD_ARCHIVE_TYPE, "cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip");
         put(Pkg.FIELD_BITNESS, "32, 64");
-        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, liberica, ojdk_build, oracle, oracle_open_jdk, redhat, sap_machine, zulu");
+        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, liberica, mandrel, ojdk_build, oracle, oracle_open_jdk, redhat, sap_machine, zulu");
         put(Pkg.FIELD_OPERATING_SYSTEM, "aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows");
         put(Pkg.FIELD_LIB_C_TYPE, "c_std_lib, glibc, libc, musl");
         put(Pkg.FIELD_PACKAGE_TYPE, "jdk, jre");
@@ -106,8 +108,10 @@ public class Constants {
         put("aarch32", Architecture.ARM);
         put("x86-32", Architecture.X86);
         put("x86_32", Architecture.X86);
+        put("x86lx32", Architecture.X86);
         put("x86-64", Architecture.X64);
         put("x86_64", Architecture.X64);
+        put("x86lx64", Architecture.X64);
         put("x86", Architecture.X86);
         put("win64", Architecture.X64);
         put("x64", Architecture.X64);
@@ -196,6 +200,7 @@ public class Constants {
         put(Distro.GRAALVM_CE8, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.GRAALVM_CE11, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.LIBERICA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
+        put(Distro.MANDREL, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.OJDK_BUILD, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
         put(Distro.ORACLE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY));
         put(Distro.ORACLE_OPEN_JDK, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
