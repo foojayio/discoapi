@@ -27,6 +27,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
@@ -89,7 +90,7 @@ public class OracleOpenJDK implements Distribution {
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP      = Map.of(EA, "early_access", GA, "GA");
 
     private static final String                       OPEN_JDK_ARCHIVE_URL    = "https://jdk.java.net/archive/";
-    private static final String                       OPEN_JDK_PROPERTIES     = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk.properties";
+    public  static final String                       OPEN_JDK_PROPERTIES     = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk.properties";
     private        final Properties                   properties              = new Properties();
 
 
@@ -563,9 +564,23 @@ public class OracleOpenJDK implements Distribution {
         if (LINUX_MUSL == operatingSystem) { keyBuilder.append("-musl"); }
 
         String downloadLink = properties.getProperty(keyBuilder.toString());
+
+        if (null == downloadLink && MajorVersion.getLatest(false).getAsInt() < versionNumber.getMajorVersion().getAsInt()) {
+            // Might be Release Candidate
+            keyBuilder.setLength(0);
+            keyBuilder = new StringBuilder().append(versionNumber.getFeature().getAsInt()).append("-")
+                                            .append("rc").append("-")
+                                            .append(OPERATING_SYSTEM_MAP.get(operatingSystem)).append("-")
+                                            .append(ARCHITECTURE_MAP.get(architecture));
+            if (LINUX_MUSL == operatingSystem) { keyBuilder.append("-musl"); }
+            downloadLink = properties.getProperty(keyBuilder.toString());
+        }
+
         String fileName     = Helper.getFileNameFromText(downloadLink);
 
         if (null == downloadLink) { return null; }
+
+        String directDownloadLink = downloadLink;
 
         Pkg pkg = new Pkg();
 
@@ -573,7 +588,7 @@ public class OracleOpenJDK implements Distribution {
         pkg.setArchiveType(ext);
 
         ReleaseStatus rs = Constants.RELEASE_STATUS_LOOKUP.entrySet().stream()
-                                                          .filter(entry -> downloadLink.contains(entry.getKey()))
+                                                          .filter(entry -> directDownloadLink.contains(entry.getKey()))
                                                           .findFirst()
                                                           .map(Entry::getValue)
                                                           .orElse(ReleaseStatus.NONE);
