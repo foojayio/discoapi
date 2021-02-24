@@ -54,7 +54,7 @@ public class Oracle implements Distribution {
 
     public  static final List<String>                 PACKAGE_URLS            = List.of("https://www.oracle.com/java/technologies/javase-jdk15-downloads.html",
                                                                                         "https://www.oracle.com/java/technologies/javase/jdk14-archive-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/javase-jdk13-downloads.html",
+                                                                                        "https://www.oracle.com/java/technologies/javase/jdk13-archive-downloads.html",
                                                                                         "https://www.oracle.com/java/technologies/javase/jdk12-archive-downloads.html",
                                                                                         "https://www.oracle.com/java/technologies/javase-jdk11-downloads.html",
                                                                                         "https://www.oracle.com/java/technologies/java-archive-javase10-downloads.html",
