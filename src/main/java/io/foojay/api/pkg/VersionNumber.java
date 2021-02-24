@@ -404,7 +404,7 @@ public class VersionNumber implements Comparable<VersionNumber> {
      *      Feature.Interim.Update.Patch.Fifth.Sixth -> 6
      * @return the numbers that are available in the version number
      */
-    private int numbersAvailable() {
+    public int numbersAvailable() {
         return 1 + (interim.isPresent() ? 1 : 0) + (update.isPresent() ? 1 : 0) + (patch.isPresent() ? 1 : 0) + (fifth.isPresent() ? 1 : 0) + (sixth.isPresent() ? 1 : 0);
     }
 
