@@ -135,40 +135,43 @@ public class GraalVMCE8 implements Distribution {
         JsonArray assets = jsonObj.getAsJsonArray("assets");
         for (JsonElement element : assets) {
             JsonObject assetJsonObj = element.getAsJsonObject();
-            String     fileName     = assetJsonObj.get("name").getAsString();
-            if (fileName.endsWith(Constants.FILE_ENDING_TXT) || fileName.endsWith(Constants.FILE_ENDING_JAR)) { continue; }
+            String     filename     = assetJsonObj.get("name").getAsString();
+            if (filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_JAR) ||
+                filename.endsWith(Constants.FILE_ENDING_SHA1) || filename.endsWith(Constants.FILE_ENDING_SHA256)) { continue; }
 
-            FILENAME_MATCHER.reset(fileName);
+            FILENAME_MATCHER.reset(filename);
             if (!FILENAME_MATCHER.matches()) { continue; }
+
+            String   strippedFilename = filename.replaceFirst("graalvm-ce-java8-", "").replaceAll("(\\.tar\\.gz|\\.zip)", "");
+            String[] filenameParts    = strippedFilename.split("-");
 
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
             Pkg pkg = new Pkg();
 
-            ArchiveType ext = getFromFileName(fileName);
+            pkg.setDistribution(Distro.GRAALVM_CE8.get());
+            pkg.setFileName(filename);
+            pkg.setDirectDownloadUri(downloadLink);
+
+            ArchiveType ext = getFromFileName(filename);
             if (SRC_TAR == ext || (ArchiveType.NONE != archiveType && ext != archiveType)) { continue; }
             pkg.setArchiveType(ext);
 
-            pkg.setDistribution(Distro.GRAALVM_CE8.get());
-            pkg.setFileName(fileName);
-            pkg.setDirectDownloadUri(downloadLink);
-
             Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                             .filter(entry -> fileName.contains(entry.getKey()))
+                                                             .filter(entry -> strippedFilename.contains(entry.getKey()))
                                                              .findFirst()
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
-
             if (Architecture.NONE == arch) {
-                LOGGER.debug("Architecture not found in GraalVM CE8 for filename: {}", fileName);
+                LOGGER.debug("Architecture not found in GraalVM CE8 for filename: {}", filename);
                 continue;
             }
 
             pkg.setArchitecture(arch);
             pkg.setBitness(arch.getBitness());
 
-            if (null == vNumber) {
-                vNumber = VersionNumber.fromText(downloadLink);
+            if (null == vNumber && filenameParts.length > 2) {
+                vNumber = VersionNumber.fromText(filenameParts[2]);
             }
             if (latest) {
                 if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { continue; }
@@ -177,8 +180,7 @@ public class GraalVMCE8 implements Distribution {
             }
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
-            VersionNumber dNumber = VersionNumber.fromText(fileName);
-            pkg.setDistributionVersion(dNumber);
+            pkg.setDistributionVersion(vNumber);
 
             pkg.setTermOfSupport(supTerm);
 
@@ -187,7 +189,7 @@ public class GraalVMCE8 implements Distribution {
             pkg.setReleaseStatus(GA);
 
             OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                                  .filter(entry -> fileName.contains(entry.getKey()))
+                                                                  .filter(entry -> strippedFilename.contains(entry.getKey()))
                                                                   .findFirst()
                                                                   .map(Entry::getValue)
                                                                   .orElse(OperatingSystem.NONE);
@@ -210,7 +212,7 @@ public class GraalVMCE8 implements Distribution {
                 }
             }
             if (OperatingSystem.NONE == os) {
-                LOGGER.debug("Operating System not found in GraalVM CE8 for filename: {}", fileName);
+                LOGGER.debug("Operating System not found in GraalVM CE8 for filename: {}", filename);
                 continue;
             }
             pkg.setOperatingSystem(os);
