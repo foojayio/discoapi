@@ -27,6 +27,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.LibCType;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
@@ -493,6 +494,7 @@ public class OracleOpenJDK implements Distribution {
         properties.forEach((key, value) -> {
             String downloadLink = value.toString();
             String fileName     = Helper.getFileNameFromText(downloadLink);
+            boolean isMusl      = false;
 
             Pkg pkg = new Pkg();
 
@@ -515,7 +517,8 @@ public class OracleOpenJDK implements Distribution {
                 String[]     keyParts     = key.toString().split("-");
                 int          noOfKeyParts = keyParts.length;
                 if (keyParts[noOfKeyParts - 1].equals("musl")) {
-                    arch = Architecture.fromText(keyParts[noOfKeyParts - 2]);
+                    arch   = Architecture.fromText(keyParts[noOfKeyParts - 2]);
+                    isMusl = true;
                 } else {
                     arch = Architecture.fromText(keyParts[noOfKeyParts - 1]);
                 }
@@ -539,6 +542,19 @@ public class OracleOpenJDK implements Distribution {
                     String[] osArchParts = fileNameParts[1].split("-");
                     os = OperatingSystem.fromText(osArchParts[0]);
                     pkg.setOperatingSystem(os);
+
+                    switch (os) {
+                        case WINDOWS:
+                            pkg.setLibCType(LibCType.C_STD_LIB);
+                            break;
+                        case LINUX:
+                            pkg.setLibCType(LibCType.GLIBC);
+                            break;
+                        case MACOS:
+                            pkg.setLibCType(LibCType.LIBC);
+                            break;
+                    }
+                    if (isMusl) { pkg.setLibCType(LibCType.MUSL); }
 
                     SemVer semVer = SemVer.fromText(fileNameParts[0].replace("openjdk", "")).getSemVer1();
                     if (null != semVer) {
