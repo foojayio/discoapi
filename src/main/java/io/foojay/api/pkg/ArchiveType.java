@@ -25,6 +25,7 @@ import java.util.List;
 
 
 public enum ArchiveType implements ApiFeature {
+    APK("apk", "apk", "apk"),
     BIN("bin", "bin", "bin"),
     CAB("cab", "cab",".cab"),
     DEB("deb", "deb",".deb"),
