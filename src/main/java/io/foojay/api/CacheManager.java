@@ -310,6 +310,7 @@ public enum CacheManager {
                   .stream()
                   .filter(distribution -> distribution.getDistro() == Distro.GRAALVM_CE8 ||
                                           distribution.getDistro() == Distro.GRAALVM_CE11 ||
+                                          distribution.getDistro() == Distro.LIBERICA_NATIVE ||
                                           distribution.getDistro() == Distro.MANDREL)
                   .forEach(distribution -> {
                       Optional<Pkg> pkgWithMaxVersion = pkgs.stream()
@@ -617,6 +618,7 @@ public enum CacheManager {
                                      .stream()
                                      .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8)
                                      .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11)
+                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE)
                                      .filter(pkg -> pkg.getDistribution().getDistro() != Distro.MANDREL)
                                                             .map(pkg -> pkg.getVersionNumber().getFeature().getAsInt())
                                                             .distinct()

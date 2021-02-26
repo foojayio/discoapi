@@ -27,6 +27,7 @@ import io.foojay.api.distribution.Dragonwell;
 import io.foojay.api.distribution.GraalVMCE11;
 import io.foojay.api.distribution.GraalVMCE8;
 import io.foojay.api.distribution.Liberica;
+import io.foojay.api.distribution.LibericaNative;
 import io.foojay.api.distribution.Mandrel;
 import io.foojay.api.distribution.OJDKBuild;
 import io.foojay.api.distribution.Oracle;
@@ -48,6 +49,7 @@ public enum Distro implements ApiFeature {
     GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 12),
     GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 12),
     LIBERICA("Liberica", "liberica", new Liberica(), 1),
+    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 1),
     MANDREL("Mandrel", "mandrel", new Mandrel(), 6),
     OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 12),
     ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 6),
@@ -122,6 +124,14 @@ public enum Distro implements ApiFeature {
             case "LIBERICA":
             case "Liberica":
                 return LIBERICA;
+            case "liberica_native":
+            case "LIBERICA_NATIVE":
+            case "libericaNative":
+            case "LibericaNative":
+            case "liberica native":
+            case "LIBERICA NATIVE":
+            case "Liberica Native":
+                return LIBERICA_NATIVE;
             case "mandrel":
             case "MANDREL":
             case "Mandrel":
@@ -229,6 +239,7 @@ public enum Distro implements ApiFeature {
                      .filter(distro -> Distro.GRAALVM_CE11 != distro)
                      .filter(distro -> Distro.GRAALVM_CE8 != distro)
                      .filter(distro -> Distro.MANDREL != distro)
+                     .filter(distro -> Distro.LIBERICA_NATIVE != distro)
                      .collect(Collectors.toList());
     }
 
@@ -239,6 +250,7 @@ public enum Distro implements ApiFeature {
                      .filter(distro -> Distro.GRAALVM_CE11 == distro)
                      .filter(distro -> Distro.GRAALVM_CE8 == distro)
                      .filter(distro -> Distro.MANDREL == distro)
+                     .filter(distro -> Distro.LIBERICA_NATIVE == distro)
                      .collect(Collectors.toList());
     }
 

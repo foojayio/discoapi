@@ -75,7 +75,7 @@ public class Constants {
         put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
         put(Pkg.FIELD_ARCHIVE_TYPE, "cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip");
         put(Pkg.FIELD_BITNESS, "32, 64");
-        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, liberica, mandrel, ojdk_build, oracle, oracle_open_jdk, redhat, sap_machine, zulu");
+        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, liberica, liberica_native, mandrel, ojdk_build, oracle, oracle_open_jdk, redhat, sap_machine, zulu");
         put(Pkg.FIELD_OPERATING_SYSTEM, "aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows");
         put(Pkg.FIELD_LIB_C_TYPE, "c_std_lib, glibc, libc, musl");
         put(Pkg.FIELD_PACKAGE_TYPE, "jdk, jre");
@@ -84,6 +84,7 @@ public class Constants {
     }};
 
     public static final LinkedHashMap<String, ArchiveType> ARCHIVE_TYPE_LOOKUP = new LinkedHashMap<>() {{
+        put(".apk", ArchiveType.APK);
         put(".bin", ArchiveType.BIN);
         put(".cab", ArchiveType.CAB);
         put(".deb", ArchiveType.DEB);
@@ -163,6 +164,20 @@ public class Constants {
         put("mac", OperatingSystem.MACOS);
     }};
 
+    public static final LinkedHashMap<String, OperatingSystem> OPERATING_SYSTEM_BY_ARCHIVE_TYPE_LOOKUP = new LinkedHashMap<>() {{
+        put("apk", OperatingSystem.LINUX);
+        put("deb", OperatingSystem.LINUX);
+        put("rpm", OperatingSystem.LINUX);
+        put("tar.gz", OperatingSystem.LINUX);
+        put("pkg", OperatingSystem.MACOS);
+        put("dmg", OperatingSystem.MACOS);
+        put("exe", OperatingSystem.WINDOWS);
+        put("msi", OperatingSystem.WINDOWS);
+        put("bin", OperatingSystem.WINDOWS);
+        put("cab", OperatingSystem.WINDOWS);
+        put("zip", OperatingSystem.WINDOWS);
+    }};
+
     public static final LinkedHashMap<String, PackageType> PACKAGE_TYPE_LOOKUP = new LinkedHashMap<>() {{
         put("jdk", PackageType.JDK);
         put("-jdk", PackageType.JDK);
@@ -200,6 +215,7 @@ public class Constants {
         put(Distro.GRAALVM_CE8, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.GRAALVM_CE11, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.LIBERICA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
+        put(Distro.LIBERICA_NATIVE, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.MANDREL, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.OJDK_BUILD, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
         put(Distro.ORACLE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY));
