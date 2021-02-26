@@ -73,7 +73,7 @@ public class Constants {
 
     public static final Map<String, String> PARAMETER_LOOKUP = new HashMap<>() {{
         put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
-        put(Pkg.FIELD_ARCHIVE_TYPE, "cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip");
+        put(Pkg.FIELD_ARCHIVE_TYPE, "apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip");
         put(Pkg.FIELD_BITNESS, "32, 64");
         put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, liberica, liberica_native, mandrel, ojdk_build, oracle, oracle_open_jdk, redhat, sap_machine, zulu");
         put(Pkg.FIELD_OPERATING_SYSTEM, "aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows");
