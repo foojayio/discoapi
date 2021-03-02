@@ -27,9 +27,19 @@ import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import io.foojay.api.util.OutputFormat;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.OptionalInt;
+
+import static io.foojay.api.util.Constants.COLON;
+import static io.foojay.api.util.Constants.COMMA;
+import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
+import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.CURLY_BRACKET_OPEN;
+import static io.foojay.api.util.Constants.INDENTED_QUOTES;
+import static io.foojay.api.util.Constants.NEW_LINE;
+import static io.foojay.api.util.Constants.QUOTES;
 
 
 public class Pkg {
@@ -221,7 +231,7 @@ public class Pkg {
     public void setDownloadSiteUri(final String downloadSiteUri) { this.downloadSiteUri = downloadSiteUri; }
 
     public String getId() {
-        return directlyDownloadable ? Helper.getMD5Hex(directDownloadUri.getBytes()) : Helper.getMD5Hex(String.join("", directDownloadUri, filename).getBytes());
+        return directlyDownloadable ? Helper.getMD5(directDownloadUri.getBytes(StandardCharsets.UTF_8)) : Helper.getMD5(String.join("", directDownloadUri, filename).getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -232,91 +242,91 @@ public class Pkg {
     public final String toString(final OutputFormat outputFormat) {
         switch(outputFormat) {
             case FULL:
-                return new StringBuilder().append("{\n")
-                                          .append("  \"").append(FIELD_ID).append("\"").append(":").append("\"").append(getId()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_ARCHIVE_TYPE).append("\"").append(":").append("\"").append(archiveType.getUiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_DISTRIBUTION).append("\"").append(":").append("\"").append(distribution.getDistro().getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_MAJOR_VERSION).append("\"").append(":").append(versionNumber.getFeature().getAsInt()).append(",\n")
-                                          .append("  \"").append(FIELD_JAVA_VERSION).append("\"").append(":").append("\"").append(semver).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_DISTRIBUTION_VERSION).append("\"").append(":").append("\"").append(distributionVersion.toStringInclBuild(true)).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_LATEST_BUILD_AVAILABLE).append("\"").append(":").append(null == latestBuildAvailable ? false : latestBuildAvailable).append(",\n")
-                                          .append("  \"").append(FIELD_RELEASE_STATUS).append("\"").append(":").append("\"").append(releaseStatus.getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_TERM_OF_SUPPORT).append("\"").append(":").append("\"").append(termOfSupport.getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_OPERATING_SYSTEM).append("\"").append(":").append("\"").append(operatingSystem.getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_LIB_C_TYPE).append("\"").append(":").append("\"").append(libCType.getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_ARCHITECTURE).append("\"").append(":").append("\"").append(architecture.getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_PACKAGE_TYPE).append("\"").append(":").append("\"").append(packageType.getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_JAVAFX_BUNDLED).append("\"").append(":").append(javafxBundled).append(",\n")
-                                          .append("  \"").append(FIELD_DIRECTLY_DOWNLOADABLE).append("\"").append(":").append(directlyDownloadable).append(",\n")
-                                          .append("  \"").append(FIELD_FILENAME).append("\"").append(":").append("\"").append(filename).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_DIRECT_DOWNLOAD_URI).append("\"").append(":").append("\"").append(directDownloadUri).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_DOWNLOAD_SITE_URI).append("\"").append(":").append("\"").append(downloadSiteUri).append("\"").append("\n")
-                                          .append("}")
+                return new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toStringInclBuild(true)).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(NEW_LINE)
+                                          .append(CURLY_BRACKET_CLOSE)
                                           .toString();
             case REDUCED:
-                return new StringBuilder().append("{\n")
-                                          .append("  \"").append(FIELD_ID).append("\"").append(":").append("\"").append(getId()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_ARCHIVE_TYPE).append("\"").append(":").append("\"").append(archiveType.getUiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_DISTRIBUTION).append("\"").append(":").append("\"").append(distribution.getDistro().getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_MAJOR_VERSION).append("\"").append(":").append(versionNumber.getFeature().getAsInt()).append(",\n")
-                                          .append("  \"").append(FIELD_JAVA_VERSION).append("\"").append(":").append("\"").append(semver).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_DISTRIBUTION_VERSION).append("\"").append(":").append("\"").append(distributionVersion.toStringInclBuild(true)).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_LATEST_BUILD_AVAILABLE).append("\"").append(":").append(null == latestBuildAvailable ? false : latestBuildAvailable).append(",\n")
-                                          .append("  \"").append(FIELD_RELEASE_STATUS).append("\"").append(":").append("\"").append(releaseStatus.getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_TERM_OF_SUPPORT).append("\"").append(":").append("\"").append(termOfSupport.getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_OPERATING_SYSTEM).append("\"").append(":").append("\"").append(operatingSystem.getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_LIB_C_TYPE).append("\"").append(":").append("\"").append(libCType.getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_ARCHITECTURE).append("\"").append(":").append("\"").append(architecture.getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_PACKAGE_TYPE).append("\"").append(":").append("\"").append(packageType.getApiString()).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_JAVAFX_BUNDLED).append("\"").append(":").append(javafxBundled).append(",\n")
-                                          .append("  \"").append(FIELD_DIRECTLY_DOWNLOADABLE).append("\"").append(":").append(directlyDownloadable).append(",\n")
-                                          .append("  \"").append(FIELD_FILENAME).append("\"").append(":").append("\"").append(filename).append("\"").append(",\n")
-                                          .append("  \"").append(FIELD_EPHEMERAL_ID).append("\"").append(":").append("\"").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append("\"").append("\n")
-                                          .append("}")
+                return new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toStringInclBuild(true)).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(NEW_LINE)
+                                          .append(CURLY_BRACKET_CLOSE)
                                           .toString();
             case FULL_COMPRESSED:
-                return new StringBuilder().append("{")
-                                          .append("\"").append(FIELD_ID).append("\"").append(":").append("\"").append(getId()).append("\"").append(",")
-                                          .append("\"").append(FIELD_ARCHIVE_TYPE).append("\"").append(":").append("\"").append(archiveType.getUiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_DISTRIBUTION).append("\"").append(":").append("\"").append(distribution.getDistro().getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_MAJOR_VERSION).append("\"").append(":").append(versionNumber.getFeature().getAsInt()).append(",")
-                                          .append("\"").append(FIELD_JAVA_VERSION).append("\"").append(":").append("\"").append(semver).append("\"").append(",")
-                                          .append("\"").append(FIELD_DISTRIBUTION_VERSION).append("\"").append(":").append("\"").append(distributionVersion.toStringInclBuild(true)).append("\"").append(",")
-                                          .append("\"").append(FIELD_LATEST_BUILD_AVAILABLE).append("\"").append(":").append(null == latestBuildAvailable ? false : latestBuildAvailable).append(",")
-                                          .append("\"").append(FIELD_RELEASE_STATUS).append("\"").append(":").append("\"").append(releaseStatus.getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_TERM_OF_SUPPORT).append("\"").append(":").append("\"").append(termOfSupport.getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_OPERATING_SYSTEM).append("\"").append(":").append("\"").append(operatingSystem.getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_LIB_C_TYPE).append("\"").append(":").append("\"").append(libCType.getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_ARCHITECTURE).append("\"").append(":").append("\"").append(architecture.getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_PACKAGE_TYPE).append("\"").append(":").append("\"").append(packageType.getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_JAVAFX_BUNDLED).append("\"").append(":").append(javafxBundled).append(",")
-                                          .append("\"").append(FIELD_DIRECTLY_DOWNLOADABLE).append("\"").append(":").append(directlyDownloadable).append(",")
-                                          .append("\"").append(FIELD_FILENAME).append("\"").append(":").append("\"").append(filename).append("\"").append(",")
-                                          .append("\"").append(FIELD_DIRECT_DOWNLOAD_URI).append("\"").append(":").append("\"").append(directDownloadUri).append("\"").append(",")
-                                          .append("\"").append(FIELD_DOWNLOAD_SITE_URI).append("\"").append(":").append("\"").append(downloadSiteUri).append("\"")
-                                          .append("}")
+                return new StringBuilder().append(CURLY_BRACKET_OPEN)
+                                          .append(QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
+                                          .append(QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toStringInclBuild(true)).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
+                                          .append(QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
+                                          .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
+                                          .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES)
+                                          .append(CURLY_BRACKET_CLOSE)
                                           .toString();
             case REDUCED_COMPRESSED:
             default:
-                return new StringBuilder().append("{")
-                                          .append("\"").append(FIELD_ID).append("\"").append(":").append("\"").append(getId()).append("\"").append(",")
-                                          .append("\"").append(FIELD_ARCHIVE_TYPE).append("\"").append(":").append("\"").append(archiveType.getUiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_DISTRIBUTION).append("\"").append(":").append("\"").append(distribution.getDistro().getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_MAJOR_VERSION).append("\"").append(":").append(versionNumber.getFeature().getAsInt()).append(",")
-                                          .append("\"").append(FIELD_JAVA_VERSION).append("\"").append(":").append("\"").append(semver).append("\"").append(",")
-                                          .append("\"").append(FIELD_DISTRIBUTION_VERSION).append("\"").append(":").append("\"").append(distributionVersion.toStringInclBuild(true)).append("\"").append(",")
-                                          .append("\"").append(FIELD_LATEST_BUILD_AVAILABLE).append("\"").append(":").append(null == latestBuildAvailable ? false : latestBuildAvailable).append(",")
-                                          .append("\"").append(FIELD_RELEASE_STATUS).append("\"").append(":").append("\"").append(releaseStatus.getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_TERM_OF_SUPPORT).append("\"").append(":").append("\"").append(termOfSupport.getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_OPERATING_SYSTEM).append("\"").append(":").append("\"").append(operatingSystem.getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_LIB_C_TYPE).append("\"").append(":").append("\"").append(libCType.getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_ARCHITECTURE).append("\"").append(":").append("\"").append(architecture.getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_PACKAGE_TYPE).append("\"").append(":").append("\"").append(packageType.getApiString()).append("\"").append(",")
-                                          .append("\"").append(FIELD_JAVAFX_BUNDLED).append("\"").append(":").append(javafxBundled).append(",")
-                                          .append("\"").append(FIELD_DIRECTLY_DOWNLOADABLE).append("\"").append(":").append(directlyDownloadable).append(",")
-                                          .append("\"").append(FIELD_FILENAME).append("\"").append(":").append("\"").append(filename).append("\"").append(",")
-                                          .append("\"").append(FIELD_EPHEMERAL_ID).append("\"").append(":").append("\"").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append("\"")
-                                          .append("}")
+                return new StringBuilder().append(CURLY_BRACKET_OPEN)
+                                          .append(QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
+                                          .append(QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toStringInclBuild(true)).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
+                                          .append(QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
+                                          .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
+                                          .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES)
+                                          .append(CURLY_BRACKET_CLOSE)
                                           .toString();
         }
     }
