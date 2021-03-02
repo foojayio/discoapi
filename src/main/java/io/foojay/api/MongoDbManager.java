@@ -262,6 +262,11 @@ public enum MongoDbManager {
         return true;
     }
 
+    /**
+     * Returns a map with the packageId as key and the number of downloads as value.
+     * With this one can determine which are most loaded packages.
+     * @return a map with the packageId as key and the number of downloads as value
+     */
     public Map<String, Long> getDowloads() {
         if (!connected) { init(); }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
@@ -312,6 +317,14 @@ public enum MongoDbManager {
         LOGGER.debug("Successfully updated no of downloads for id {}", pkgId);
     }
 
+    /**
+     * Looks up some package information and the geoip information for the given ipAddress
+     * and stores it the downloadsip collection.
+     * Will be called when a user requests the download link for a package which doesn't mean that
+     * the user really downloads the package.
+     * @param pkgId
+     * @param ipAddress
+     */
     public void addDownloadForIp(final String pkgId, final String ipAddress) {
         if (!connected) { init(); }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
