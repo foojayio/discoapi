@@ -51,6 +51,7 @@ public enum PackageType implements ApiFeature {
     @Override public PackageType[] getAll() { return values(); }
 
     public static PackageType fromText(final String text) {
+        if (null == text) { return NOT_FOUND; }
         switch (text) {
             case "-jdk":
             case "JDK":

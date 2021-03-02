@@ -53,6 +53,7 @@ public enum ReleaseStatus implements ApiFeature {
     @Override public ReleaseStatus[] getAll() { return values(); }
 
     public static ReleaseStatus fromText(final String text) {
+        if (null == text) { return NOT_FOUND; }
         switch (text) {
             case "-ea":
             case "-EA":

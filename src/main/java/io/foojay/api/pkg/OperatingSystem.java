@@ -79,6 +79,7 @@ public enum OperatingSystem implements ApiFeature {
     @Override public OperatingSystem[] getAll() { return values(); }
 
     public static OperatingSystem fromText(final String text) {
+        if (null == text) { return NOT_FOUND; }
         switch (text) {
             case "-linux":
             case "linux":

@@ -90,6 +90,7 @@ public enum Distro implements ApiFeature {
     public static Distribution distributionFromText(final String text) { return fromText(text).get(); }
 
     public static Distro fromText(final String text) {
+        if (null == text) { return NOT_FOUND; }
         switch (text) {
             case "aoj":
             case "AOJ":

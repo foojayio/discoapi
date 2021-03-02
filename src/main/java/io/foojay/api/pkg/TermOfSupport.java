@@ -52,6 +52,7 @@ public enum TermOfSupport implements ApiFeature {
     @Override public TermOfSupport[] getAll() { return values(); }
 
     public static TermOfSupport fromText(final String text) {
+        if (null == text) { return NOT_FOUND; }
         switch(text) {
             case "long_term_stable":
             case "LongTermStable":

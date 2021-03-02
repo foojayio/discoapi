@@ -52,6 +52,7 @@ public enum LibCType implements ApiFeature {
     @Override public LibCType[] getAll() { return values(); }
 
     public static LibCType fromText(final String text) {
+        if (null == text) { return NOT_FOUND; }
         switch (text) {
             case "musl":
             case "MUSL":

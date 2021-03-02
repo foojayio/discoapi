@@ -57,6 +57,7 @@ public enum Bitness implements ApiFeature {
     public String getAsString() { return Integer.toString(bits); }
 
     public static Bitness fromText(final String text) {
+        if (null == text) { return NOT_FOUND; }
         switch (text) {
             case "32":
             case "32bit":

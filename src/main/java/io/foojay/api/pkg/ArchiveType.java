@@ -65,6 +65,7 @@ public enum ArchiveType implements ApiFeature {
     @Override public ArchiveType[] getAll() { return values(); }
 
     public static ArchiveType fromText(final String text) {
+        if (null == text) { return NOT_FOUND; }
         switch (text) {
             case "apk":
             case ".apk":
