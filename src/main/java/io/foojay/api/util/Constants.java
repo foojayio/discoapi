@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.util;
@@ -62,6 +62,8 @@ public class Constants {
     public static final String        HEADLESS_POSTFIX         = "-headless";
 
     public static final String        MAINTAINED_PROPERTIES_URL = "https://github.com/foojay2020/maintained_major_versions/raw/main/maintained.properties";
+
+    public static final String        GEO_API_URL               = "https://api.ipgeolocation.io/ipgeo";
 
     public static final String        FILE_ENDING_JAR           = "jar";
     public static final String        FILE_ENDING_TXT           = "txt";

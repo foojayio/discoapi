@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.util;
@@ -34,6 +34,7 @@ public enum Config {
     public static final String FOOJAY_API_MONGODB_DATABASE = "FOOJAY_API_MONGODB_DATABASE";
     public static final String FOOJAY_API_MONGODB_USER     = "FOOJAY_API_MONGODB_USER";
     public static final String FOOJAY_API_MONGODB_PASSWORD = "FOOJAY_API_MONGODB_PASSWORD";
+    public static final String FOOJAY_GEO_IP_API_KEY       = "FOOJAY_API_GEO_IP_API_KEY";
 
 
     public String getFoojayMongoDbUrl() {
@@ -89,6 +90,16 @@ public enum Config {
             return null;
         } else {
             return mongoDbPassword;
+        }
+    }
+
+    public String getFoojayGeoIpApiKey() {
+        final String geoipApiKey = System.getenv(FOOJAY_GEO_IP_API_KEY);
+        if (null == geoipApiKey) {
+            LOGGER.warn("No environment variable {} found.", FOOJAY_GEO_IP_API_KEY);
+            return null;
+        } else {
+            return geoipApiKey;
         }
     }
 }

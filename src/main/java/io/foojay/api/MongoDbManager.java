@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api;
@@ -32,6 +32,8 @@ import com.mongodb.client.model.UpdateOptions;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Config;
 import io.foojay.api.util.Constants;
+import io.foojay.api.util.DownloadInfo;
+import io.foojay.api.util.Helper;
 import io.foojay.api.util.OutputFormat;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -63,8 +65,6 @@ public enum MongoDbManager {
 
     private static final String        FIELD_PACKAGE_ID = "id";
     private static final String        FIELD_DOWNLOADS  = "downloads";
-    private static final String        FIELD_IP_ADDRESS = "ipaddress";
-    private static final String        FIELD_TIMESTAMP  = "timestamp";
 
     private              MongoClient   mongoClient;
     private              boolean       connected;
@@ -328,13 +328,31 @@ public enum MongoDbManager {
         };
         final MongoCollection<Document> collection = database.getCollection(Constants.DOWNLOADS_IP_COLLECTION);
 
-        Document document = new Document();
-        document.put(FIELD_PACKAGE_ID, pkgId);
-        document.put(FIELD_IP_ADDRESS, ipAddress);
-        document.put(FIELD_TIMESTAMP, Instant.now().toEpochMilli());
+        Pkg pkg = CacheManager.INSTANCE.pkgCache.get(pkgId);
 
-        collection.insertOne(document);
-        LOGGER.debug("Successfully stored ip-address {} for download of package id {} to mongodb.", ipAddress, pkgId);
+        Document document = new Document();
+        document.put(DownloadInfo.FIELD_PACKAGE_ID, pkgId);
+        document.put(DownloadInfo.FIELD_TIMESTAMP, Instant.now().toEpochMilli());
+        document.put(DownloadInfo.FIELD_DISTRIBUTION, pkg.getDistribution().getDistro().getApiString());
+        document.put(DownloadInfo.FIELD_PACKAGE_TYPE, pkg.getPackageType().getApiString());
+        document.put(DownloadInfo.FIELD_RELEASE_STATUS, pkg.getReleaseStatus().getApiString());
+        document.put(DownloadInfo.FIELD_JAVA_VERSION, pkg.getJavaVersion().toString(OutputFormat.REDUCED, true, true));
+        document.put(DownloadInfo.FIELD_OPERATING_SYSTEM, pkg.getOperatingSystem().getApiString());
+        document.put(DownloadInfo.FIELD_ARCHITECTURE, pkg.getArchitecture().getApiString());
+
+        // Try to get geo ip data
+        Helper.lookupGeoIP(ipAddress).thenAccept(geoIP -> {
+            LOGGER.info("Lookup ip address in geo-ip service");
+            if (null == geoIP) {
+                LOGGER.warn("No geoip information received for ip-address: {}", ipAddress);
+                document.put(DownloadInfo.FIELD_COUNTRY_CODE2, "");
+                document.put(DownloadInfo.FIELD_CITY, "");
+            } else {
+                document.put(DownloadInfo.FIELD_COUNTRY_CODE2, geoIP.getCountryCode2());
+                document.put(DownloadInfo.FIELD_CITY, geoIP.getCity());
+            }
+            collection.insertOne(document);
+        });
     }
 
     public void updateLatestBuildAvailable(final List<Pkg> pkgs) {

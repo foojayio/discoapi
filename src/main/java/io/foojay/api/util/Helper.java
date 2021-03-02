@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.util;
@@ -648,8 +648,27 @@ public class Helper {
             return -1;
         }
     }
-    
-    
+
+    public static CompletableFuture<GeoIP> lookupGeoIP(final String ipAdress) {
+        final String geoApiKey = Config.INSTANCE.getFoojayGeoIpApiKey();
+        final String geoApiUrl = Constants.GEO_API_URL + "?apiKey=" + geoApiKey + "&ip=" + ipAdress;
+
+        return getAsync(geoApiUrl).thenApply(response -> {
+            final Gson        gson    = new Gson();
+            final JsonElement element = gson.fromJson(response, JsonElement.class);
+            if (element instanceof JsonObject) {
+                final JsonObject jsonObj      = element.getAsJsonObject();
+                final String     countryCode2 = jsonObj.get(DownloadInfo.FIELD_COUNTRY_CODE2).getAsString();
+                final String     city         = jsonObj.get(DownloadInfo.FIELD_CITY).getAsString();
+                return new GeoIP(countryCode2, city);
+            } else {
+                LOGGER.error("Error retrieving geo ip json data from api.ipgeolocation.io");
+                return null;
+            }
+        });
+    }
+
+
     // ******************** REST calls ****************************************
     public static final String get(final String uri) {
         HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
