@@ -38,6 +38,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
@@ -55,6 +56,7 @@ import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
+import java.net.http.HttpClient.Version;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
@@ -214,8 +216,7 @@ public class Helper {
             default:
                 Distribution distribution = distro.get();
                 for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                    pkgs.addAll(
-                        getPkgs(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
+                    pkgs.addAll(getPkgs(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
                 }
                 break;
         }
@@ -238,7 +239,7 @@ public class Helper {
         if (query.isEmpty()) { return List.of(); }
 
         HttpClient  client  = HttpClient.newBuilder()
-                                        .followRedirects(Redirect.NEVER)
+                                        .followRedirects(Redirect.NORMAL)
                                         .version(java.net.http.HttpClient.Version.HTTP_2)
                                         .build();
         HttpRequest request = HttpRequest.newBuilder()
@@ -267,9 +268,8 @@ public class Helper {
                         //pkgsFound.addAll(pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList()));
                         }
                     } else if (element instanceof JsonObject) {
-                        JsonObject    pkgJsonObj         = element.getAsJsonObject();
-                        List<Pkg> pkgsInDistribution =
-                            distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
+                        JsonObject pkgJsonObj         = element.getAsJsonObject();
+                        List<Pkg>  pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
                     pkgsFound.addAll(pkgsInDistribution);
                     //pkgsFound.addAll(pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList()));
                     }
@@ -540,19 +540,78 @@ public class Helper {
         return crc32.getValue();
     }
 
-    public static byte[] getMD5(final byte[] bytes) {
+    public static String getHash(final HashAlgorithm hashAlgorithm, final String text) {
+        switch (hashAlgorithm) {
+            case MD5     : return getMD5(text);
+            case SHA1    : return getSHA1(text);
+            case SHA2_256: return getSHA2_256(text);
+            case SHA3_256: return getSHA3_256(text);
+            default      : return "";
+        }
+    }
+
+    public static String getMD5(final String text) { return bytesToHex(getMD5Bytes(text.getBytes(UTF_8))); }
+    public static String getMD5(final byte[] bytes) {
+        return bytesToHex(getMD5Bytes(bytes));
+    }
+    public static byte[] getMD5Bytes(final byte[] bytes) {
         final MessageDigest md;
         try {
             md = MessageDigest.getInstance("MD5");
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalArgumentException(e);
+            LOGGER.error("Error getting MD5 algorithm. {}", e.getMessage());
+            return new byte[]{};
         }
         final byte[] result = md.digest(bytes);
         return result;
     }
 
-    public static String getMD5Hex(final byte[] bytes) {
-        return bytesToHex(getMD5(bytes));
+    public static String getSHA1(final String text) { return bytesToHex(getSHA1Bytes(text.getBytes(UTF_8))); }
+    public static String getSHA1(final byte[] bytes) {
+        return bytesToHex(getSHA1Bytes(bytes));
+    }
+    public static byte[] getSHA1Bytes(final byte[] bytes) {
+        final MessageDigest md;
+        try {
+            md = MessageDigest.getInstance("SHA-1");
+        } catch (NoSuchAlgorithmException e) {
+            LOGGER.error("Error getting SHA-1 algorithm. {}", e.getMessage());
+            return new byte[]{};
+        }
+        final byte[] result = md.digest(bytes);
+        return result;
+    }
+
+    public static String getSHA2_256(final String text) { return bytesToHex(getSHA2_256Bytes(text.getBytes(UTF_8))); }
+    public static String getSHA2_256(final byte[] bytes) {
+        return bytesToHex(getSHA2_256Bytes(bytes));
+    }
+    public static byte[] getSHA2_256Bytes(final byte[] bytes) {
+        final MessageDigest md;
+        try {
+            md = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            LOGGER.error("Error getting SHA2-256 algorithm. {}", e.getMessage());
+            return new byte[]{};
+        }
+        final byte[] result = md.digest(bytes);
+        return result;
+    }
+
+    public static String getSHA3_256(final String text) { return bytesToHex(getSHA3_256Bytes(text.getBytes(UTF_8))); }
+    public static String getSHA3_256(final byte[] bytes) {
+        return bytesToHex(getSHA3_256Bytes(bytes));
+    }
+    public static byte[] getSHA3_256Bytes(final byte[] bytes) {
+        final MessageDigest md;
+        try {
+            md = MessageDigest.getInstance("SHA3-256");
+        } catch (NoSuchAlgorithmException e) {
+            LOGGER.error("Error getting SHA3-256 algorithm. {}", e.getMessage());
+            return new byte[]{};
+        }
+        final byte[] result = md.digest(bytes);
+        return result;
     }
 
     public static String bytesToHex(final byte[] bytes) {
@@ -668,12 +727,70 @@ public class Helper {
         });
     }
 
+    public static final OperatingSystem fetchOperatingSystem(final String text) {
+        return Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
+                                                .stream()
+                                                .filter(entry -> text.contains(entry.getKey()))
+                                                .findFirst()
+                                                .map(Entry::getValue)
+                                                .orElse(OperatingSystem.NOT_FOUND);
+    }
+
+    public static final OperatingSystem fetchOperatingSystemByArchiveType(final String text) {
+        return Constants.OPERATING_SYSTEM_BY_ARCHIVE_TYPE_LOOKUP.entrySet()
+                                                                .stream()
+                                                                .filter(entry -> text.toLowerCase().equals(entry.getKey()))
+                                                                .findFirst()
+                                                                .map(Entry::getValue)
+                                                                .orElse(OperatingSystem.NOT_FOUND);
+    }
+
+    public static final Architecture fetchArchitecture(final String text) {
+        return Constants.ARCHITECTURE_LOOKUP.entrySet()
+                                            .stream()
+                                            .filter(entry -> text.contains(entry.getKey()))
+                                            .findFirst()
+                                            .map(Entry::getValue)
+                                            .orElse(Architecture.NOT_FOUND);
+    }
+
+    public static final ArchiveType fetchArchiveType(final String text) {
+        return Constants.ARCHIVE_TYPE_LOOKUP.entrySet()
+                                            .stream()
+                                            .filter(entry -> text.endsWith(entry.getKey()))
+                                            .findFirst()
+                                            .map(Entry::getValue)
+                                            .orElse(ArchiveType.NOT_FOUND);
+    }
+
+    public static final PackageType fetchPackageType(final String text) {
+        return Constants.PACKAGE_TYPE_LOOKUP.entrySet()
+                                            .stream()
+                                            .filter(entry -> text.contains(entry.getKey()))
+                                            .findFirst()
+                                            .map(Entry::getValue)
+                                            .orElse(PackageType.NOT_FOUND);
+    }
+
+    public static final ReleaseStatus fetchReleaseStatus(final String text) {
+        return Constants.RELEASE_STATUS_LOOKUP.entrySet()
+                                              .stream()
+                                              .filter(entry -> text.contains(entry.getKey()))
+                                              .findFirst()
+                                              .map(Entry::getValue)
+                                              .orElse(ReleaseStatus.NOT_FOUND);
+    }
+
 
     // ******************** REST calls ****************************************
     public static final String get(final String uri) {
-        HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
+        HttpClient  client  = HttpClient.newBuilder()
+                                        .followRedirects(Redirect.NORMAL)
+                                        .version(Version.HTTP_2)
+                                        .build();
         HttpRequest request = HttpRequest.newBuilder()
                                          .uri(URI.create(uri))
+                                         .GET()
                                          .build();
         try {
             HttpResponse<String> response  = client.send(request, BodyHandlers.ofString());
@@ -695,6 +812,7 @@ public class Helper {
         HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
         HttpRequest request = HttpRequest.newBuilder()
                                          .uri(URI.create(uri))
+                                         .GET()
                                          .build();
         return client.sendAsync(request, BodyHandlers.ofString())
                      .thenApply(HttpResponse::body);
