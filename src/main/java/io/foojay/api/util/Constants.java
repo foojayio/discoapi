@@ -73,6 +73,17 @@ public class Constants {
     public static final long          EPHEMERAL_ID_DELAY        = 120; // [sec]
     public static final long          EPHEMERAL_ID_TIMEOUT      = 600; // [sec]
 
+    public static final String        SQUARE_BRACKET_OPEN       = "[";
+    public static final String        SQUARE_BRACKET_CLOSE      = "]";
+    public static final String        CURLY_BRACKET_OPEN        = "{";
+    public static final String        CURLY_BRACKET_CLOSE       = "}";
+    public static final String        INDENTED_QUOTES           = "  \"";
+    public static final String        QUOTES                    = "\"";
+    public static final String        COLON                     = ":";
+    public static final String        COMMA                     = ",";
+    public static final String        NEW_LINE                  = "\n";
+    public static final String        COMMA_NEW_LINE            = ",\n";
+
     public static final Map<String, String> PARAMETER_LOOKUP = new HashMap<>() {{
         put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
         put(Pkg.FIELD_ARCHIVE_TYPE, "apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip");
