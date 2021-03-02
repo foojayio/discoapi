@@ -142,7 +142,7 @@ public class VersionNumber implements Comparable<VersionNumber> {
     public OptionalInt getFeature() { return feature; }
     public void setFeature(final Integer feature) throws IllegalArgumentException {
         if (null == feature) { throw new IllegalArgumentException("Feature version cannot be null"); }
-        if (0 >= feature) { throw new IllegalArgumentException("Feature version cannot be smaller than 0"); }
+        if (0 >= feature) { throw new IllegalArgumentException("Feature version cannot be smaller than 0 (" + feature + ")"); }
         this.feature = OptionalInt.of(feature);
     }
 
