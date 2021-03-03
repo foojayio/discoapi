@@ -63,6 +63,11 @@ public class Constants {
 
     public static final String        MAINTAINED_PROPERTIES_URL = "https://github.com/foojay2020/maintained_major_versions/raw/main/maintained.properties";
 
+    public static final String        BASE_URL                  = "https://api.foojay.io/disco/";
+    public static final String        API_VERSION               = "1.0";
+    public static final String        ENDPOINT_PACKAGES         = "packages";
+    public static final String        ENDPOINT_EPHEMERAL_IDS    = "ephemeral_ids";
+    public static final String        SWAGGER_UI_URL            = "https://api.foojay.io/swagger-ui/";
     public static final String        GEO_API_URL               = "https://api.ipgeolocation.io/ipgeo";
 
     public static final String        FILE_ENDING_JAR           = "jar";
@@ -83,6 +88,7 @@ public class Constants {
     public static final String        COMMA                     = ",";
     public static final String        NEW_LINE                  = "\n";
     public static final String        COMMA_NEW_LINE            = ",\n";
+    public static final String        INDENT                    = "  ";
 
     public static final Map<String, String> PARAMETER_LOOKUP = new HashMap<>() {{
         put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
