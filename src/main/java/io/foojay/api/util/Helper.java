@@ -76,6 +76,7 @@ import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -90,11 +91,17 @@ import static java.util.stream.Collectors.toCollection;
 public class Helper {
     private static final Logger  LOGGER                 = LoggerFactory.getLogger(Helper.class);
     private static final Random  RND                    = new Random();
-    public  static final Pattern FILE_URL_PATTERN       = Pattern.compile("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)");
+    public static final  Pattern FILE_URL_PATTERN                       = Pattern.compile("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)");
+    public static final  Pattern FILE_URL_MD5_PATTERN                   = Pattern.compile("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\\)\\h+\\|\\h+`([0-9a-z]{32})`");
+    public static final  Pattern DRAGONWELL_11_FILE_NAME_SHA256_PATTERN = Pattern.compile("(OpenJDK[0-9]+U[a-z0-9_\\-\\.]+)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)(\\s+\\(Experimental ONLY\\))?\\h+\\|\\h+([0-9a-z]{64})");
+    public static final  Pattern DRAGONWELL_8_FILE_NAME_SHA256_PATTERN  = Pattern.compile("(\\()?(Alibaba_Dragonwell[0-9\\.A-Za-z_\\-]+)(\\)=\\s+)?|([\\\\r\\\\n]+)?([a-z0-9]{64})");
     public  static final Pattern HREF_FILE_PATTERN      = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
     public  static final Pattern HREF_DOWNLOAD_PATTERN  = Pattern.compile("(\\>)(\\s|\\h?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(\\<)");
     public  static final Pattern NUMBER_IN_TEXT_PATTERN = Pattern.compile("(.*)?([0-9]+)(.*)?");
     public  static final Matcher FILE_URL_MATCHER       = FILE_URL_PATTERN.matcher("");
+    public static final  Matcher FILE_URL_MD5_MATCHER                   = FILE_URL_MD5_PATTERN.matcher("");
+    public static final  Matcher DRAGONWELL_11_FILE_NAME_SHA256_MATCHER = DRAGONWELL_11_FILE_NAME_SHA256_PATTERN.matcher("");
+    public static final  Matcher DRAGONWELL_8_FILE_NAME_SHA256_MATCHER  = DRAGONWELL_8_FILE_NAME_SHA256_PATTERN.matcher("");
     public  static final Matcher HREF_FILE_MATCHER      = HREF_FILE_PATTERN.matcher("");
     public  static final Matcher HREF_DOWNLOAD_MATCHER  = HREF_DOWNLOAD_PATTERN.matcher("");
 
@@ -393,6 +400,70 @@ public class Helper {
         return urlsFound;
     }
 
+    public static Set<Pair<String,String>> getFileUrlsAndMd5sFromString(final String text) {
+        Set<Pair<String,String>> pairsFound = new HashSet<>();
+        FILE_URL_MD5_MATCHER.reset(text);
+        while(FILE_URL_MD5_MATCHER.find()) {
+            pairsFound.add(new Pair<>(FILE_URL_MD5_MATCHER.group(1), FILE_URL_MD5_MATCHER.group(5)));
+        }
+        return pairsFound;
+    }
+
+    public static Set<Pair<String,String>> getFileNameAndSha256FromStringDragonwell8(final String text) {
+        Set<Pair<String,String>> pairsFound = new HashSet<>();
+        DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.reset(text);
+        while(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.find()) {
+            pairsFound.add(new Pair<>(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(1) + DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(2), DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(4)));
+        }
+        return pairsFound;
+    }
+
+    public static Set<Pair<String,String>> getDragonwell11FileNameAndSha256FromString(final String text) {
+        Set<Pair<String,String>> pairsFound = new HashSet<>();
+        DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.reset(text);
+        while(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.find()) {
+            pairsFound.add(new Pair<>(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(1) + DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(2), DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(4)));
+        }
+        return pairsFound;
+    }
+
+    public static Set<Pair<String,String>> getDragonwell8FileNameAndSha256FromString(final String text) {
+        Set<Pair<String,String>> pairsFound = new HashSet<>();
+        DRAGONWELL_8_FILE_NAME_SHA256_MATCHER.reset(text);
+        final List<MatchResult> results = DRAGONWELL_8_FILE_NAME_SHA256_MATCHER.results().collect(Collectors.toList());
+        boolean filenameFound = false;
+        String  filename      = "";
+        boolean sha256Found   = false;
+        String  sha256        = "";
+        for (MatchResult result : results) {
+            String group0 = result.group(0);
+            if (null != group0) {
+                if (group0.length() == 64) {
+                    sha256Found = true;
+                    sha256 = group0.trim();
+                    if (filenameFound) {
+                        pairsFound.add(new Pair<>(filename, sha256));
+                        sha256Found = false;
+                        filenameFound = false;
+                    }
+                }
+            }
+            String group2 = result.group(2);
+            if (null != group2) {
+                if (group2.startsWith("Alibaba")) {
+                    filenameFound = true;
+                    filename      = group2.trim();
+                    if (sha256Found) {
+                        pairsFound.add(new Pair<>(filename, sha256));
+                        filenameFound = false;
+                        sha256Found   = false;
+                    }
+                }
+            }
+        }
+        return pairsFound;
+    }
+
     public static Set<String> getFileHrefsFromString(final String text) {
         Set<String> hrefsFound = new HashSet<>();
         HREF_FILE_MATCHER.reset(text);
@@ -621,7 +692,7 @@ public class Helper {
     }
 
     public static String createEphemeralId(final long number, final String  id) {
-        return new StringBuilder().append(RND.nextInt(100) + 312).append(id).append(number).toString();
+        return getSHA1(number + id);
     }
 
     public static String trimPrefix(final String text, final String prefix) {
