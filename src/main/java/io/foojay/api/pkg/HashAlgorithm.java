@@ -70,10 +70,10 @@ public enum HashAlgorithm implements ApiFeature {
                 return SHA1;
             case "sha256":
             case "SHA256":
-            case "sha-256":
-            case "SHA-256":
             case "sha_256":
             case "SHA_256":
+            case "sha-256":
+            case "SHA-256":
                 return SHA256;
             case "sha3_256":
             case "SHA3_256":
