@@ -22,6 +22,7 @@ package io.foojay.api.util;
 
 public class DownloadInfo {
     public static final String FIELD_TIMESTAMP        = "timestamp";
+    public static final String FIELD_TOKEN            = "token";
     public static final String FIELD_PACKAGE_ID       = "pkg_id";
     public static final String FIELD_DISTRIBUTION     = "distribution";
     public static final String FIELD_PACKAGE_TYPE     = "package_type";
@@ -33,6 +34,7 @@ public class DownloadInfo {
     public static final String FIELD_CITY             = "city";
 
     private long   timestamp;
+    private String token;
     private String pkgId;
     private String distribution;
     private String packageType;
@@ -45,12 +47,13 @@ public class DownloadInfo {
 
 
     public DownloadInfo() {
-        this(-1, "", "", "", "", "", "", "", "", "");
+        this(-1, "", "", "", "", "", "", "", "", "", "");
     }
-    public DownloadInfo(final long timestamp, final String pkgId, final String distribution, final String packageType, final String releaseStatus,
+    public DownloadInfo(final long timestamp, final String pkgId, final String token, final String distribution, final String packageType, final String releaseStatus,
                         final String javaVersion, final String operatingSystem, final String architecture, final String countryCode2, final String city) {
         this.timestamp       = timestamp;
         this.pkgId           = pkgId;
+        this.token           = null == token ? "" : token;
         this.distribution    = distribution;
         this.packageType     = packageType;
         this.releaseStatus   = releaseStatus;
@@ -67,6 +70,9 @@ public class DownloadInfo {
 
     public String getPkgId() { return pkgId; }
     public void setPkgId(final String pkgId) { this.pkgId = pkgId; }
+
+    public String getToken() { return token; }
+    public void setToken(final String token) { this.token = null == token ? "" : token;}
 
     public String getDistribution() { return distribution; }
     public void setDistribution(final String distribution) { this.distribution = distribution; }
@@ -97,6 +103,7 @@ public class DownloadInfo {
         return new StringBuilder().append("{")
                                   .append("\"").append(FIELD_TIMESTAMP).append("\"").append(":").append(timestamp).append(",")
                                   .append("\"").append(FIELD_PACKAGE_ID).append("\"").append(":").append("\"").append(pkgId).append("\"").append(",")
+                                  .append("\"").append(FIELD_TOKEN).append("\"").append(":").append("\"").append(token).append("\"").append(",")
                                   .append("\"").append(FIELD_DISTRIBUTION).append("\"").append(":").append("\"").append(distribution).append("\"").append(",")
                                   .append("\"").append(FIELD_PACKAGE_TYPE).append("\"").append(":").append("\"").append(packageType).append("\"").append(",")
                                   .append("\"").append(FIELD_RELEASE_STATUS).append("\"").append(":").append("\"").append(releaseStatus).append("\"").append(",")
