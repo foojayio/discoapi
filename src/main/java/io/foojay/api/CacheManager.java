@@ -62,7 +62,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
@@ -103,7 +102,6 @@ public enum CacheManager {
     public               AtomicBoolean                    cleaning                   = new AtomicBoolean(false);
     private final        Map<Distro, Integer>             updateHourCounters         = new ConcurrentHashMap<>();
     private final        Map<String, Pkg>                 deltaPkgs                  = new ConcurrentHashMap<>();
-    private final        ScheduledExecutorService         scheduler                  = Executors.newScheduledThreadPool(1);
     private final        List<MajorVersion>               majorVersions              = new LinkedList<>();
 
 
@@ -112,8 +110,6 @@ public enum CacheManager {
               .filter(distro -> Distro.NONE != distro)
               .filter(distro -> Distro.NOT_FOUND != distro)
               .forEach(distro -> updateHourCounters.put(distro, 12));
-        
-        scheduler.scheduleAtFixedRate(() -> updateEphemeralIdCache(), Constants.EPHEMERAL_ID_DELAY, Constants.EPHEMERAL_ID_TIMEOUT, TimeUnit.SECONDS);
     }
 
 
@@ -185,7 +181,7 @@ public enum CacheManager {
                   .filter(distro -> Distro.NONE != distro)
                   .filter(distro -> Distro.NOT_FOUND != distro)
                   .forEach(distro -> {
-                      LOGGER.debug("Update hour counter for distro {} -> {}", distro, updateHourCounters.get(distro));
+                      LOGGER.debug("Update hour counter for distro {} -> {}", distro.name(), updateHourCounters.get(distro));
                 updateHourCounters.computeIfPresent(distro, (k, v) -> v + 1);
             });
 
@@ -196,9 +192,9 @@ public enum CacheManager {
                   .forEach(distro -> {
                 if (updateHourCounters.get(distro) >= distro.getMinUpdateIntervalInHours()) {
                             callables.add(Helper.createTask(distro));
-                            LOGGER.debug("Adding package fetch task to callables for {}", distro.name()); 
+                          LOGGER.debug("Adding package fetch task to callables for {}", distro.name());
                             updateHourCounters.put(distro, 0);
-                    LOGGER.debug("Reset hour counter for distro {} -> {}", distro, updateHourCounters.get(distro));
+                          LOGGER.debug("Reset hour counter for distro {} -> {}", distro.name(), updateHourCounters.get(distro));
                 }
             });
 
@@ -589,11 +585,13 @@ public enum CacheManager {
 
     public void updateEphemeralIdCache() {
         LOGGER.debug("Updating EphemeralIdCache");
+        long startUpdating = System.currentTimeMillis();
         ephemeralIdCacheIsUpdating.set(true);
         ephemeralIdCache.clear();
         final long epoch = Instant.now().getEpochSecond();
         pkgCache.getKeys().forEach(id -> ephemeralIdCache.add(Helper.createEphemeralId(epoch, id), id));
         ephemeralIdCacheIsUpdating.set(false);
+        LOGGER.debug("Finished updating EphemeralIDCache in {}ms", (System.currentTimeMillis() - startUpdating));
 
         // Update all available major versions
         updateMajorVersions();
@@ -604,15 +602,7 @@ public enum CacheManager {
 
     public void updateMajorVersions() {
         LOGGER.debug("Updating major versions");
-        // Update all available major versions (exclude GraalVM because it has different version numbers)
-        while(CacheManager.INSTANCE.pkgCacheIsUpdating.get()) {
-            try {
-                TimeUnit.SECONDS.sleep(1);
-                LOGGER.debug("Waiting for updating package cache");
-            } catch(InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
+        // Update all available major versions (exclude GraalVM based pkgs because they have different version numbers)
         majorVersions.clear(); 
         majorVersions.addAll(pkgCache.getPkgs()
                                      .stream()
@@ -625,6 +615,7 @@ public enum CacheManager {
                                                             .map(majorVersion -> new MajorVersion(majorVersion))
                                                             .sorted(Comparator.comparing(MajorVersion::getVersionNumber).reversed())
                                                             .collect(Collectors.toList()));
+        LOGGER.debug("Successfully updated major versions");
     }
 
     public void updateMaintainedMajorVersions() {
