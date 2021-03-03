@@ -65,6 +65,7 @@ public enum MongoDbManager {
 
     private static final String        FIELD_PACKAGE_ID = "id";
     private static final String        FIELD_DOWNLOADS  = "downloads";
+    private static final String        FIELD_TIMESTAMP  = "timestamp";
 
     private              MongoClient   mongoClient;
     private              boolean       connected;
@@ -263,6 +264,34 @@ public enum MongoDbManager {
     }
 
     /**
+     * Removes all documents from the packages collection.
+     * This method can be called from Updater.runOnceAtStartup() to wipe all documents
+     * in case a new cache warmup file is provided that contains additional information
+     * @return true when all documents have been removed successfully
+     */
+    public boolean removeAllPkgs() {
+        if (!connected) { init(); }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Packages have not been removed because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return false;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.PACKAGES_COLLECTION) {
+            LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
+            return false;
+        };
+
+        MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
+        collection.deleteMany(new Document());
+
+        LOGGER.debug("Successfully deleted all packages from mongodb.");
+        return true;
+    }
+
+    /**
      * Returns a map with the packageId as key and the number of downloads as value.
      * With this one can determine which are most loaded packages.
      * @return a map with the packageId as key and the number of downloads as value
@@ -325,7 +354,7 @@ public enum MongoDbManager {
      * @param pkgId
      * @param ipAddress
      */
-    public void addDownloadForIp(final String pkgId, final String ipAddress) {
+    public void addDownloadForIp(final String pkgId, final String ipAddress, final String token) {
         if (!connected) { init(); }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
             LOGGER.debug("Download not added because FOOJAY_MONGODB_DATABASE environment variable was not set.");
@@ -345,6 +374,7 @@ public enum MongoDbManager {
 
         Document document = new Document();
         document.put(DownloadInfo.FIELD_PACKAGE_ID, pkgId);
+        document.put(DownloadInfo.FIELD_TOKEN, null == token ? "" : token);
         document.put(DownloadInfo.FIELD_TIMESTAMP, Instant.now().toEpochMilli());
         document.put(DownloadInfo.FIELD_DISTRIBUTION, pkg.getDistribution().getDistro().getApiString());
         document.put(DownloadInfo.FIELD_PACKAGE_TYPE, pkg.getPackageType().getApiString());
