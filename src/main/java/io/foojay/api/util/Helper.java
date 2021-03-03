@@ -544,7 +544,7 @@ public class Helper {
         switch (hashAlgorithm) {
             case MD5     : return getMD5(text);
             case SHA1    : return getSHA1(text);
-            case SHA2_256: return getSHA2_256(text);
+            case SHA256  : return getSHA256(text);
             case SHA3_256: return getSHA3_256(text);
             default      : return "";
         }
@@ -582,11 +582,11 @@ public class Helper {
         return result;
     }
 
-    public static String getSHA2_256(final String text) { return bytesToHex(getSHA2_256Bytes(text.getBytes(UTF_8))); }
-    public static String getSHA2_256(final byte[] bytes) {
-        return bytesToHex(getSHA2_256Bytes(bytes));
+    public static String getSHA256(final String text) { return bytesToHex(getSHA256Bytes(text.getBytes(UTF_8))); }
+    public static String getSHA256(final byte[] bytes) {
+        return bytesToHex(getSHA256Bytes(bytes));
     }
-    public static byte[] getSHA2_256Bytes(final byte[] bytes) {
+    public static byte[] getSHA256Bytes(final byte[] bytes) {
         final MessageDigest md;
         try {
             md = MessageDigest.getInstance("SHA-256");

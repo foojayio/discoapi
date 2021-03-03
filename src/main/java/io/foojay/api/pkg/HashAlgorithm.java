@@ -21,8 +21,8 @@ package io.foojay.api.pkg;
 
 public enum HashAlgorithm implements ApiFeature {
     MD5("MSD5", "md5", 128),
-    SHA1("SHA-1", "sha1", 160),
-    SHA2_256("SHA-2 256", "sha2_256", 256),
+    SHA1("SHA1", "sha1", 160),
+    SHA256("SHA256", "sha256", 256),
     SHA3_256("SHA-3 256", "sha3_256", 256),
     NONE("-", "", 0),
     NOT_FOUND("", "", 0);
@@ -68,13 +68,13 @@ public enum HashAlgorithm implements ApiFeature {
             case "sha_1":
             case "SHA_1":
                 return SHA1;
-            case "sha2_256":
-            case "SHA2_256":
-            case "sha-2-256":
-            case "SHA-2-256":
-            case "sha_2_256":
-            case "SHA_2_256":
-                return SHA2_256;
+            case "sha256":
+            case "SHA256":
+            case "sha-256":
+            case "SHA-256":
+            case "sha_256":
+            case "SHA_256":
+                return SHA256;
             case "sha3_256":
             case "SHA3_256":
             case "sha-3-256":
