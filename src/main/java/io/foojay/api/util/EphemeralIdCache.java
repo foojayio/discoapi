@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -69,6 +70,8 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
         Optional<Entry<T, U>> optionalEntry = ephemeralIdCache.entrySet().stream().filter(entry -> entry.getValue().equals(pkgId)).findFirst();
         return optionalEntry.isPresent() ? optionalEntry.get().getKey() : null;
     }
+
+    public Set<Entry<T,U>> getEntrySet() { return ephemeralIdCache.entrySet(); }
 
     public Collection<T> getEphemeralIds() { return ephemeralIdCache.keySet(); }
 

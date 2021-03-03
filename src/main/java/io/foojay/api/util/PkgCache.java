@@ -24,6 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -63,6 +65,8 @@ public class PkgCache<T extends String, U extends Pkg> implements Cache<T, U> {
     @Override public boolean isEmpty() { return cache.isEmpty(); }
 
     public boolean containsKey(final T key) { return cache.containsKey(key); }
+
+    public Set<Entry<T,U>> getEntrySet() { return cache.entrySet(); }
 
     public Collection<T> getKeys() { return cache.keySet(); }
 
