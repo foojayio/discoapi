@@ -25,6 +25,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.LibCType;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
@@ -223,6 +224,10 @@ public class LibericaNative implements Distribution {
                     pkg.setLibCType(LibCType.GLIBC);
                 }
             }
+
+            // Set hash
+            pkg.setHash("");
+            pkg.setHashAlgorithm(HashAlgorithm.NONE);
 
             pkgs.add(pkg);
         }

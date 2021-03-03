@@ -27,6 +27,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.LibCType;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.OperatingSystem;
@@ -91,15 +92,22 @@ public class OracleOpenJDK implements Distribution {
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP      = Map.of(EA, "early_access", GA, "GA");
 
     private static final String                       OPEN_JDK_ARCHIVE_URL    = "https://jdk.java.net/archive/";
-    public  static final String                       OPEN_JDK_PROPERTIES     = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk.properties";
-    private        final Properties                   properties              = new Properties();
+    public  static final String                       OPEN_JDK_PKGS_PROPERTIES   = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk.properties";
+    public  static final String                       OPEN_JDK_HASHES_PROPERTIES = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk-hashes.properties";
+    private        final Properties                   propertiesPkgs             = new Properties();
+    private        final Properties                   propertiesHashes           = new Properties();
 
 
     public OracleOpenJDK() {
         try {
-            this.properties.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PROPERTIES)));
+            this.propertiesPkgs.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PKGS_PROPERTIES)));
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("Error reading OpenJDK properties file from github. {}", e.getMessage());
+        }
+        try {
+            this.propertiesHashes.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_HASHES_PROPERTIES)));
+        } catch (Exception e) {
+            LOGGER.error("Error reading OpenJDK hashes properties file from github. {}", e.getMessage());
         }
     }
 
@@ -486,12 +494,18 @@ public class OracleOpenJDK implements Distribution {
 
         // Reload openjdk properties
         try {
-            properties.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PROPERTIES)));
+            propertiesPkgs.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PKGS_PROPERTIES)));
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("Error reading OpenJDK properties file from github. {}", e.getMessage());
         }
 
-        properties.forEach((key, value) -> {
+        try {
+            propertiesHashes.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_HASHES_PROPERTIES)));
+        } catch (Exception e) {
+            LOGGER.error("Error reading OpenJDK hashes properties file from github. {}", e.getMessage());
+        }
+
+        propertiesPkgs.forEach((key, value) -> {
             String downloadLink = value.toString();
             String fileName     = Helper.getFileNameFromText(downloadLink);
             boolean isMusl      = false;
@@ -565,6 +579,18 @@ public class OracleOpenJDK implements Distribution {
                     pkg.setReleaseStatus(EA);
                 }
 
+                // Set hash
+                if (propertiesHashes.containsKey(key)) {
+                    String hash = propertiesHashes.getProperty(key.toString(), "");
+                    if (null == hash || hash.isEmpty()) {
+                        pkg.setHash("");
+                        pkg.setHashAlgorithm(HashAlgorithm.NONE);
+                    } else {
+                        pkg.setHash(hash);
+                        pkg.setHashAlgorithm(HashAlgorithm.SHA256);
+                    }
+                }
+
                 pkgs.add(pkg);
             }
         });
@@ -579,7 +605,7 @@ public class OracleOpenJDK implements Distribution {
                                                       .append(ARCHITECTURE_MAP.get(architecture));
         if (LINUX_MUSL == operatingSystem) { keyBuilder.append("-musl"); }
 
-        String downloadLink = properties.getProperty(keyBuilder.toString());
+        String downloadLink = propertiesPkgs.getProperty(keyBuilder.toString());
 
         if (null == downloadLink && MajorVersion.getLatest(false).getAsInt() < versionNumber.getMajorVersion().getAsInt()) {
             // Might be Release Candidate
@@ -589,7 +615,7 @@ public class OracleOpenJDK implements Distribution {
                                             .append(OPERATING_SYSTEM_MAP.get(operatingSystem)).append("-")
                                             .append(ARCHITECTURE_MAP.get(architecture));
             if (LINUX_MUSL == operatingSystem) { keyBuilder.append("-musl"); }
-            downloadLink = properties.getProperty(keyBuilder.toString());
+            downloadLink = propertiesPkgs.getProperty(keyBuilder.toString());
         }
 
         String fileName     = Helper.getFileNameFromText(downloadLink);
@@ -640,6 +666,19 @@ public class OracleOpenJDK implements Distribution {
 
         pkg.setReleaseStatus(rs);
         pkg.setOperatingSystem(operatingSystem);
+
+        // Set hash
+        String key = keyBuilder.toString();
+        if (propertiesHashes.containsKey(key)) {
+            String hash = propertiesHashes.getProperty(key, "");
+            if (null == hash || hash.isEmpty()) {
+                pkg.setHash("");
+                pkg.setHashAlgorithm(HashAlgorithm.NONE);
+            } else {
+                pkg.setHash(hash);
+                pkg.setHashAlgorithm(HashAlgorithm.SHA256);
+            }
+        }
 
         return pkg;
     }

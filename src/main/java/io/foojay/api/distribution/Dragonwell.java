@@ -27,6 +27,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
@@ -36,13 +37,17 @@ import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
+import io.foojay.api.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -221,6 +226,28 @@ public class Dragonwell implements Distribution {
             pkg.setOperatingSystem(os);
 
             pkgs.add(pkg);
+        }
+
+        // Set hash
+        String bodyText = jsonObj.get("body").getAsString();
+        if (vNumber.getFeature().isPresent()) {
+            final int feature = vNumber.getFeature().getAsInt();
+            Set<Pair<String,String>> pairsFound;
+            if (feature == 8) {
+                pairsFound = Helper.getDragonwell8FileNameAndSha256FromString(bodyText);
+            } else if (feature == 11) {
+                pairsFound = Helper.getDragonwell11FileNameAndSha256FromString(bodyText);
+            } else {
+                pairsFound = new HashSet<>();
+            }
+            for (Pair<String,String> pair : pairsFound) {
+                String        filename    = Helper.getFileNameFromText(pair.getKey());
+                Optional<Pkg> pkgOptional = pkgs.stream().filter(pkg -> pkg.getFileName().equals(filename)).findFirst();
+                if (pkgOptional.isPresent()) {
+                    pkgOptional.get().setHash(pair.getValue());
+                    pkgOptional.get().setHashAlgorithm(HashAlgorithm.SHA256);
+                }
+            }
         }
 
         return pkgs;

@@ -27,6 +27,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
@@ -106,6 +107,7 @@ public class AOJ implements Distribution {
     private static final String                       FIELD_ARCHITECTURE     = "architecture";
     private static final String                       FIELD_JVM_IMPL         = "jvm_impl";
     private static final String                       FIELD_OS               = "os";
+    private static final String                       FIELD_CHECKSUM         = "checksum";
 
 
     @Override public Distro getDistro() { return Distro.AOJ; }
@@ -163,12 +165,19 @@ public class AOJ implements Distribution {
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
         queryBuilder.append("heap_size=").append("normal");
 
+        /*
         if (packageType == PackageType.NONE) {
             queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
             queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(JDK));
             queryBuilder.append("&");
             queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(JRE));
         } else {
+            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+            queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(packageType));
+        }
+        */
+
+        if (packageType != PackageType.NONE) {
             queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
             queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(packageType));
         }
@@ -181,11 +190,11 @@ public class AOJ implements Distribution {
             queryBuilder.append(OPERATING_SYSTEM_PARAM).append("=").append(OPERATING_SYSTEM_MAP.get(operatingSystem));
         }
 
-        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-        queryBuilder.append("page=").append("0");
+        //queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+        //queryBuilder.append("page=").append("0");
 
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-        queryBuilder.append("page_size=").append("10");
+        queryBuilder.append("page_size=").append("100");
 
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
         queryBuilder.append("project=").append("jdk");
@@ -249,6 +258,7 @@ public class AOJ implements Distribution {
                 JsonObject installerObj      = installerElement.getAsJsonObject();
                 String installerName         = installerObj.get(FIELD_NAME).getAsString();
                 String installerDownloadLink = installerObj.get(FIELD_LINK).getAsString();
+                String installerChecksum     = installerObj.has(FIELD_CHECKSUM) ? installerObj.get(FIELD_CHECKSUM).getAsString() : "";
 
                 if (Architecture.NONE == arc) {
                     arc = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
@@ -302,6 +312,8 @@ public class AOJ implements Distribution {
                     installerPkg.setArchiveType(ext);
                     installerPkg.setFileName(installerName);
                     installerPkg.setDirectDownloadUri(installerDownloadLink);
+                    installerPkg.setHash(installerChecksum);
+                    installerPkg.setHashAlgorithm(installerChecksum.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
 
                     pkgs.add(installerPkg);
                 }
@@ -312,6 +324,7 @@ public class AOJ implements Distribution {
                 JsonObject packageObj      = packageElement.getAsJsonObject();
                 String packageName         = packageObj.get(FIELD_NAME).getAsString();
                 String packageDownloadLink = packageObj.get(FIELD_LINK).getAsString();
+                String packageChecksum     = packageObj.has(FIELD_CHECKSUM) ? packageObj.get(FIELD_CHECKSUM).getAsString() : "";
 
                 if (Architecture.NONE == arc) {
                     arc = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
@@ -362,6 +375,8 @@ public class AOJ implements Distribution {
                     packagePkg.setArchiveType(ext);
                     packagePkg.setFileName(packageName);
                     packagePkg.setDirectDownloadUri(packageDownloadLink);
+                    packagePkg.setHash(packageChecksum);
+                    packagePkg.setHashAlgorithm(packageChecksum.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
 
                     pkgs.add(packagePkg);
                 }

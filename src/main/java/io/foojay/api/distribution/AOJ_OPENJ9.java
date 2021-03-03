@@ -27,6 +27,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
@@ -55,13 +56,7 @@ import static io.foojay.api.pkg.Architecture.PPC64LE;
 import static io.foojay.api.pkg.Architecture.SPARCV9;
 import static io.foojay.api.pkg.Architecture.X64;
 import static io.foojay.api.pkg.Architecture.X86;
-import static io.foojay.api.pkg.ArchiveType.MSI;
-import static io.foojay.api.pkg.ArchiveType.PKG;
-import static io.foojay.api.pkg.ArchiveType.TAR_GZ;
-import static io.foojay.api.pkg.ArchiveType.ZIP;
 import static io.foojay.api.pkg.ArchiveType.getFromFileName;
-import static io.foojay.api.pkg.Bitness.BIT_32;
-import static io.foojay.api.pkg.Bitness.BIT_64;
 import static io.foojay.api.pkg.OperatingSystem.AIX;
 import static io.foojay.api.pkg.OperatingSystem.LINUX;
 import static io.foojay.api.pkg.OperatingSystem.MACOS;
@@ -71,7 +66,6 @@ import static io.foojay.api.pkg.PackageType.JDK;
 import static io.foojay.api.pkg.PackageType.JRE;
 import static io.foojay.api.pkg.ReleaseStatus.EA;
 import static io.foojay.api.pkg.ReleaseStatus.GA;
-import static io.foojay.api.pkg.TermOfSupport.LTS;
 import static io.foojay.api.pkg.TermOfSupport.MTS;
 import static io.foojay.api.pkg.TermOfSupport.STS;
 
@@ -80,14 +74,6 @@ public class AOJ_OPENJ9 implements Distribution {
     private static final Logger LOGGER = LoggerFactory.getLogger(AOJ_OPENJ9.class);
 
     private static final String                PACKAGE_URL          = "https://api.adoptopenjdk.net/v3/assets/feature_releases/";
-    private static final List<Architecture>    ARCHITECTURES        = List.of(AARCH64, ARM, MIPS, PPC64, PPC64LE, SPARCV9, X86, X64);
-    private static final List<OperatingSystem> OPERATING_SYSTEMS    = List.of(AIX, LINUX, MACOS, SOLARIS, WINDOWS);
-    private static final List<ArchiveType>     ARCHIVE_TYPES        = List.of(PKG, MSI, TAR_GZ, ZIP);
-    private static final List<PackageType>     PACKAGE_TYPES        = List.of(JDK, JRE);
-    private static final List<ReleaseStatus>   RELEASE_STATUSES     = List.of(EA, GA);
-    private static final List<TermOfSupport>   TERMS_OF_SUPPORT     = List.of(STS, LTS);
-    private static final List<Bitness>         BITNESSES            = List.of(BIT_32, BIT_64);
-    private static final Boolean               BUNDLED_WITH_JAVA_FX = false;
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM     = "architecture";
@@ -121,6 +107,7 @@ public class AOJ_OPENJ9 implements Distribution {
     private static final String                       FIELD_ARCHITECTURE     = "architecture";
     private static final String                       FIELD_JVM_IMPL         = "jvm_impl";
     private static final String                       FIELD_OS               = "os";
+    private static final String                       FIELD_CHECKSUM         = "checksum";
 
 
     @Override public Distro getDistro() { return Distro.AOJ_OPENJ9; }
@@ -178,12 +165,19 @@ public class AOJ_OPENJ9 implements Distribution {
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
         queryBuilder.append("heap_size=").append("normal");
 
+        /*
         if (packageType == PackageType.NONE) {
             queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
             queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(JDK));
             queryBuilder.append("&");
             queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(JRE));
         } else {
+            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+            queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(packageType));
+        }
+        */
+
+        if (packageType != PackageType.NONE) {
             queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
             queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(packageType));
         }
@@ -196,11 +190,11 @@ public class AOJ_OPENJ9 implements Distribution {
             queryBuilder.append(OPERATING_SYSTEM_PARAM).append("=").append(OPERATING_SYSTEM_MAP.get(operatingSystem));
         }
 
-        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-        queryBuilder.append("page=").append("0");
+        //queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+        //queryBuilder.append("page=").append("0");
 
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-        queryBuilder.append("page_size=").append("10");
+        queryBuilder.append("page_size=").append("100");
 
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
         queryBuilder.append("project=").append("jdk");
@@ -224,8 +218,6 @@ public class AOJ_OPENJ9 implements Distribution {
                                               final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         List<Pkg> pkgs = new ArrayList<>();
 
-        if (null != javafxBundled && javafxBundled) { return pkgs; }
-
         TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
         supTerm = MTS == supTerm ? STS : supTerm;
 
@@ -248,10 +240,6 @@ public class AOJ_OPENJ9 implements Distribution {
                                                             .findFirst()
                                                             .map(Entry::getValue)
                                                             .orElse(Architecture.NONE);
-            if (Architecture.NONE == arc) {
-                LOGGER.debug("Architecture not found in AOJ for field value: {}", binariesObj.get(FIELD_ARCHITECTURE).getAsString());
-                continue;
-            }
 
             OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
                                                                   .stream()
@@ -270,6 +258,20 @@ public class AOJ_OPENJ9 implements Distribution {
                 JsonObject installerObj      = installerElement.getAsJsonObject();
                 String installerName         = installerObj.get(FIELD_NAME).getAsString();
                 String installerDownloadLink = installerObj.get(FIELD_LINK).getAsString();
+                String installerChecksum     = installerObj.has(FIELD_CHECKSUM) ? installerObj.get(FIELD_CHECKSUM).getAsString() : "";
+
+                if (Architecture.NONE == arc) {
+                    arc = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                                                       .filter(entry -> installerName.contains(entry.getKey()))
+                                                       .findFirst()
+                                                       .map(Entry::getValue)
+                                                       .orElse(Architecture.NONE);
+                }
+
+                if (Architecture.NONE == arc) {
+                    LOGGER.debug("Architecture not found in AOJ_OPENJ9 for filename: {}", installerName);
+                    continue;
+                }
 
                 String withoutPrefix = installerName.replace("OpenJDK" + vNumber.getFeature().getAsInt() + "U", "");
 
@@ -310,6 +312,8 @@ public class AOJ_OPENJ9 implements Distribution {
                     installerPkg.setArchiveType(ext);
                     installerPkg.setFileName(installerName);
                     installerPkg.setDirectDownloadUri(installerDownloadLink);
+                    installerPkg.setHash(installerChecksum);
+                    installerPkg.setHashAlgorithm(installerChecksum.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
 
                     pkgs.add(installerPkg);
                 }
@@ -320,6 +324,20 @@ public class AOJ_OPENJ9 implements Distribution {
                 JsonObject packageObj      = packageElement.getAsJsonObject();
                 String packageName         = packageObj.get(FIELD_NAME).getAsString();
                 String packageDownloadLink = packageObj.get(FIELD_LINK).getAsString();
+                String packageChecksum     = packageObj.has(FIELD_CHECKSUM) ? packageObj.get(FIELD_CHECKSUM).getAsString() : "";
+
+                if (Architecture.NONE == arc) {
+                    arc = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                                                       .filter(entry -> packageName.contains(entry.getKey()))
+                                                       .findFirst()
+                                                       .map(Entry::getValue)
+                                                       .orElse(Architecture.NONE);
+                }
+
+                if (Architecture.NONE == arc) {
+                    LOGGER.debug("Architecture not found in AOJ OpenJ9 for filename: {}", packageName);
+                    continue;
+                }
 
                 String withoutPrefix = packageName.replace("OpenJDK" + vNumber.getFeature().getAsInt() + "U", "");
 
@@ -344,6 +362,7 @@ public class AOJ_OPENJ9 implements Distribution {
                         break;
                 }
 
+
                 packagePkg.setArchitecture(arc);
                 packagePkg.setBitness(arc.getBitness());
 
@@ -356,6 +375,8 @@ public class AOJ_OPENJ9 implements Distribution {
                     packagePkg.setArchiveType(ext);
                     packagePkg.setFileName(packageName);
                     packagePkg.setDirectDownloadUri(packageDownloadLink);
+                    packagePkg.setHash(packageChecksum);
+                    packagePkg.setHashAlgorithm(packageChecksum.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
 
                     pkgs.add(packagePkg);
                 }

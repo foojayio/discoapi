@@ -20,13 +20,16 @@
 package io.foojay.api.distribution;
 
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
@@ -89,14 +92,6 @@ public class Zulu implements Distribution {
     private static final Pattern                      FEATURE_PREFIX_PATTERN     = Pattern.compile("^((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?");
     private static final Matcher                      FEATURE_PREFIX_MATCHER     = FEATURE_PREFIX_PATTERN.matcher("");
     private static final String                       PACKAGE_URL                = "https://api.azul.com/zulu/download/community/v1.0/bundles/";
-    private static final List<Architecture>           ARCHITECTURES              = List.of(ARM, MIPS, PPC, SPARCV9, X86);
-    private static final List<OperatingSystem>        OPERATING_SYSTEMS          = List.of(LINUX, LINUX_MUSL, ALPINE_LINUX, MACOS, QNX, SOLARIS, WINDOWS);
-    private static final List<ArchiveType>            ARCHIVE_TYPES              = List.of(CAB, DEB, DMG, MSI, RPM, TAR_GZ, ZIP);
-    private static final List<PackageType>            PACKAGE_TYPES              = List.of(JDK, JRE);
-    private static final List<ReleaseStatus>          RELEASE_STATUSES           = List.of(EA, GA);
-    private static final List<TermOfSupport>          TERMS_OF_SUPPORT           = List.of(STS, MTS, LTS);
-    private static final List<Bitness>                BITNESSES                  = List.of(BIT_32, BIT_64);
-    private static final Boolean                      BUNDLED_WITH_JAVA_FX       = true;
 
     // URL parameters
     private static final String                       JDK_VERSION_PARAM          = "jdk_version";
@@ -119,10 +114,12 @@ public class Zulu implements Distribution {
     private static final Map<Bitness, String>         BITNESS_MAP                = Map.of(BIT_32, "32", BIT_64, "64");
 
     // JSON fields
+    private static final String                       FIELD_ID                   = "id";
     private static final String                       FIELD_NAME                 = "name";
     private static final String                       FIELD_URL                  = "url";
     private static final String                       FIELD_JDK_VERSION          = "jdk_version";
     private static final String                       FIELD_ZULU_VERSION         = "zulu_version";
+    private static final String                       FIELD_SHA_256_HASH         = "sha256_hash";
 
 
     @Override public Distro getDistro() { return Distro.ZULU; }
@@ -349,6 +346,21 @@ public class Zulu implements Distribution {
         pkg.setOperatingSystem(os);
 
         pkg.setTermOfSupport(supTerm);
+
+        // Set hash
+        String      bundleId = jsonObj.get(FIELD_ID).getAsString();
+        String      url      = PACKAGE_URL + bundleId;
+        String      response = Helper.get(url);
+        Gson        gson     = new Gson();
+        JsonElement element  = gson.fromJson(response, JsonElement.class);
+        if (element instanceof JsonObject) {
+            JsonObject jsonObject = element.getAsJsonObject();
+            pkg.setHash(jsonObject.get(FIELD_SHA_256_HASH).getAsString());
+            pkg.setHashAlgorithm(HashAlgorithm.SHA256);
+        } else {
+            pkg.setHash("");
+            pkg.setHashAlgorithm(HashAlgorithm.NONE);
+        }
 
         pkgs.add(pkg);
 

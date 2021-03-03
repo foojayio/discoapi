@@ -25,6 +25,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
@@ -116,6 +117,7 @@ public class Liberica implements Distribution {
     private static final String                       FIELD_BITNESS                   = "bitness";
     private static final String                       FIELD_OS                        = "os";
     private static final String                       FIELD_ARCHITECTURE              = "architecture";
+    private static final String                       FIELD_SHA1                      = "sha1";
 
 
     @Override public Distro getDistro() { return Distro.LIBERICA; }
@@ -249,6 +251,7 @@ public class Liberica implements Distribution {
         Integer       bits          = jsonObj.get(FIELD_BITNESS).getAsInt();
         String        os            = jsonObj.get(FIELD_OS).getAsString();
         String        arc           = jsonObj.get(FIELD_ARCHITECTURE).getAsString();
+        String        sha1          = jsonObj.get(FIELD_SHA1).getAsString();
 
         if (latest) {
             if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }
@@ -328,6 +331,10 @@ public class Liberica implements Distribution {
 
         pkg.setFileName(fileName);
         pkg.setDirectDownloadUri(downloadLink);
+
+        // Set hash
+        pkg.setHash(sha1);
+        pkg.setHashAlgorithm(HashAlgorithm.SHA1);
 
         pkgs.add(pkg);
         return pkgs;

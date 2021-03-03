@@ -28,6 +28,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
@@ -384,6 +385,31 @@ public class OJDKBuild implements Distribution {
                 pkgs.add(pkg);
             }
         }
+
+        // Set hashes
+        pkgs.forEach(pkg -> {
+            String sha256Filename = pkg.getFileName() + ".sha256";
+            for (int i = 0; i < jsonArray.size(); i++) {
+                JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
+                JsonArray  assets  = jsonObj.getAsJsonArray("assets");
+                for (JsonElement element : assets) {
+                    JsonObject assetJsonObj = element.getAsJsonObject();
+                    String     filename     = assetJsonObj.get("name").getAsString();
+                    if (filename.equals(sha256Filename)) {
+                        try {
+                            String sha256Url = assetJsonObj.get("browser_download_url").getAsString();
+                            String hash      = Helper.getTextFromUrl(sha256Url).trim();
+                            hash = hash.substring(0, hash.indexOf(" ")).trim();
+                            pkg.setHash(hash);
+                            pkg.setHashAlgorithm(HashAlgorithm.SHA256);
+                        } catch (Exception e) {
+                            LOGGER.debug("Not able to read sha256 hash for file {}", sha256Filename);
+                        }
+                    }
+                }
+            }
+        });
+
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
     }

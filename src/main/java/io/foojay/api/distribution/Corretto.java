@@ -25,6 +25,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
@@ -34,6 +35,7 @@ import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
+import io.foojay.api.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,19 +132,21 @@ public class Corretto implements Distribution {
         supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
 
         String       bodyText      = jsonObj.get("body").getAsString();
-        Set<String>  fileUrlsFound = Helper.getFileUrlsFromString(bodyText);
-        for (String url : fileUrlsFound) {
+        Set<Pair<String,String>> pairsFound = Helper.getFileUrlsAndMd5sFromString(bodyText);
+        for (Pair<String,String> pair : pairsFound) {
             Pkg pkg = new Pkg();
 
-            String fileName = Helper.getFileNameFromText(url);
+            String filename = Helper.getFileNameFromText(pair.getKey());
 
-            String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
+            String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
 
             pkg.setDistribution(Distro.CORRETTO.get());
-            pkg.setFileName(fileName);
-            pkg.setDirectDownloadUri(url);
+            pkg.setFileName(filename);
+            pkg.setDirectDownloadUri(pair.getKey());
+            pkg.setHash(pair.getValue());
+            pkg.setHashAlgorithm(pair.getValue().isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.MD5);
 
-            ArchiveType ext = ArchiveType.getFromFileName(fileName);
+            ArchiveType ext = ArchiveType.getFromFileName(filename);
             if (ArchiveType.NONE != archiveType && ext != archiveType) { continue; }
             pkg.setArchiveType(ext);
 
@@ -207,7 +211,7 @@ public class Corretto implements Distribution {
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
             if (Architecture.NONE == arch) {
-                LOGGER.debug("Architecture not found in Corretto for filename: {}", fileName);
+                LOGGER.debug("Architecture not found in Corretto for filename: {}", filename);
                 continue;
             }
 
@@ -238,7 +242,7 @@ public class Corretto implements Distribution {
                 }
             }
             if (OperatingSystem.NONE == os) {
-                LOGGER.debug("Operating System not found in Corretto for filename: {}", fileName);
+                LOGGER.debug("Operating System not found in Corretto for filename: {}", filename);
                 continue;
             }
             pkg.setOperatingSystem(os);

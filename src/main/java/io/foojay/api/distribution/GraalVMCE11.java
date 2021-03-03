@@ -27,6 +27,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
@@ -222,6 +223,25 @@ public class GraalVMCE11 implements Distribution {
 
             pkgs.add(pkg);
         }
+
+        // Set hashes
+        pkgs.forEach(pkg -> {
+            String sha256Filename = pkg.getFileName() + ".sha256";
+            for (JsonElement element : assets) {
+                JsonObject assetJsonObj = element.getAsJsonObject();
+                String     filename     = assetJsonObj.get("name").getAsString();
+                if (filename.equals(sha256Filename)) {
+                    try {
+                        String sha256Url = assetJsonObj.get("browser_download_url").getAsString();
+                        String hash = Helper.getTextFromUrl(sha256Url).trim();
+                        pkg.setHash(hash);
+                        pkg.setHashAlgorithm(HashAlgorithm.SHA256);
+                    } catch (Exception e) {
+                        LOGGER.debug("Not able to read sha256 hash for file {}", sha256Filename);
+                    }
+                }
+            }
+        });
 
         return pkgs;
     }
