@@ -67,10 +67,6 @@ public class Pkg {
     public  static final String            FIELD_DIRECT_DOWNLOAD_URI    = "direct_download_uri";
     public  static final String            FIELD_DOWNLOAD_SITE_URI      = "download_site_uri";
     public  static final String            FIELD_EPHEMERAL_ID           = "ephemeral_id";
-    public  static final String            FIELD_HASH                   = "hash";
-    public  static final String            FIELD_HASH_ALGORITHM         = "hash_algorithm";
-    public  static final String            FIELD_HASH_URI               = "hash_uri";
-    public  static final String            FIELD_SIGNATURE_URI          = "signature_uri";
     public  static final String            FIELD_LINKS                  = "links";
     public  static final String            FIELD_DOWNLOAD               = "pkg_info_uri";
     private              Distribution      distribution;
@@ -93,18 +89,14 @@ public class Pkg {
     private              String            filename;
     private              String            directDownloadUri;
     private              String            downloadSiteUri;
-    private              String            hash;
-    private              HashAlgorithm     hashAlgorithm;
-    private              String            hashUri;
-    private              String            signatureUri;
 
 
     public Pkg() {
-        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, false, true, "", "", "", "", HashAlgorithm.NONE, "", "");
+        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, false, true, "", "", "");
     }
     public Pkg(final Distribution distribution, final VersionNumber versionNumber, final Architecture architecture, final Bitness bitness, final OperatingSystem operatingSystem, final PackageType packageType,
                final ReleaseStatus releaseStatus, final ArchiveType archiveType, final TermOfSupport termOfSupport, final boolean javafxBundled, final boolean directlyDownloadable, final String filename,
-               final String directDownloadUri, final String downloadSiteUri, final String hash, final HashAlgorithm hashAlgorithm, final String hashUri, final String signatureUri) {
+               final String directDownloadUri, final String downloadSiteUri) {
         this.distribution         = distribution;
         this.versionNumber        = versionNumber;
         this.javaVersion          = new VersionNumber();
@@ -125,10 +117,6 @@ public class Pkg {
         this.directDownloadUri    = directDownloadUri;
         this.downloadSiteUri      = downloadSiteUri;
         this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
-        this.hash                 = null == hash          ? ""                 : hash;
-        this.hashAlgorithm        = null == hashAlgorithm ? HashAlgorithm.NONE : hashAlgorithm;
-        this.hashUri              = null == hashUri       ? ""                 : hashUri;
-        this.signatureUri         = null == signatureUri  ? ""                 : signatureUri;
     }
     public Pkg(final String jsonText) {
         if (null == jsonText || jsonText.isEmpty()) { throw new IllegalArgumentException("Json text cannot be null or empty"); }
@@ -156,10 +144,6 @@ public class Pkg {
         this.directDownloadUri    = json.get(FIELD_DIRECT_DOWNLOAD_URI).getAsString();
         this.downloadSiteUri      = json.get(FIELD_DOWNLOAD_SITE_URI).getAsString();
         this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
-        this.hash                 = json.has(FIELD_HASH)           ? json.get(FIELD_HASH).getAsString()                                   : "";
-        this.hashAlgorithm        = json.has(FIELD_HASH_ALGORITHM) ? HashAlgorithm.fromText(json.get(FIELD_HASH_ALGORITHM).getAsString()) : HashAlgorithm.NONE;
-        this.hashUri              = json.has(FIELD_HASH_URI)       ? json.get(FIELD_HASH_URI).getAsString()                               : "";
-        this.signatureUri         = json.has(FIELD_SIGNATURE_URI)  ? json.get(FIELD_SIGNATURE_URI).getAsString()                          : "";
 
         if (ArchiveType.NOT_FOUND     == this.archiveType)     { this.archiveType     = ArchiveType.getFromFileName(this.filename); }
         if (TermOfSupport.NOT_FOUND   == this.termOfSupport)   { this.termOfSupport   = Helper.getTermOfSupport(this.versionNumber, distro); }
@@ -253,18 +237,6 @@ public class Pkg {
     public String getDownloadSiteUri() { return downloadSiteUri; }
     public void setDownloadSiteUri(final String downloadSiteUri) { this.downloadSiteUri = downloadSiteUri; }
 
-    public String getHash() { return hash; }
-    public void setHash(final String hash) { this.hash = null == hash ? "" : hash; }
-
-    public HashAlgorithm getHashAlgorithm() { return hashAlgorithm; }
-    public void setHashAlgorithm(final HashAlgorithm hashAlgorithm) { this.hashAlgorithm = hashAlgorithm; }
-
-    public String getHashUri() { return hashUri; }
-    public void setHashUri(final String hashUri) { this.hashUri = hashUri; }
-
-    public String getSignatureUri() { return signatureUri; }
-    public void setSignatureUri(final String signatureUri) { this.signatureUri = signatureUri; }
-
     public String getId() {
         return directlyDownloadable ? Helper.getMD5(directDownloadUri.getBytes(StandardCharsets.UTF_8)) : Helper.getMD5(String.join("", directDownloadUri, filename).getBytes(StandardCharsets.UTF_8));
     }
@@ -295,11 +267,7 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_HASH).append(QUOTES).append(COLON).append(QUOTES).append(hash).append(QUOTES).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(hashAlgorithm.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(hashUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(NEW_LINE)
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();
             case REDUCED:
@@ -321,10 +289,6 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_HASH).append(QUOTES).append(COLON).append(QUOTES).append(hash).append(QUOTES).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(hashAlgorithm.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(hashUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                                           .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES)
                                           .append(INDENT).append(CURLY_BRACKET_CLOSE)
@@ -349,11 +313,7 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
                                           .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA)
-                                          .append(QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA)
-                                          .append(QUOTES).append(FIELD_HASH).append(QUOTES).append(COLON).append(QUOTES).append(hash).append(QUOTES).append(COMMA)
-                                          .append(QUOTES).append(FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(hashAlgorithm.getApiString()).append(QUOTES).append(COMMA)
-                                          .append(QUOTES).append(FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(hashUri).append(QUOTES).append(COMMA)
-                                          .append(QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES)
+                                          .append(QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES)
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();
             case REDUCED_COMPRESSED:
@@ -376,10 +336,6 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
                                           .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA)
-                                          .append(QUOTES).append(FIELD_HASH).append(QUOTES).append(COLON).append(QUOTES).append(hash).append(QUOTES).append(COMMA)
-                                          .append(QUOTES).append(FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(hashAlgorithm.getApiString()).append(QUOTES).append(COMMA)
-                                          .append(QUOTES).append(FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(hashUri).append(QUOTES).append(COMMA)
-                                          .append(QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                                           .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES)
                                           .append(CURLY_BRACKET_CLOSE)
@@ -395,7 +351,7 @@ public class Pkg {
         return javafxBundled == pkg.javafxBundled && directlyDownloadable == pkg.directlyDownloadable && distribution.equals(pkg.distribution) && versionNumber.equals(pkg.versionNumber) &&
                architecture == pkg.architecture && bitness == pkg.bitness && operatingSystem == pkg.operatingSystem && packageType == pkg.packageType &&
                releaseStatus == pkg.releaseStatus && archiveType == pkg.archiveType && termOfSupport == pkg.termOfSupport && filename.equals(pkg.filename) &&
-               directDownloadUri.equals(pkg.directDownloadUri) && hash.equals(pkg.hash);
+               directDownloadUri.equals(pkg.directDownloadUri);
     }
 
     @Override public int hashCode() {

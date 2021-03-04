@@ -13,29 +13,30 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.pkg;
 
 public enum HashAlgorithm implements ApiFeature {
-    MD5("MSD5", "md5", 128),
-    SHA1("SHA1", "sha1", 160),
-    SHA256("SHA256", "sha256", 256),
-    SHA3_256("SHA-3 256", "sha3_256", 256),
-    NONE("-", "", 0),
-    NOT_FOUND("", "", 0);
+    MD5("MSD5", "md5"),
+    SHA1("SHA1", "sha1"),
+    SHA256("SHA256", "sha256"),
+    SHA224("SHA224", "sha224"),
+    SHA384("SHA384", "sha384"),
+    SHA512("SHA512", "sha512"),
+    SHA3_256("SHA-3 256", "sha3_256"),
+    NONE("-", ""),
+    NOT_FOUND("", "");
 
     private final String uiString;
     private final String apiString;
-    private final int    bit;
 
 
-    HashAlgorithm(final String uiString, final String apiString, final int bit) {
+    HashAlgorithm(final String uiString, final String apiString) {
         this.uiString  = uiString;
         this.apiString = apiString;
-        this.bit       = bit;
     }
 
 
@@ -48,8 +49,6 @@ public enum HashAlgorithm implements ApiFeature {
     @Override public ApiFeature getNotFound() { return HashAlgorithm.NOT_FOUND; }
 
     @Override public ApiFeature[] getAll() { return values(); }
-
-    public int getBit() { return bit; }
 
     public static HashAlgorithm fromText(final String text) {
         if (null == text) { return NOT_FOUND; }
@@ -75,6 +74,27 @@ public enum HashAlgorithm implements ApiFeature {
             case "sha-256":
             case "SHA-256":
                 return SHA256;
+            case "sha224":
+            case "SHA224":
+            case "sha_224":
+            case "SHA_224":
+            case "sha-224":
+            case "SHA-224":
+                return SHA224;
+            case "sha384":
+            case "SHA384":
+            case "sha_384":
+            case "SHA_384":
+            case "sha-384":
+            case "SHA-384":
+                return SHA384;
+            case "sha512":
+            case "SHA512":
+            case "sha_512":
+            case "SHA_512":
+            case "sha-512":
+            case "SHA-512":
+                return SHA512;
             case "sha3_256":
             case "SHA3_256":
             case "sha-3-256":

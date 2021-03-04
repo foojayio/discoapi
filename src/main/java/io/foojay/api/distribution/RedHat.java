@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.distribution;
@@ -25,11 +25,13 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -52,7 +54,7 @@ import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
 public class RedHat implements Distribution {
-    private static final Logger LOGGER = LoggerFactory.getLogger(RedHat.class);
+    private static final Logger                       LOGGER                 = LoggerFactory.getLogger(RedHat.class);
 
     public  static final String                       PACKAGE_ALL_URL        = "https://developers.redhat.com/products/openjdk/download";
     private static final String                       DOWNLOAD_PREFIX        = "https://developers.redhat.com/download-manager/file/";
@@ -69,6 +71,12 @@ public class RedHat implements Distribution {
 
     // Mappings for url parameters
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP     = Map.of(EA, "early_access", GA, "GA");
+
+    private static final HashAlgorithm                HASH_ALGORITHM         = HashAlgorithm.NONE;
+    private static final String                       HASH_URI               = "";
+    private static final SignatureType                SIGNATURE_TYPE         = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM    = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI          = "";
 
 
     public RedHat() {
@@ -94,6 +102,16 @@ public class RedHat implements Distribution {
     @Override public String getTermOfSupportParam() { return TERM_OF_SUPPORT_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
+
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
 
     @Override public List<SemVer> getVersions() {

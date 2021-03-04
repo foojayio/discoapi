@@ -35,10 +35,23 @@ import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.distribution.RedHat;
 import io.foojay.api.distribution.SAPMachine;
 import io.foojay.api.distribution.Zulu;
+import io.foojay.api.util.OutputFormat;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static io.foojay.api.util.Constants.COLON;
+import static io.foojay.api.util.Constants.COMMA;
+import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
+import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.CURLY_BRACKET_OPEN;
+import static io.foojay.api.util.Constants.INDENT;
+import static io.foojay.api.util.Constants.INDENTED_QUOTES;
+import static io.foojay.api.util.Constants.NEW_LINE;
+import static io.foojay.api.util.Constants.QUOTES;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 public enum Distro implements ApiFeature {
@@ -60,7 +73,14 @@ public enum Distro implements ApiFeature {
     NONE("-", "", null, 0),
     NOT_FOUND("", "", null, 0);
 
-    public  static final String       FIELD_VERSIONS = "versions";
+    public  static final String       FIELD_NAME                = "name";
+    public  static final String       FIELD_API_PARAMETER       = "api_parameter";
+    public  static final String       FIELD_HASH_ALGORITHM      = "hash_algorithm";
+    public  static final String       FIELD_HASH_URI            = "hash_uri";
+    public  static final String       FIELD_SIGNATURE_TYPE      = "signature_type";
+    public  static final String       FIELD_SIGNATURE_ALGORITHM = "signature_algorithm";
+    public  static final String       FIELD_SIGNATURE_URI       = "signature_uri";
+    public  static final String       FIELD_VERSIONS            = "versions";
     private        final String       uiString;
     private        final String       apiString;
     private        final Distribution distribution;
@@ -255,23 +275,75 @@ public enum Distro implements ApiFeature {
                      .collect(Collectors.toList());
     }
 
-    @Override public String toString() {
-        if (Distro.NOT_FOUND == Distro.this || Distro.NONE == Distro.this) { return ""; }
+    public String toString(final OutputFormat outputFormat) {
+        final StringBuilder msgBuilder = new StringBuilder();
         final List<SemVer> versions = get().getVersions();
-        StringBuilder distributionMsgBuilder = new StringBuilder().append("{").append("\n")
-                                                                  .append("  \"name\"").append(":").append("\"").append(uiString).append("\"").append(",\n")
-                                                                  .append("  \"api_parameter\"").append(":").append("\"").append(apiString).append("\"").append(",\n")
-                                                                  .append("  \"").append(FIELD_VERSIONS).append("\"").append(": [").append(versions.isEmpty() ? "" : "\n");
-        versions.forEach(versionNumber -> distributionMsgBuilder.append("    \"").append(versionNumber).append("\"").append(",\n"));
+        switch(outputFormat) {
+            case FULL:
+                msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_VERSIONS).append(QUOTES).append(COLON).append(" ").append(SQUARE_BRACKET_OPEN).append(versions.isEmpty() ? "" : NEW_LINE);
+                versions.forEach(versionNumber -> msgBuilder.append(INDENT).append(INDENTED_QUOTES).append(versionNumber).append(QUOTES).append(COMMA_NEW_LINE));
         if (!versions.isEmpty()) {
-            distributionMsgBuilder.setLength(distributionMsgBuilder.length() - 2);
-            distributionMsgBuilder.append("\n")
-                                  .append("  ]\n");
+                    msgBuilder.setLength(msgBuilder.length() - 2);
+                    msgBuilder.append(NEW_LINE)
+                              .append(INDENT).append(SQUARE_BRACKET_CLOSE).append(NEW_LINE);
         } else {
-            distributionMsgBuilder.append("]\n");
+                    msgBuilder.append(SQUARE_BRACKET_CLOSE).append(NEW_LINE);
+                }
+                return msgBuilder.append(CURLY_BRACKET_CLOSE).toString();
+            case FULL_COMPRESSED:
+                msgBuilder.append(CURLY_BRACKET_OPEN)
+                          .append(QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(FIELD_VERSIONS).append(QUOTES).append(COLON).append(" ").append(SQUARE_BRACKET_OPEN);
+                versions.forEach(versionNumber -> msgBuilder.append(INDENT).append(INDENTED_QUOTES).append(versionNumber).append(QUOTES).append(COMMA));
+                if (!versions.isEmpty()) {
+                    msgBuilder.setLength(msgBuilder.length() - 2);
+                    msgBuilder.append(NEW_LINE)
+                              .append(INDENT).append(SQUARE_BRACKET_CLOSE);
+                } else {
+                    msgBuilder.append(SQUARE_BRACKET_CLOSE);
+                }
+                return msgBuilder.append(CURLY_BRACKET_CLOSE).toString();
+            case REDUCED:
+                msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(NEW_LINE)
+                          .append(CURLY_BRACKET_CLOSE);
+                return msgBuilder.toString();
+            case REDUCED_COMPRESSED:
+            default:
+                msgBuilder.append(CURLY_BRACKET_OPEN)
+                          .append(QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES)
+                          .append(CURLY_BRACKET_CLOSE);
+                return msgBuilder.toString();
+        }
         }
 
-        return distributionMsgBuilder.append("}")
-                                     .toString();
+    @Override public String toString() {
+        return toString(OutputFormat.FULL);
     }
 }

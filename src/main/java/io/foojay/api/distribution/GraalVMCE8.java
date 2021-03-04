@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.distribution;
@@ -33,6 +33,7 @@ import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -59,7 +60,7 @@ import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
 public class GraalVMCE8 implements Distribution {
-    private static final Logger LOGGER = LoggerFactory.getLogger(GraalVMCE8.class);
+    private static final Logger                       LOGGER                  = LoggerFactory.getLogger(GraalVMCE8.class);
 
     private static final String                       GITHUB_USER             = "graalvm";
     private static final String                       PACKAGE_URL             = "https://api.github.com/repos/" + GITHUB_USER + "/graalvm-ce-builds/releases";
@@ -74,6 +75,12 @@ public class GraalVMCE8 implements Distribution {
     private static final String                       RELEASE_STATUS_PARAM    = "";
     private static final String                       SUPPORT_TERM_PARAM      = "";
     private static final String                       BITNESS_PARAM           = "";
+
+    private static final HashAlgorithm                HASH_ALGORITHM          = HashAlgorithm.NONE;
+    private static final String                       HASH_URI                = "";
+    private static final SignatureType                SIGNATURE_TYPE          = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI           = "";
 
 
     @Override public Distro getDistro() { return Distro.GRAALVM_CE8; }
@@ -95,6 +102,16 @@ public class GraalVMCE8 implements Distribution {
     @Override public String getTermOfSupportParam() { return SUPPORT_TERM_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
+
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -223,25 +240,6 @@ public class GraalVMCE8 implements Distribution {
 
             pkgs.add(pkg);
         }
-
-        // Set hashes
-        pkgs.forEach(pkg -> {
-            String sha256Filename = pkg.getFileName() + ".sha256";
-            for (JsonElement element : assets) {
-                JsonObject assetJsonObj = element.getAsJsonObject();
-                String     filename     = assetJsonObj.get("name").getAsString();
-                if (filename.equals(sha256Filename)) {
-                    try {
-                        String sha256Url = assetJsonObj.get("browser_download_url").getAsString();
-                        String hash = Helper.getTextFromUrl(sha256Url).trim();
-                        pkg.setHash(hash);
-                        pkg.setHashAlgorithm(HashAlgorithm.SHA256);
-                    } catch (Exception e) {
-                        LOGGER.debug("Not able to read sha256 hash for file {}", sha256Filename);
-                    }
-                }
-            }
-        });
 
         return pkgs;
     }

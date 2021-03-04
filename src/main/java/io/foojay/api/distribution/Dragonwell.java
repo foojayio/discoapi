@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.distribution;
@@ -33,6 +33,7 @@ import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -60,7 +61,7 @@ import static io.foojay.api.pkg.PackageType.JDK;
 
 
 public class Dragonwell implements Distribution {
-    private static final Logger                       LOGGER = LoggerFactory.getLogger(Dragonwell.class);
+    private static final Logger                       LOGGER                 = LoggerFactory.getLogger(Dragonwell.class);
 
     private static final String                       GITHUB_USER            = "alibaba";
     private static final String                       PACKAGE_URL            = "https://api.github.com/repos/" + GITHUB_USER + "/dragonwell";
@@ -73,6 +74,12 @@ public class Dragonwell implements Distribution {
     private static final String                       RELEASE_STATUS_PARAM   = "";
     private static final String                       SUPPORT_TERM_PARAM     = "";
     private static final String                       BITNESS_PARAM          = "";
+
+    private static final HashAlgorithm                HASH_ALGORITHM         = HashAlgorithm.NONE;
+    private static final String                       HASH_URI               = "";
+    private static final SignatureType                SIGNATURE_TYPE         = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM    = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI          = "";
 
 
     @Override public Distro getDistro() { return Distro.DRAGONWELL; }
@@ -95,6 +102,16 @@ public class Dragonwell implements Distribution {
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
 
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
+
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
@@ -103,6 +120,7 @@ public class Dragonwell implements Distribution {
                                              .map(pkg -> pkg.getSemver())
                                              .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
     }
+
 
     @Override public String getUrlForAvailablePkgs(final VersionNumber versionNumber,
                                                    final boolean latest, final OperatingSystem operatingSystem,
@@ -226,28 +244,6 @@ public class Dragonwell implements Distribution {
             pkg.setOperatingSystem(os);
 
             pkgs.add(pkg);
-        }
-
-        // Set hash
-        String bodyText = jsonObj.get("body").getAsString();
-        if (vNumber.getFeature().isPresent()) {
-            final int feature = vNumber.getFeature().getAsInt();
-            Set<Pair<String,String>> pairsFound;
-            if (feature == 8) {
-                pairsFound = Helper.getDragonwell8FileNameAndSha256FromString(bodyText);
-            } else if (feature == 11) {
-                pairsFound = Helper.getDragonwell11FileNameAndSha256FromString(bodyText);
-            } else {
-                pairsFound = new HashSet<>();
-            }
-            for (Pair<String,String> pair : pairsFound) {
-                String        filename    = Helper.getFileNameFromText(pair.getKey());
-                Optional<Pkg> pkgOptional = pkgs.stream().filter(pkg -> pkg.getFileName().equals(filename)).findFirst();
-                if (pkgOptional.isPresent()) {
-                    pkgOptional.get().setHash(pair.getValue());
-                    pkgOptional.get().setHashAlgorithm(HashAlgorithm.SHA256);
-                }
-            }
         }
 
         return pkgs;

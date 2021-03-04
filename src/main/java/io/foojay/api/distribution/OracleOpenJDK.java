@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.distribution;
@@ -35,6 +35,7 @@ import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -67,35 +68,40 @@ import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
 public class OracleOpenJDK implements Distribution {
-    private static final Logger LOGGER = LoggerFactory.getLogger(OracleOpenJDK.class);
+    private static final Logger                       LOGGER                     = LoggerFactory.getLogger(OracleOpenJDK.class);
 
-    private static final String                       PACKAGE_URL             = "https://download.java.net/java/";
-    private static final String                       GITHUB_USER             = "AdoptOpenJDK";
-    private static final String                       GITHUB_PACKAGE_8_URL    = "https://api.github.com/repos/" + GITHUB_USER + "/openjdk8-upstream-binaries";
-    private static final String                       GITHUB_PACKAGE_11_URL   = "https://api.github.com/repos/" + GITHUB_USER + "/openjdk11-upstream-binaries";
-    private static final String                       FILENAME_PREFIX         = "openjdk-";
-    private static final Pattern                      FILENAME_PREFIX_PATTERN = Pattern.compile("OpenJDK(8|11)U-");
-    private static final Matcher                      FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
+    private static final String                       PACKAGE_URL                = "https://download.java.net/java/";
+    private static final String                       GITHUB_USER                = "AdoptOpenJDK";
+    private static final String                       GITHUB_PACKAGE_8_URL       = "https://api.github.com/repos/" + GITHUB_USER + "/openjdk8-upstream-binaries";
+    private static final String                       GITHUB_PACKAGE_11_URL      = "https://api.github.com/repos/" + GITHUB_USER + "/openjdk11-upstream-binaries";
+    private static final String                       FILENAME_PREFIX            = "openjdk-";
+    private static final Pattern                      FILENAME_PREFIX_PATTERN    = Pattern.compile("OpenJDK(8|11)U-");
+    private static final Matcher                      FILENAME_PREFIX_MATCHER    = FILENAME_PREFIX_PATTERN.matcher("");
 
     // URL parameters
-    private static final String                       ARCHITECTURE_PARAM      = "";
-    private static final String                       OPERATING_SYSTEM_PARAM  = "";
-    private static final String                       ARCHIVE_TYPE_PARAM      = "";
-    private static final String                       PACKAGE_TYPE_PARAM      = "";
-    private static final String                       RELEASE_STATUS_PARAM    = "";
-    private static final String                       SUPPORT_TERM_PARAM      = "";
-    private static final String                       BITNESS_PARAM           = "";
+    private static final String                       ARCHITECTURE_PARAM         = "";
+    private static final String                       OPERATING_SYSTEM_PARAM     = "";
+    private static final String                       ARCHIVE_TYPE_PARAM         = "";
+    private static final String                       PACKAGE_TYPE_PARAM         = "";
+    private static final String                       RELEASE_STATUS_PARAM       = "";
+    private static final String                       SUPPORT_TERM_PARAM         = "";
+    private static final String                       BITNESS_PARAM              = "";
 
     // Mappings for url parameters
-    private static final Map<Architecture, String>    ARCHITECTURE_MAP        = Map.of(X64, "x64", AARCH64, "aarch64");
-    private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP    = Map.of(LINUX_MUSL, "linux", LINUX, "linux", WINDOWS, "windows", MACOS, "osx");
-    private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP      = Map.of(EA, "early_access", GA, "GA");
+    private static final Map<Architecture, String>    ARCHITECTURE_MAP           = Map.of(X64, "x64", AARCH64, "aarch64");
+    private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP       = Map.of(LINUX_MUSL, "linux", LINUX, "linux", WINDOWS, "windows", MACOS, "osx");
+    private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP         = Map.of(EA, "early_access", GA, "GA");
 
-    private static final String                       OPEN_JDK_ARCHIVE_URL    = "https://jdk.java.net/archive/";
+    private static final String                       OPEN_JDK_ARCHIVE_URL       = "https://jdk.java.net/archive/";
     public  static final String                       OPEN_JDK_PKGS_PROPERTIES   = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk.properties";
-    public  static final String                       OPEN_JDK_HASHES_PROPERTIES = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk-hashes.properties";
     private        final Properties                   propertiesPkgs             = new Properties();
     private        final Properties                   propertiesHashes           = new Properties();
+
+    private static final HashAlgorithm                HASH_ALGORITHM             = HashAlgorithm.NONE;
+    private static final String                       HASH_URI                   = "";
+    private static final SignatureType                SIGNATURE_TYPE             = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM        = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI              = "";
 
 
     public OracleOpenJDK() {
@@ -103,11 +109,6 @@ public class OracleOpenJDK implements Distribution {
             this.propertiesPkgs.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PKGS_PROPERTIES)));
         } catch (Exception e) {
             LOGGER.error("Error reading OpenJDK properties file from github. {}", e.getMessage());
-        }
-        try {
-            this.propertiesHashes.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_HASHES_PROPERTIES)));
-        } catch (Exception e) {
-            LOGGER.error("Error reading OpenJDK hashes properties file from github. {}", e.getMessage());
         }
     }
 
@@ -134,6 +135,16 @@ public class OracleOpenJDK implements Distribution {
     @Override public String getTermOfSupportParam() { return SUPPORT_TERM_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
+
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -499,12 +510,6 @@ public class OracleOpenJDK implements Distribution {
             LOGGER.error("Error reading OpenJDK properties file from github. {}", e.getMessage());
         }
 
-        try {
-            propertiesHashes.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_HASHES_PROPERTIES)));
-        } catch (Exception e) {
-            LOGGER.error("Error reading OpenJDK hashes properties file from github. {}", e.getMessage());
-        }
-
         propertiesPkgs.forEach((key, value) -> {
             String downloadLink = value.toString();
             String fileName     = Helper.getFileNameFromText(downloadLink);
@@ -577,18 +582,6 @@ public class OracleOpenJDK implements Distribution {
                 }
                 if (keyParts.length > 1 && keyParts[1].equals("rc")) {
                     pkg.setReleaseStatus(EA);
-                }
-
-                // Set hash
-                if (propertiesHashes.containsKey(key)) {
-                    String hash = propertiesHashes.getProperty(key.toString(), "");
-                    if (null == hash || hash.isEmpty()) {
-                        pkg.setHash("");
-                        pkg.setHashAlgorithm(HashAlgorithm.NONE);
-                    } else {
-                        pkg.setHash(hash);
-                        pkg.setHashAlgorithm(HashAlgorithm.SHA256);
-                    }
                 }
 
                 pkgs.add(pkg);
@@ -666,19 +659,6 @@ public class OracleOpenJDK implements Distribution {
 
         pkg.setReleaseStatus(rs);
         pkg.setOperatingSystem(operatingSystem);
-
-        // Set hash
-        String key = keyBuilder.toString();
-        if (propertiesHashes.containsKey(key)) {
-            String hash = propertiesHashes.getProperty(key, "");
-            if (null == hash || hash.isEmpty()) {
-                pkg.setHash("");
-                pkg.setHashAlgorithm(HashAlgorithm.NONE);
-            } else {
-                pkg.setHash(hash);
-                pkg.setHashAlgorithm(HashAlgorithm.SHA256);
-            }
-        }
 
         return pkg;
     }

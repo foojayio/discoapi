@@ -13,16 +13,14 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.distribution;
 
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Architecture;
@@ -35,6 +33,7 @@ import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -121,6 +120,12 @@ public class Zulu implements Distribution {
     private static final String                       FIELD_ZULU_VERSION         = "zulu_version";
     private static final String                       FIELD_SHA_256_HASH         = "sha256_hash";
 
+    private static final HashAlgorithm                HASH_ALGORITHM             = HashAlgorithm.NONE;
+    private static final String                       HASH_URI                   = "";
+    private static final SignatureType                SIGNATURE_TYPE             = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM        = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI              = "";
+
 
     @Override public Distro getDistro() { return Distro.ZULU; }
 
@@ -141,6 +146,16 @@ public class Zulu implements Distribution {
     @Override public String getTermOfSupportParam() { return TERM_OF_SUPPORT_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
+
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -346,21 +361,6 @@ public class Zulu implements Distribution {
         pkg.setOperatingSystem(os);
 
         pkg.setTermOfSupport(supTerm);
-
-        // Set hash
-        String      bundleId = jsonObj.get(FIELD_ID).getAsString();
-        String      url      = PACKAGE_URL + bundleId;
-        String      response = Helper.get(url);
-        Gson        gson     = new Gson();
-        JsonElement element  = gson.fromJson(response, JsonElement.class);
-        if (element instanceof JsonObject) {
-            JsonObject jsonObject = element.getAsJsonObject();
-            pkg.setHash(jsonObject.get(FIELD_SHA_256_HASH).getAsString());
-            pkg.setHashAlgorithm(HashAlgorithm.SHA256);
-        } else {
-            pkg.setHash("");
-            pkg.setHashAlgorithm(HashAlgorithm.NONE);
-        }
 
         pkgs.add(pkg);
 

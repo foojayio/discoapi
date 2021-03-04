@@ -33,6 +33,7 @@ import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -109,6 +110,12 @@ public class AOJ_OPENJ9 implements Distribution {
     private static final String                       FIELD_OS               = "os";
     private static final String                       FIELD_CHECKSUM         = "checksum";
 
+    private static final HashAlgorithm                HASH_ALGORITHM         = HashAlgorithm.NONE;
+    private static final String                       HASH_URI               = "";
+    private static final SignatureType                SIGNATURE_TYPE         = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM    = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI          = "";
+
 
     @Override public Distro getDistro() { return Distro.AOJ_OPENJ9; }
 
@@ -129,6 +136,16 @@ public class AOJ_OPENJ9 implements Distribution {
     @Override public String getTermOfSupportParam() { return SUPPORT_TERM_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
+
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -258,7 +275,6 @@ public class AOJ_OPENJ9 implements Distribution {
                 JsonObject installerObj      = installerElement.getAsJsonObject();
                 String installerName         = installerObj.get(FIELD_NAME).getAsString();
                 String installerDownloadLink = installerObj.get(FIELD_LINK).getAsString();
-                String installerChecksum     = installerObj.has(FIELD_CHECKSUM) ? installerObj.get(FIELD_CHECKSUM).getAsString() : "";
 
                 if (Architecture.NONE == arc) {
                     arc = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
@@ -312,8 +328,6 @@ public class AOJ_OPENJ9 implements Distribution {
                     installerPkg.setArchiveType(ext);
                     installerPkg.setFileName(installerName);
                     installerPkg.setDirectDownloadUri(installerDownloadLink);
-                    installerPkg.setHash(installerChecksum);
-                    installerPkg.setHashAlgorithm(installerChecksum.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
 
                     pkgs.add(installerPkg);
                 }
@@ -324,7 +338,6 @@ public class AOJ_OPENJ9 implements Distribution {
                 JsonObject packageObj      = packageElement.getAsJsonObject();
                 String packageName         = packageObj.get(FIELD_NAME).getAsString();
                 String packageDownloadLink = packageObj.get(FIELD_LINK).getAsString();
-                String packageChecksum     = packageObj.has(FIELD_CHECKSUM) ? packageObj.get(FIELD_CHECKSUM).getAsString() : "";
 
                 if (Architecture.NONE == arc) {
                     arc = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
@@ -375,8 +388,6 @@ public class AOJ_OPENJ9 implements Distribution {
                     packagePkg.setArchiveType(ext);
                     packagePkg.setFileName(packageName);
                     packagePkg.setDirectDownloadUri(packageDownloadLink);
-                    packagePkg.setHash(packageChecksum);
-                    packagePkg.setHashAlgorithm(packageChecksum.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
 
                     pkgs.add(packagePkg);
                 }
