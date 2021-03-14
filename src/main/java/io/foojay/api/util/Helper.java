@@ -91,7 +91,7 @@ import static java.util.stream.Collectors.toCollection;
 public class Helper {
     private static final Logger  LOGGER                 = LoggerFactory.getLogger(Helper.class);
     private static final Random  RND                    = new Random();
-    public static final  Pattern FILE_URL_PATTERN                       = Pattern.compile("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)");
+    public static final  Pattern FILE_URL_PATTERN                       = Pattern.compile("(JDK|JRE)(\\s+\\|\\s?\\[[a-zA-Z0-9\\-\\._]+\\]\\()(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz(?!\\.sig)|\\.deb|\\.rpm|\\.cab|\\.7z))");
     public static final  Pattern FILE_URL_MD5_PATTERN                   = Pattern.compile("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\\)\\h+\\|\\h+`([0-9a-z]{32})`");
     public static final  Pattern DRAGONWELL_11_FILE_NAME_SHA256_PATTERN = Pattern.compile("(OpenJDK[0-9]+U[a-z0-9_\\-\\.]+)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)(\\s+\\(Experimental ONLY\\))?\\h+\\|\\h+([0-9a-z]{64})");
     public static final  Pattern DRAGONWELL_8_FILE_NAME_SHA256_PATTERN  = Pattern.compile("(\\()?(Alibaba_Dragonwell[0-9\\.A-Za-z_\\-]+)(\\)=\\s+)?|([\\\\r\\\\n]+)?([a-z0-9]{64})");
@@ -395,9 +395,20 @@ public class Helper {
         Set<String> urlsFound = new HashSet<>();
         FILE_URL_MATCHER.reset(text);
         while (FILE_URL_MATCHER.find()) {
-            urlsFound.add(FILE_URL_MATCHER.group());
+            // JDK / JRE -> FILE_URL_MATCHER.group(1)
+            // File URL  -> FILE_URL_MATCHER.group(3)
+            urlsFound.add(FILE_URL_MATCHER.group(3));
         }
         return urlsFound;
+    }
+
+    public static Set<Pair<String,String>> getPackageTypeAndFileUrlFromString(final String text) {
+        Set<Pair<String,String>> pairsFound = new HashSet<>();
+        FILE_URL_MATCHER.reset(text);
+        while (FILE_URL_MATCHER.find()) {
+            pairsFound.add(new Pair<>(FILE_URL_MATCHER.group(1), FILE_URL_MATCHER.group(3)));
+        }
+        return pairsFound;
     }
 
     public static Set<Pair<String,String>> getFileUrlsAndMd5sFromString(final String text) {

@@ -128,10 +128,10 @@ public class Corretto implements Distribution {
         switch (versionNumber.getFeature().getAsInt()) {
             case 8:
             case 11:
-                queryBuilder.append("corretto-").append(versionNumber.getFeature().getAsInt()).append("/releases");
+                queryBuilder.append("corretto-").append(versionNumber.getFeature().getAsInt()).append("/releases").append("?per_page=100");
                 break;
             case 15:
-                queryBuilder.append("corretto-jdk").append("/releases");
+                queryBuilder.append("corretto-jdk").append("/releases").append("?per_page=100");
                 break;
         }
 
@@ -149,17 +149,22 @@ public class Corretto implements Distribution {
         supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
 
         String       bodyText      = jsonObj.get("body").getAsString();
-        Set<Pair<String,String>> pairsFound = Helper.getFileUrlsAndMd5sFromString(bodyText);
-        for (Pair<String,String> pair : pairsFound) {
+
+        Set<Pair<String,String>> pairsFound = Helper.getPackageTypeAndFileUrlFromString(bodyText);
+
+        for (Pair<String, String> pair : pairsFound) {
+            final PackageType pkgType = PackageType.fromText(pair.getKey());
+            final String      url     = pair.getValue();
+
             Pkg pkg = new Pkg();
 
-            String filename = Helper.getFileNameFromText(pair.getKey());
+            String filename = Helper.getFileNameFromText(url);
 
             String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
 
             pkg.setDistribution(Distro.CORRETTO.get());
             pkg.setFileName(filename);
-            pkg.setDirectDownloadUri(pair.getKey());
+            pkg.setDirectDownloadUri(url);
 
             ArchiveType ext = ArchiveType.getFromFileName(filename);
             if (ArchiveType.NONE != archiveType && ext != archiveType) { continue; }
@@ -194,8 +199,7 @@ public class Corretto implements Distribution {
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
 
-            VersionNumber dNumber = VersionNumber.fromText(withoutPrefix);
-            pkg.setDistributionVersion(dNumber);
+            pkg.setDistributionVersion(correttoNumber);
 
             pkg.setTermOfSupport(supTerm);
 
@@ -209,7 +213,7 @@ public class Corretto implements Distribution {
                     pkg.setPackageType(JRE);
                     break;
                 case NONE:
-                    pkg.setPackageType(withoutPrefix.contains(Constants.JRE_POSTFIX) ? JRE : JDK);
+                    pkg.setPackageType(pkgType);
                     break;
             }
 
