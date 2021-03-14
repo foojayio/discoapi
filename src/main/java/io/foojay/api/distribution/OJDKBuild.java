@@ -71,12 +71,12 @@ public class OJDKBuild implements Distribution {
     private static final Matcher       FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
     private static final String        GITHUB_USER             = "ojdkbuild";
     private static final String        GITHUB_REPOSITORY       = "ojdkbuild";
-    private static final String        PACKAGE_URL             = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases";
-    public  static final List<String>  PACKAGE_URLS            = List.of("https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases",
-                                                                        "https://api.github.com/repos/" + GITHUB_USER + "/contrib_jdk8u-ci/releases",
-                                                                        "https://api.github.com/repos/" + GITHUB_USER + "/contrib_jdk11u-ci/releases",
-                                                                        "https://api.github.com/repos/" + GITHUB_USER + "/contrib_jdk8u_aarch32-ci/releases",
-                                                                        "https://api.github.com/repos/" + GITHUB_USER + "/contrib_jdk11u_arm32-ci/releases");
+    private static final String        PACKAGE_URL             = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases?per_page=100";
+    public  static final List<String>  PACKAGE_URLS            = List.of("https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases?per_page=100",
+                                                                         "https://api.github.com/repos/" + GITHUB_USER + "/contrib_jdk8u-ci/releases?per_page=100",
+                                                                         "https://api.github.com/repos/" + GITHUB_USER + "/contrib_jdk11u-ci/releases?per_page=100",
+                                                                         "https://api.github.com/repos/" + GITHUB_USER + "/contrib_jdk8u_aarch32-ci/releases?per_page=100",
+                                                                         "https://api.github.com/repos/" + GITHUB_USER + "/contrib_jdk11u_arm32-ci/releases?per_page=100");
 
 
     // URL parameters
