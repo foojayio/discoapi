@@ -85,7 +85,7 @@ public enum CacheManager {
         put(4, false);
         put(5, false);
         put(6, false);
-        put(7, false);
+        put(7, true);
         put(8, true);
         put(9, false);
         put(10, false);
@@ -603,6 +603,14 @@ public enum CacheManager {
     public void updateMajorVersions() {
         LOGGER.debug("Updating major versions");
         // Update all available major versions (exclude GraalVM based pkgs because they have different version numbers)
+        while(CacheManager.INSTANCE.pkgCacheIsUpdating.get()) {
+            try {
+                TimeUnit.SECONDS.sleep(1);
+                LOGGER.debug("Waiting for updating package cache");
+            } catch(InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
         majorVersions.clear(); 
         majorVersions.addAll(pkgCache.getPkgs()
                                      .stream()
