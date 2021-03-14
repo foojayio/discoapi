@@ -132,7 +132,7 @@ public class Dragonwell implements Distribution {
         switch(versionNumber.getFeature().getAsInt()) {
             case 8:
             case 11:
-                queryBuilder.append(versionNumber.getFeature().getAsInt()).append("/releases");
+                queryBuilder.append(versionNumber.getFeature().getAsInt()).append("/releases").append("?per_page=100");
                 break;
             default:
                 return "";
