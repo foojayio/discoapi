@@ -222,7 +222,6 @@ public class Zulu implements Distribution {
         }
 
         LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder.toString());
-
         return queryBuilder.toString();
     }
 
@@ -278,6 +277,7 @@ public class Zulu implements Distribution {
                                                        .findFirst()
                                                        .map(Entry::getValue)
                                                        .orElse(ArchiveType.NONE);
+
         if (ArchiveType.NONE == ext) {
             LOGGER.debug("Archive Type not found in Zulu for filename: {}", fileName);
             return pkgs;
@@ -322,6 +322,11 @@ public class Zulu implements Distribution {
                                                          .findFirst()
                                                          .map(Entry::getValue)
                                                          .orElse(Architecture.NONE);
+
+        if (Architecture.NONE == arch && fileName.contains("macos")) {
+            arch = X64;
+        }
+
         if (Architecture.NONE == arch) {
             LOGGER.debug("Architecture not found in Zulu for filename: {}", fileName);
             return pkgs;
