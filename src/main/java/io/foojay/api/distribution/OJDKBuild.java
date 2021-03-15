@@ -318,6 +318,7 @@ public class OJDKBuild implements Distribution {
                 String     fileName     = assetJsonObj.get("name").getAsString();
 
                 if (null == fileName || fileName.isEmpty() || fileName.endsWith("txt") || fileName.endsWith("debuginfo.zip") || fileName.endsWith("sha256")) { continue; }
+                if (fileName.contains("-debug-")) { continue; }
 
                 String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
 
