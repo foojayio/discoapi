@@ -84,7 +84,7 @@ public class MajorVersionTest {
         assert maintainedMajorVersions.containsKey(9);
         assert !maintainedMajorVersions.get(9);
 
-        MajorVersion majorVersion = new MajorVersion(7);
+        MajorVersion majorVersion = new MajorVersion(6);
         assert !majorVersion.isMaintained();
     }
 }

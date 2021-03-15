@@ -33,6 +33,7 @@ import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.distribution.RedHat;
 import io.foojay.api.distribution.SAPMachine;
+import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
 import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
@@ -199,6 +200,10 @@ public class Helper {
                 } catch (InterruptedException | IOException e) {
                     LOGGER.error("Error fetching packages for distribution {} from {}", sapMachine.getName(), query);
                 }
+                break;
+            case TRAVA:
+                Trava trava = (Trava) distro.get();
+                pkgs.addAll(trava.getAllPkgs());
                 break;
             case AOJ:
                 AOJ AOJ = (AOJ) distro.get();

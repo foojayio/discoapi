@@ -34,6 +34,7 @@ import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.distribution.RedHat;
 import io.foojay.api.distribution.SAPMachine;
+import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
 import io.foojay.api.util.OutputFormat;
 
@@ -69,6 +70,7 @@ public enum Distro implements ApiFeature {
     ORACLE("Oracle", "oracle", new Oracle(), 1),
     RED_HAT("Red Hat", "redhat", new RedHat(), 12),
     SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 12),
+    TRAVA("Trava", "trava", new Trava(), 12),
     ZULU("Zulu", "zulu", new Zulu(), 1),
     NONE("-", "", null, 0),
     NOT_FOUND("", "", null, 0);
@@ -179,6 +181,13 @@ public enum Distro implements ApiFeature {
             case "SAP-Machine":
             case "SAP-MACHINE":
                 return SAP_MACHINE;
+            case "trava":
+            case "TRAVA":
+            case "trava_openjdk":
+            case "TRAVA_OPENJDK":
+            case "trava openjdk":
+            case "TRAVA OPENJDK":
+                return TRAVA;   
             case "zulu":
             case "ZULU":
             case "Zulu":
