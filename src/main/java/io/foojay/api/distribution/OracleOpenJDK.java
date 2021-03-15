@@ -542,13 +542,13 @@ public class OracleOpenJDK implements Distribution {
 
                 pkg.setReleaseStatus(rs);
 
-                OperatingSystem os;
-                String[]        fileNameParts = fileName.split("_");
-                if (fileNameParts.length > 1) {
-                    String[] osArchParts = fileNameParts[1].split("-");
-                    os = OperatingSystem.fromText(osArchParts[0]);
-                    pkg.setOperatingSystem(os);
 
+                OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
+                                                                      .filter(entry -> fileName.contains(entry.getKey()))
+                                                                      .findFirst()
+                                                                      .map(Entry::getValue)
+                                                                      .orElse(OperatingSystem.NONE);
+                    pkg.setOperatingSystem(os);
                     switch (os) {
                         case WINDOWS:
                             pkg.setLibCType(LibCType.C_STD_LIB);
@@ -562,6 +562,8 @@ public class OracleOpenJDK implements Distribution {
                     }
                     if (isMusl) { pkg.setLibCType(LibCType.MUSL); }
 
+                String[] fileNameParts = fileName.split("_");
+                if (fileNameParts.length > 1) {
                     SemVer semVer = SemVer.fromText(fileNameParts[0].replace("openjdk", "")).getSemVer1();
                     if (null != semVer) {
                         pkg.setReleaseStatus(semVer.getReleaseStatus());
