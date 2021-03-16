@@ -1,20 +1,17 @@
 /*
- * Copyright (c) 2021.
+ * Copyright (c) 2021 by Gerrit Grunwald
  *
- * This file is part of DiscoAPI.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *     DiscoAPI is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 2 of the License, or
- *     (at your option) any later version.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *     DiscoAPI is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
- *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package io.foojay.api.distribution;
@@ -54,6 +51,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.TreeSet;
+import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -64,19 +62,15 @@ import static io.foojay.api.pkg.ReleaseStatus.EA;
 import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
-public class OJDKBuild implements Distribution {
-    private static final Logger        LOGGER                  = LoggerFactory.getLogger(OJDKBuild.class);
+public class Trava implements Distribution {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Trava.class);
 
-    private static final Pattern       FILENAME_PREFIX_PATTERN = Pattern.compile(".*-openjdk(-debug)?(-jre)?-");
-    private static final Matcher       FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
-    private static final String        GITHUB_USER             = "ojdkbuild";
-    private static final String        GITHUB_REPOSITORY       = "ojdkbuild";
-    private static final String        PACKAGE_URL             = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases?per_page=100";
-    public  static final List<String>  PACKAGE_URLS            = List.of("https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases?per_page=100",
-                                                                         "https://api.github.com/repos/" + GITHUB_USER + "/contrib_jdk8u-ci/releases?per_page=100",
-                                                                         "https://api.github.com/repos/" + GITHUB_USER + "/contrib_jdk11u-ci/releases?per_page=100",
-                                                                         "https://api.github.com/repos/" + GITHUB_USER + "/contrib_jdk8u_aarch32-ci/releases?per_page=100",
-                                                                         "https://api.github.com/repos/" + GITHUB_USER + "/contrib_jdk11u_arm32-ci/releases?per_page=100");
+    private static final Pattern      DOWNLOAD_PATTERN = Pattern.compile("(.*\\/download\\/dcevm)(\\-)?(.*)(\\/.*)");
+    private static final Matcher      DOWNLOAD_MATCHER = DOWNLOAD_PATTERN.matcher("");
+    private static final String       GITHUB_USER      = "TravaOpenJDK";
+    private static final String       PACKAGE_URL      = "https://github.com/TravaOpenJDK/";
+    public  static final List<String> PACKAGE_URLS     = List.of("https://api.github.com/repos/" + GITHUB_USER + "/trava-jdk-8-dcevm/releases?per_page=100",
+                                                                 "https://api.github.com/repos/" + GITHUB_USER + "/trava-jdk-11-dcevm/releases?per_page=100");
 
 
     // URL parameters
@@ -88,14 +82,14 @@ public class OJDKBuild implements Distribution {
     private static final String        SUPPORT_TERM_PARAM      = "";
     private static final String        BITNESS_PARAM           = "";
 
-    private static final HashAlgorithm HASH_ALGORITHM          = HashAlgorithm.NONE;
-    private static final String        HASH_URI                = "";
-    private static final SignatureType SIGNATURE_TYPE          = SignatureType.NONE;
-    private static final HashAlgorithm SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
+    private static final HashAlgorithm HASH_ALGORITHM      = HashAlgorithm.NONE;
+    private static final String        HASH_URI            = "";
+    private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
+    private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
     private static final String        SIGNATURE_URI           = "";
 
 
-    @Override public Distro getDistro() { return Distro.OJDK_BUILD; }
+    @Override public Distro getDistro() { return Distro.TRAVA; }
 
     @Override public String getName() { return getDistro().getUiString(); }
 
@@ -129,7 +123,7 @@ public class OJDKBuild implements Distribution {
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
-                                             .filter(pkg -> Distro.OJDK_BUILD.get().equals(pkg.getDistribution()))
+                                             .filter(pkg -> Distro.TRAVA.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
                                              .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
     }
@@ -154,7 +148,7 @@ public class OJDKBuild implements Distribution {
 
         TermOfSupport supTerm = null;
         if (!versionNumber.getFeature().isEmpty()) {
-            supTerm = Helper.getTermOfSupport(versionNumber, Distro.OJDK_BUILD);
+            supTerm = Helper.getTermOfSupport(versionNumber, Distro.TRAVA);
         }
 
         JsonArray assets = jsonObj.getAsJsonArray("assets");
@@ -164,16 +158,22 @@ public class OJDKBuild implements Distribution {
 
             if (fileName.endsWith("txt") || fileName.endsWith("symbols.tar.gz")) { continue; }
 
-            String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
+            String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
-            VersionNumber vNumber = VersionNumber.fromText(withoutPrefix);
+            VersionNumber vNumber = new VersionNumber();
+            DOWNLOAD_MATCHER.reset(downloadLink);
+            final List<MatchResult> results = DOWNLOAD_MATCHER.results().collect(Collectors.toList());
+            if (results.size() > 0) {
+                MatchResult result = results.get(0);
+                vNumber = VersionNumber.fromText(result.group(3));
+            }
+
             if (latest) {
                 if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }
             } else {
                 if (!versionNumber.equals(vNumber)) { return pkgs; }
             }
 
-            String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
             Pkg pkg = new Pkg();
 
@@ -183,16 +183,16 @@ public class OJDKBuild implements Distribution {
                                                            .map(Entry::getValue)
                                                            .orElse(ArchiveType.NONE);
             if (ArchiveType.NONE == ext) {
-                LOGGER.debug("Archive Type not found in OJDKBuild for filename: {}", fileName);
+                LOGGER.debug("Archive Type not found in Trava for filename: {}", fileName);
                 return pkgs;
             }
 
             pkg.setArchiveType(ext);
 
-            if (null == supTerm) { supTerm = Helper.getTermOfSupport(versionNumber, Distro.OJDK_BUILD); }
+            if (null == supTerm) { supTerm = Helper.getTermOfSupport(versionNumber, Distro.TRAVA); }
             pkg.setTermOfSupport(supTerm);
 
-            pkg.setDistribution(Distro.OJDK_BUILD.get());
+            pkg.setDistribution(Distro.TRAVA.get());
             pkg.setFileName(fileName);
             pkg.setDirectDownloadUri(downloadLink);
             pkg.setVersionNumber(vNumber);
@@ -201,40 +201,40 @@ public class OJDKBuild implements Distribution {
 
             switch (packageType) {
                 case NONE:
-                    pkg.setPackageType(withoutPrefix.contains(Constants.JDK_PREFIX) ? JDK : JRE);
+                    pkg.setPackageType(fileName.contains(Constants.JDK_PREFIX) ? JDK : JRE);
                     break;
                 case JDK:
-                    if (!withoutPrefix.contains(Constants.JDK_PREFIX)) { continue; }
+                    if (!fileName.contains(Constants.JDK_PREFIX)) { continue; }
                     pkg.setPackageType(JDK);
                     break;
                 case JRE:
-                    if (!withoutPrefix.contains(Constants.JRE_PREFIX)) { continue; }
+                    if (!fileName.contains(Constants.JRE_PREFIX)) { continue; }
                     pkg.setPackageType(JRE);
                     break;
             }
 
             switch (releaseStatus) {
                 case NONE:
-                    pkg.setReleaseStatus(withoutPrefix.contains(Constants.EA_POSTFIX) ? EA : GA);
+                    pkg.setReleaseStatus(fileName.contains(Constants.EA_POSTFIX) ? EA : GA);
                     break;
                 case GA:
-                    if (withoutPrefix.contains(Constants.EA_POSTFIX)) { continue; }
+                    if (fileName.contains(Constants.EA_POSTFIX)) { continue; }
                     pkg.setReleaseStatus(GA);
                     break;
                 case EA:
-                    if (!withoutPrefix.contains(Constants.EA_POSTFIX)) { continue; }
+                    if (!fileName.contains(Constants.EA_POSTFIX)) { continue; }
                     pkg.setReleaseStatus(EA);
                     break;
             }
 
             Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                             .filter(entry -> withoutPrefix.contains(entry.getKey()))
+                                                             .filter(entry -> fileName.contains(entry.getKey()))
                                                              .findFirst()
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
 
             if (Architecture.NONE == arch) {
-                LOGGER.debug("Architecture not found in OJDKBuild for filename: {}", fileName);
+                LOGGER.debug("Architecture not found in Trava for filename: {}", fileName);
                 return pkgs;
             }
 
@@ -242,7 +242,7 @@ public class OJDKBuild implements Distribution {
             pkg.setBitness(arch.getBitness());
 
             OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                                  .filter(entry -> withoutPrefix.contains(entry.getKey()))
+                                                                  .filter(entry -> fileName.contains(entry.getKey()))
                                                                   .findFirst()
                                                                   .map(Entry::getValue)
                                                                   .orElse(OperatingSystem.NONE);
@@ -264,7 +264,7 @@ public class OJDKBuild implements Distribution {
                 }
             }
             if (OperatingSystem.NONE == os) {
-                LOGGER.debug("Operating System not found in OJDKBuild for filename: {}", fileName);
+                LOGGER.debug("Operating System not found in Trava for filename: {}", fileName);
                 continue;
             }
             pkg.setOperatingSystem(os);
@@ -281,7 +281,7 @@ public class OJDKBuild implements Distribution {
             for (String packageUrl : PACKAGE_URLS) {
                 // Get all packages from github
                 String      query   = packageUrl;
-                HttpClient  client = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
+                HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
                 HttpRequest request = HttpRequest.newBuilder().uri(URI.create(query)).setHeader("User-Agent", "DiscoAPI").GET().build();
                 try {
                     HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
@@ -302,7 +302,7 @@ public class OJDKBuild implements Distribution {
                 }
             }
         } catch (Exception e) {
-            LOGGER.error("Error fetching all packages from OJDKBuild. {}", e);
+            LOGGER.error("Error fetching all packages from Trava. {}", e);
         }
         return pkgs;
     }
@@ -320,13 +320,15 @@ public class OJDKBuild implements Distribution {
                 if (null == fileName || fileName.isEmpty() || fileName.endsWith("txt") || fileName.endsWith("debuginfo.zip") || fileName.endsWith("sha256")) { continue; }
                 if (fileName.contains("-debug-")) { continue; }
 
-                String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
-
-                VersionNumber numberFound = VersionNumber.fromText(withoutPrefix);
-                VersionNumber vNumber = numberFound;
-                vNumber.setPatch(0); // no support for patches yet
-
                 String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+
+                VersionNumber vNumber = new VersionNumber();
+                DOWNLOAD_MATCHER.reset(downloadLink);
+                final List<MatchResult> results = DOWNLOAD_MATCHER.results().collect(Collectors.toList());
+                if (results.size() > 0) {
+                    MatchResult result = results.get(0);
+                    vNumber = VersionNumber.fromText(result.group(3));
+                }
 
                 Pkg pkg = new Pkg();
 
@@ -336,7 +338,7 @@ public class OJDKBuild implements Distribution {
                                                                .map(Entry::getValue)
                                                                .orElse(ArchiveType.NONE);
                 if (ArchiveType.NONE == ext) {
-                    LOGGER.debug("Archive Type not found in OJDKBuild for filename: {}", fileName);
+                    LOGGER.debug("Archive Type not found in Trava for filename: {}", fileName);
                     continue;
                 } else if (ArchiveType.SRC_TAR == ext) {
                     continue;
@@ -346,34 +348,34 @@ public class OJDKBuild implements Distribution {
 
                 TermOfSupport supTerm = null;
                 if (!vNumber.getFeature().isEmpty()) {
-                    supTerm = Helper.getTermOfSupport(vNumber, Distro.OJDK_BUILD);
+                    supTerm = Helper.getTermOfSupport(vNumber, Distro.TRAVA);
                 }
                 pkg.setTermOfSupport(supTerm);
 
-                pkg.setDistribution(Distro.OJDK_BUILD.get());
+                pkg.setDistribution(Distro.TRAVA.get());
                 pkg.setFileName(fileName);
                 pkg.setDirectDownloadUri(downloadLink);
                 pkg.setVersionNumber(vNumber);
                 pkg.setJavaVersion(vNumber);
-                pkg.setDistributionVersion(numberFound);
+                pkg.setDistributionVersion(vNumber);
                 pkg.setPackageType(fileName.contains(Constants.JRE_POSTFIX) ? JRE : JDK);
-                pkg.setReleaseStatus(withoutPrefix.contains(Constants.EA_POSTFIX) ? EA : GA);
+                pkg.setReleaseStatus(fileName.contains(Constants.EA_POSTFIX) ? EA : GA);
 
 
                 Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                                 .filter(entry -> withoutPrefix.contains(entry.getKey()))
+                                                                 .filter(entry -> fileName.contains(entry.getKey()))
                                                                  .findFirst()
                                                                  .map(Entry::getValue)
                                                                  .orElse(Architecture.NONE);
                 if (Architecture.NONE == arch) {
-                    LOGGER.debug("Architecture not found in OJDKBuild for filename: {}", fileName);
-                    continue;
+                    LOGGER.debug("Architecture not found in Trava for filename: {}", fileName);
+                    arch = Architecture.X64;
                 }
                 pkg.setArchitecture(arch);
                 pkg.setBitness(arch.getBitness());
 
                 OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                                      .filter(entry -> withoutPrefix.contains(entry.getKey()))
+                                                                      .filter(entry -> fileName.contains(entry.getKey()))
                                                                       .findFirst()
                                                                       .map(Entry::getValue)
                                                                       .orElse(OperatingSystem.NONE);
@@ -395,7 +397,7 @@ public class OJDKBuild implements Distribution {
                     }
                 }
                 if (OperatingSystem.NONE == os) {
-                    LOGGER.debug("Operating System not found in OJDKBuild for filename: {}", fileName);
+                    LOGGER.debug("Operating System not found in Trava for filename: {}", fileName);
                     continue;
                 }
                 pkg.setOperatingSystem(os);

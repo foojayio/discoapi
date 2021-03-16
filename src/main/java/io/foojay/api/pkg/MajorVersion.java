@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.pkg;
@@ -22,6 +22,8 @@ package io.foojay.api.pkg;
 import io.foojay.api.CacheManager;
 import io.foojay.api.util.Helper;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.TreeSet;
@@ -133,6 +135,45 @@ public class MajorVersion {
                                     .filter(majorVersion -> majorVersion.getVersionsIncludingEarlyAccess().size() == 1)
                                     .filter(majorVersion -> majorVersion.getVersionsOnlyEarlyAccess().size() == 1)
                                     .collect(Collectors.toList());
+    }
+
+    public static List<MajorVersion> getUsefulMajorVersions() {
+        List<MajorVersion> usefulVersions  = new ArrayList<>();
+        List<MajorVersion> majorGAVersions = getGeneralAvailabilityOnlyMajorVersions();
+
+        // Add version 8
+        MajorVersion version8 = majorGAVersions.stream().filter(majorVersion -> majorVersion.getAsInt() == 8).findFirst().get();
+        usefulVersions.add(version8);
+
+        // Add latest LTS version and if available also the previous LTS version
+        List<MajorVersion> ltsVersions = majorGAVersions.stream()
+                                                        .filter(majorVersion -> majorVersion.getAsInt() > 8)
+                                                        .filter(majorVersion -> TermOfSupport.LTS == majorVersion.getTermOfSupport())
+                                                        .sorted(Comparator.comparing(MajorVersion::getAsInt).reversed())
+                                                        .collect(Collectors.toList());
+        if (!ltsVersions.isEmpty()) {
+            usefulVersions.add(ltsVersions.get(0));
+            if (ltsVersions.size() > 2) {
+                usefulVersions.add(ltsVersions.get(1));
+            }
+        }
+
+        // Added latest STS or MTS version if it is larger than latest LTS version
+        List<MajorVersion> stsMtsVersions = majorGAVersions.stream()
+                                                           .filter(majorVersion -> majorVersion.getAsInt() > 8)
+                                                           .filter(majorVersion -> TermOfSupport.LTS != majorVersion.getTermOfSupport())
+                                                           .filter(majorVersion -> usefulVersions.stream()
+                                                                                                 .filter(usefulVersion -> majorVersion.getAsInt() > usefulVersion.getAsInt())
+                                                                                                 .count() > 0)
+                                                           .sorted(Comparator.comparing(MajorVersion::getAsInt).reversed())
+                                                           .collect(Collectors.toList());
+        if (!stsMtsVersions.isEmpty()) {
+            usefulVersions.add(stsMtsVersions.get(0));
+        }
+
+        Collections.sort(usefulVersions, Comparator.comparing(MajorVersion::getAsInt).reversed());
+
+        return usefulVersions;
     }
 
     // VersionNumber

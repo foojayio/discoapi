@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.pkg;
@@ -25,16 +25,36 @@ import java.util.List;
 
 
 public enum OperatingSystem implements ApiFeature {
-    ALPINE_LINUX("Alpine Linux", "linux", LibCType.MUSL),
-    LINUX("Linux", "linux", LibCType.GLIBC),
-    LINUX_MUSL("Linux Musl", "linux", LibCType.MUSL),
-    MACOS("Mac OS", "macos", LibCType.LIBC),
-    WINDOWS("Windows", "windows", LibCType.C_STD_LIB),
-    SOLARIS("Solaris", "solaris", LibCType.LIBC),
-    QNX("QNX", "qnx", LibCType.LIBC),
-    AIX("AIX", "aix", LibCType.LIBC),
-    NONE("-", "", LibCType.NONE),
-    NOT_FOUND("", "", LibCType.NOT_FOUND);
+    ALPINE_LINUX("Alpine Linux", "linux", LibCType.MUSL) {
+        @Override public List<OperatingSystem> getSynonyms() { return List.of(OperatingSystem.LINUX, OperatingSystem.LINUX_MUSL); }
+    },
+    LINUX("Linux", "linux", LibCType.GLIBC) {
+        @Override public List<OperatingSystem> getSynonyms() { return List.of(); }
+    },
+    LINUX_MUSL("Linux Musl", "linux", LibCType.MUSL) {
+        @Override public List<OperatingSystem> getSynonyms() { return List.of(OperatingSystem.LINUX, OperatingSystem.ALPINE_LINUX); }
+    },
+    MACOS("Mac OS", "macos", LibCType.LIBC) {
+        @Override public List<OperatingSystem> getSynonyms() { return List.of(); }
+    },
+    WINDOWS("Windows", "windows", LibCType.C_STD_LIB) {
+        @Override public List<OperatingSystem> getSynonyms() { return List.of(); }
+    },
+    SOLARIS("Solaris", "solaris", LibCType.LIBC) {
+        @Override public List<OperatingSystem> getSynonyms() { return List.of(); }
+    },
+    QNX("QNX", "qnx", LibCType.LIBC) {
+        @Override public List<OperatingSystem> getSynonyms() { return List.of(); }
+    },
+    AIX("AIX", "aix", LibCType.LIBC) {
+        @Override public List<OperatingSystem> getSynonyms() { return List.of(); }
+    },
+    NONE("-", "", LibCType.NONE) {
+        @Override public List<OperatingSystem> getSynonyms() { return List.of(); }
+    },
+    NOT_FOUND("", "", LibCType.NOT_FOUND) {
+        @Override public List<OperatingSystem> getSynonyms() { return List.of(); }
+    };
 
     private final String   uiString;
     private final String   apiString;
@@ -59,6 +79,7 @@ public enum OperatingSystem implements ApiFeature {
     @Override public OperatingSystem[] getAll() { return values(); }
 
     public static OperatingSystem fromText(final String text) {
+        if (null == text) { return NOT_FOUND; }
         switch (text) {
             case "-linux":
             case "linux":
@@ -75,6 +96,8 @@ public enum OperatingSystem implements ApiFeature {
             case "alpine-linux":
             case "ALPINE-LINUX":
             case "alpine_linux":
+            case "Alpine_Linux":
+            case "ALPINE_LINUX":
             case "Alpine Linux":
             case "alpine linux":
             case "ALPINE LINUX":
@@ -129,5 +152,7 @@ public enum OperatingSystem implements ApiFeature {
     public LibCType getLibCType() { return libCType; }
 
     public static List<OperatingSystem> getAsList() { return Arrays.asList(values()); }
+
+    public abstract List<OperatingSystem> getSynonyms();
 }
 

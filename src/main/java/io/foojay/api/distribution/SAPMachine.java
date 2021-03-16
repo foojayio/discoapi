@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -28,12 +28,14 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -94,6 +96,12 @@ public class SAPMachine implements Distribution {
     private static final String                       SUPPORT_TERM_PARAM      = "";
     private static final String                       BITNESS_PARAM           = "";
 
+    private static final HashAlgorithm                HASH_ALGORITHM          = HashAlgorithm.NONE;
+    private static final String                       HASH_URI                = "";
+    private static final SignatureType                SIGNATURE_TYPE          = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI           = "";
+
 
     @Override public Distro getDistro() { return Distro.SAP_MACHINE; }
 
@@ -114,6 +122,16 @@ public class SAPMachine implements Distribution {
     @Override public String getTermOfSupportParam() { return SUPPORT_TERM_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
+
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -359,6 +377,7 @@ public class SAPMachine implements Distribution {
                 pkgs.add(pkg);
             }
         }
+
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
     }
@@ -475,7 +494,7 @@ public class SAPMachine implements Distribution {
                 LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
             }
         } catch (InterruptedException | IOException e) {
-            LOGGER.error("Error fetching packages for distribution {} from {}", getName(), PACKAGE_URL);
+            LOGGER.error("Error fetching packages for distribution {} from {}", getName(), PACKAGE_JSON_URL);
         }
         LOGGER.debug("Successfully fetched {} packages from sap.github.io", pkgs.size());
         return pkgs;

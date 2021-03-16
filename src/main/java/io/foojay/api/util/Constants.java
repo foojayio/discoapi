@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.util;
@@ -63,17 +63,39 @@ public class Constants {
 
     public static final String        MAINTAINED_PROPERTIES_URL = "https://github.com/foojay2020/maintained_major_versions/raw/main/maintained.properties";
 
+    public static final String        BASE_URL                  = null == Config.INSTANCE.getFoojayApiBaseUrl() ? "https://api.foojay.io/disco" : Config.INSTANCE.getFoojayApiBaseUrl();
+    public static final String        API_VERSION               = "1.0";
+    public static final String        ENDPOINT_PACKAGES         = "packages";
+    public static final String        ENDPOINT_EPHEMERAL_IDS    = "ephemeral_ids";
+    public static final String        SWAGGER_UI_URL            = "https://api.foojay.io/swagger-ui/";
+    public static final String        GEO_API_URL               = "https://api.ipgeolocation.io/ipgeo";
+
     public static final String        FILE_ENDING_JAR           = "jar";
     public static final String        FILE_ENDING_TXT           = "txt";
+    public static final String        FILE_ENDING_SHA1          = "sha1";
+    public static final String        FILE_ENDING_SHA256        = "sha256";
 
     public static final long          EPHEMERAL_ID_DELAY        = 120; // [sec]
     public static final long          EPHEMERAL_ID_TIMEOUT      = 600; // [sec]
 
+    public static final String        SQUARE_BRACKET_OPEN       = "[";
+    public static final String        SQUARE_BRACKET_CLOSE      = "]";
+    public static final String        CURLY_BRACKET_OPEN        = "{";
+    public static final String        CURLY_BRACKET_CLOSE       = "}";
+    public static final String        INDENTED_QUOTES           = "  \"";
+    public static final String        QUOTES                    = "\"";
+    public static final String        COLON                     = ":";
+    public static final String        COMMA                     = ",";
+    public static final String        SLASH                     = "/";
+    public static final String        NEW_LINE                  = "\n";
+    public static final String        COMMA_NEW_LINE            = ",\n";
+    public static final String        INDENT                    = "  ";
+
     public static final Map<String, String> PARAMETER_LOOKUP = new HashMap<>() {{
         put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
-        put(Pkg.FIELD_ARCHIVE_TYPE, "cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip");
+        put(Pkg.FIELD_ARCHIVE_TYPE, "apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip");
         put(Pkg.FIELD_BITNESS, "32, 64");
-        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, liberica, ojdk_build, oracle, oracle_open_jdk, redhat, sap_machine, zulu");
+        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, liberica, liberica_native, mandrel, ojdk_build, oracle, oracle_open_jdk, redhat, sap_machine, trava, zulu");
         put(Pkg.FIELD_OPERATING_SYSTEM, "aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows");
         put(Pkg.FIELD_LIB_C_TYPE, "c_std_lib, glibc, libc, musl");
         put(Pkg.FIELD_PACKAGE_TYPE, "jdk, jre");
@@ -82,6 +104,7 @@ public class Constants {
     }};
 
     public static final LinkedHashMap<String, ArchiveType> ARCHIVE_TYPE_LOOKUP = new LinkedHashMap<>() {{
+        put(".apk", ArchiveType.APK);
         put(".bin", ArchiveType.BIN);
         put(".cab", ArchiveType.CAB);
         put(".deb", ArchiveType.DEB);
@@ -103,10 +126,13 @@ public class Constants {
         put("aarch64", Architecture.AARCH64);
         put("aarch32sf", Architecture.ARM);
         put("aarch32hf", Architecture.ARM);
+        put("aarch32", Architecture.ARM);
         put("x86-32", Architecture.X86);
         put("x86_32", Architecture.X86);
+        put("x86lx32", Architecture.X86);
         put("x86-64", Architecture.X64);
         put("x86_64", Architecture.X64);
+        put("x86lx64", Architecture.X64);
         put("x86", Architecture.X86);
         put("win64", Architecture.X64);
         put("x64", Architecture.X64);
@@ -117,6 +143,7 @@ public class Constants {
         put("arm", Architecture.ARM);
         put("mips", Architecture.MIPS);
         put("i386", Architecture.X86);
+        put("i486", Architecture.X86);
         put("i586", Architecture.X86);
         put("i686", Architecture.X86);
         put("s390x", Architecture.S390X);
@@ -128,7 +155,6 @@ public class Constants {
         put("riscv64", Architecture.RISCV64);
         put("sparcv9", Architecture.SPARCV9);
         put("sparc", Architecture.SPARC);
-        put("musl", Architecture.X64);
     }};
 
     public static final LinkedHashMap<String, OperatingSystem> OPERATING_SYSTEM_LOOKUP = new LinkedHashMap<>() {{
@@ -138,7 +164,14 @@ public class Constants {
         put("win", OperatingSystem.WINDOWS);
         put("alpine-linux", OperatingSystem.ALPINE_LINUX);
         put("Alpine-Linux", OperatingSystem.ALPINE_LINUX);
+        put("alpine_linux", OperatingSystem.ALPINE_LINUX);
+        put("Alpine_Linux", OperatingSystem.ALPINE_LINUX);
         put("linux-musl", OperatingSystem.ALPINE_LINUX);
+        put("Linux-MUSL", OperatingSystem.ALPINE_LINUX);
+        put("Linux-Musl", OperatingSystem.ALPINE_LINUX);
+        put("linux_musl", OperatingSystem.ALPINE_LINUX);
+        put("Linux_MUSL", OperatingSystem.ALPINE_LINUX);
+        put("Linux_Musl", OperatingSystem.ALPINE_LINUX);
         put("musl", OperatingSystem.ALPINE_LINUX);
         put("linux", OperatingSystem.LINUX);
         put("Linux", OperatingSystem.LINUX);
@@ -149,6 +182,20 @@ public class Constants {
         put("macos", OperatingSystem.MACOS);
         put("osx", OperatingSystem.MACOS);
         put("mac", OperatingSystem.MACOS);
+    }};
+
+    public static final LinkedHashMap<String, OperatingSystem> OPERATING_SYSTEM_BY_ARCHIVE_TYPE_LOOKUP = new LinkedHashMap<>() {{
+        put("apk", OperatingSystem.LINUX);
+        put("deb", OperatingSystem.LINUX);
+        put("rpm", OperatingSystem.LINUX);
+        put("tar.gz", OperatingSystem.LINUX);
+        put("pkg", OperatingSystem.MACOS);
+        put("dmg", OperatingSystem.MACOS);
+        put("exe", OperatingSystem.WINDOWS);
+        put("msi", OperatingSystem.WINDOWS);
+        put("bin", OperatingSystem.WINDOWS);
+        put("cab", OperatingSystem.WINDOWS);
+        put("zip", OperatingSystem.WINDOWS);
     }};
 
     public static final LinkedHashMap<String, PackageType> PACKAGE_TYPE_LOOKUP = new LinkedHashMap<>() {{
@@ -188,11 +235,14 @@ public class Constants {
         put(Distro.GRAALVM_CE8, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.GRAALVM_CE11, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.LIBERICA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
+        put(Distro.LIBERICA_NATIVE, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
+        put(Distro.MANDREL, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.OJDK_BUILD, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
         put(Distro.ORACLE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY));
         put(Distro.ORACLE_OPEN_JDK, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
         put(Distro.RED_HAT, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY));
         put(Distro.SAP_MACHINE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
+        put(Distro.TRAVA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
         put(Distro.ZULU, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
     }};
 }

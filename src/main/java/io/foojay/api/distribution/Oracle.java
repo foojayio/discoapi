@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -25,11 +25,13 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -50,11 +52,11 @@ import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
 public class Oracle implements Distribution {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Oracle.class);
+    private static final Logger                       LOGGER                  = LoggerFactory.getLogger(Oracle.class);
 
     public  static final List<String>                 PACKAGE_URLS            = List.of("https://www.oracle.com/java/technologies/javase-jdk15-downloads.html",
                                                                                         "https://www.oracle.com/java/technologies/javase/jdk14-archive-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/javase-jdk13-downloads.html",
+                                                                                        "https://www.oracle.com/java/technologies/javase/jdk13-archive-downloads.html",
                                                                                         "https://www.oracle.com/java/technologies/javase/jdk12-archive-downloads.html",
                                                                                         "https://www.oracle.com/java/technologies/javase-jdk11-downloads.html",
                                                                                         "https://www.oracle.com/java/technologies/java-archive-javase10-downloads.html",
@@ -73,6 +75,12 @@ public class Oracle implements Distribution {
     private static final String                       RELEASE_STATUS_PARAM    = "";
     private static final String                       TERM_OF_SUPPORT_PARAM   = "";
     private static final String                       BITNESS_PARAM           = "";
+
+    private static final HashAlgorithm                HASH_ALGORITHM          = HashAlgorithm.NONE;
+    private static final String                       HASH_URI                = "";
+    private static final SignatureType                SIGNATURE_TYPE          = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI           = "";
 
     // Mappings for url parameters
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP      = Map.of(EA, "early_access", GA, "GA");
@@ -97,6 +105,16 @@ public class Oracle implements Distribution {
     @Override public String getTermOfSupportParam() { return TERM_OF_SUPPORT_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
+
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -158,8 +176,8 @@ public class Oracle implements Distribution {
         for (String filename : fileNames) {
             if (filename.contains("-demos") || filename.contains("-p-")) { continue; }
             if (filename.endsWith(".sh") || filename.endsWith("iftw.exe")) { continue; }
-            PackageType packageType;
-            String[]    nameParts;
+            PackageType     packageType;
+            String[]        nameParts;
             VersionNumber   versionNumber;
             String[]        osArchParts;
             OperatingSystem operatingSystem;
@@ -171,7 +189,7 @@ public class Oracle implements Distribution {
             if (filename.contains("_") && !filename.contains("javafx")) {
                 // > JDK 8
                 packageType = filename.startsWith("jdk") ? PackageType.JDK : PackageType.JRE;
-                nameParts       = filename.split("_");
+                nameParts   = filename.split("_");
                 
                 if (filename.startsWith("jdk")) {
                     versionNumber = VersionNumber.fromText(nameParts[0].replace("jdk-", ""));

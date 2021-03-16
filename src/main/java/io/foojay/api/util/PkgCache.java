@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.util;
@@ -24,6 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -63,6 +65,8 @@ public class PkgCache<T extends String, U extends Pkg> implements Cache<T, U> {
     @Override public boolean isEmpty() { return cache.isEmpty(); }
 
     public boolean containsKey(final T key) { return cache.containsKey(key); }
+
+    public Set<Entry<T,U>> getEntrySet() { return cache.entrySet(); }
 
     public Collection<T> getKeys() { return cache.keySet(); }
 

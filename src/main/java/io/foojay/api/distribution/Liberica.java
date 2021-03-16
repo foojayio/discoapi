@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -25,11 +25,13 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -116,6 +118,13 @@ public class Liberica implements Distribution {
     private static final String                       FIELD_BITNESS                   = "bitness";
     private static final String                       FIELD_OS                        = "os";
     private static final String                       FIELD_ARCHITECTURE              = "architecture";
+    private static final String                       FIELD_SHA1                      = "sha1";
+
+    private static final HashAlgorithm                HASH_ALGORITHM             = HashAlgorithm.NONE;
+    private static final String                       HASH_URI                   = "";
+    private static final SignatureType                SIGNATURE_TYPE             = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM        = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI              = "";
 
 
     @Override public Distro getDistro() { return Distro.LIBERICA; }
@@ -137,6 +146,16 @@ public class Liberica implements Distribution {
     @Override public String getTermOfSupportParam() { return SUPPORT_TERM_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
+
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -239,7 +258,7 @@ public class Liberica implements Distribution {
         VersionNumber vNumber       = new VersionNumber(jsonObj.get(FIELD_FEATURE_VERSION).getAsInt(), jsonObj.get(FIELD_INTERIM_VERSION).getAsInt(), jsonObj.get(FIELD_UPDATE_VERSION).getAsInt(), jsonObj.get(FIELD_PATCH_VERSION).getAsInt());
         VersionNumber dNumber       = new VersionNumber(versionNumber);
         Integer       buildVersion  = jsonObj.get(FIELD_BUILD_VERSION).getAsInt();
-        dNumber.setVendorSpecific("+" + buildVersion);
+        dNumber.setBuild(buildVersion);
         vNumber.setBuild(buildVersion);
         String        packageType   = jsonObj.get(FIELD_PACKAGE_TYPE).toString().replaceAll("\"", "");
         String        bundleTyp     = jsonObj.get(FIELD_BUNDLE_TYPE).toString().replaceAll("\"", "");
@@ -249,6 +268,7 @@ public class Liberica implements Distribution {
         Integer       bits          = jsonObj.get(FIELD_BITNESS).getAsInt();
         String        os            = jsonObj.get(FIELD_OS).getAsString();
         String        arc           = jsonObj.get(FIELD_ARCHITECTURE).getAsString();
+        //String        sha1          = jsonObj.get(FIELD_SHA1).getAsString();
 
         if (latest) {
             if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }

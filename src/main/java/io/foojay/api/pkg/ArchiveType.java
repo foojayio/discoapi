@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.pkg;
@@ -25,6 +25,7 @@ import java.util.List;
 
 
 public enum ArchiveType implements ApiFeature {
+    APK("apk", "apk", "apk"),
     BIN("bin", "bin", "bin"),
     CAB("cab", "cab",".cab"),
     DEB("deb", "deb",".deb"),
@@ -64,7 +65,12 @@ public enum ArchiveType implements ApiFeature {
     @Override public ArchiveType[] getAll() { return values(); }
 
     public static ArchiveType fromText(final String text) {
+        if (null == text) { return NOT_FOUND; }
         switch (text) {
+            case "apk":
+            case ".apk":
+            case "APK":
+                return APK;
             case "bin":
             case ".bin":
             case "BIN":

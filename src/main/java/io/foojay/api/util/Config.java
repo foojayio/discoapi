@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.util;
@@ -28,12 +28,13 @@ public enum Config {
 
     private static final Logger LOGGER                    = LoggerFactory.getLogger(Config.class);
 
-    public static final String FOOJAY_API_BASE_URL         = "FOOJAY_API_BASE_URL";         // api.foojay.io/disco
+    public static final String FOOJAY_API_BASE_URL         = "FOOJAY_API_BASE_URL";         // https://api.foojay.io/disco
     public static final String FOOJAY_API_MONGODB_URL      = "FOOJAY_API_MONGODB_URL";
     public static final String FOOJAY_API_MONGODB_PORT     = "FOOJAY_API_MONGODB_PORT";
     public static final String FOOJAY_API_MONGODB_DATABASE = "FOOJAY_API_MONGODB_DATABASE";
     public static final String FOOJAY_API_MONGODB_USER     = "FOOJAY_API_MONGODB_USER";
     public static final String FOOJAY_API_MONGODB_PASSWORD = "FOOJAY_API_MONGODB_PASSWORD";
+    public static final String FOOJAY_GEO_IP_API_KEY       = "FOOJAY_API_GEO_IP_API_KEY";
 
 
     public String getFoojayMongoDbUrl() {
@@ -89,6 +90,26 @@ public enum Config {
             return null;
         } else {
             return mongoDbPassword;
+        }
+    }
+
+    public String getFoojayGeoIpApiKey() {
+        final String foojayBaseUrl = System.getenv(FOOJAY_GEO_IP_API_KEY);
+        if (null == foojayBaseUrl) {
+            LOGGER.warn("No environment variable {} found.", FOOJAY_API_BASE_URL);
+            return null;
+        } else {
+            return foojayBaseUrl;
+        }
+    }
+
+    public String getFoojayApiBaseUrl() {
+        final String baseUrl = System.getenv(FOOJAY_API_BASE_URL);
+        if (null == baseUrl) {
+            LOGGER.warn("No environment variable {} found.", FOOJAY_API_BASE_URL);
+            return null;
+        } else {
+            return baseUrl;
         }
     }
 }

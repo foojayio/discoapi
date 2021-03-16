@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.util;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 
 public class SemVerParser {
-    private static final Pattern SEM_VER_PATTERN = Pattern.compile("^(<|<=|>|>=|=)?v?([0-9]+)(\\.[0-9]+)?(\\.[0-9]+)?(\\.[0-9]+)?(-([0-9A-Za-z\\-]+(\\.[0-9A-Za-z\\-]+)*))?(\\+([0-9A-Za-z\\-]+(\\.[0-9A-Za-z\\-]+)*))?((<|<=|>|>=|=)?v?([0-9]+)(\\.[0-9]+)?(\\.[0-9]+)?(\\.[0-9]+)?(-([0-9A-Za-z\\-]+(\\.[0-9A-Za-z\\-]+)*))?(\\+([0-9A-Za-z\\-]+(\\.[0-9A-Za-z\\-]+)*))?)?$");
+    private static final Pattern SEM_VER_PATTERN = Pattern.compile("^(<|<=|>|>=|=)?v?([0-9]+)(\\.[0-9]+)?(\\.[0-9]+)?(\\.[0-9]+)?(\\.[0-9]+)?(\\.[0-9]+)?(-([0-9A-Za-z\\-]+(\\.[0-9A-Za-z\\-]+)*))?(\\+([0-9A-Za-z\\-]+(\\.[0-9A-Za-z\\-]+)*))?((<|<=|>|>=|=)?v?([0-9]+)(\\.[0-9]+)?(\\.[0-9]+)?(\\.[0-9]+)?(\\.[0-9]+)?(\\.[0-9]+)?(-([0-9A-Za-z\\-]+(\\.[0-9A-Za-z\\-]+)*))?(\\+([0-9A-Za-z\\-]+(\\.[0-9A-Za-z\\-]+)*))?)?$");
 
 
     public static SemVerParsingResult fromText(final String text) {
@@ -58,8 +58,10 @@ public class SemVerParser {
 
         MatchResult result = results.get(0);
 
-        String metadata1 = null != result.group(10) ? result.group(10) : "";
-        String pre1      = null != result.group(7)  ? result.group(7)  : "";
+        String metadata1 = null != result.group(12) ? result.group(12) : "";
+        String pre1      = null != result.group(9)  ? result.group(9)  : "";
+
+        if (pre1.equals("ea.0")) { pre1 = "ea"; }
 
         VersionNumber versionNumber1 = new VersionNumber();
 
@@ -70,6 +72,7 @@ public class SemVerParser {
             comparison1 = Comparison.fromText(result.group(1));
         }
 
+        // 1st number
         try {
             if (null == result.group(2)) {
                 parsingResult.setError1(new Error("Feature version cannot be null"));
@@ -81,6 +84,7 @@ public class SemVerParser {
             return parsingResult;
         }
 
+        // 2nd number
         try {
             if (null == result.group(3)) {
                 versionNumber1.setInterim(0);
@@ -92,6 +96,7 @@ public class SemVerParser {
             return parsingResult;
         }
 
+        // 3rd number
         try {
             if (null == result.group(4)) {
                 versionNumber1.setUpdate(0);
@@ -103,6 +108,7 @@ public class SemVerParser {
             return parsingResult;
         }
 
+        // 4th number
         try {
             if (null == result.group(5)) {
                 versionNumber1.setPatch(0);
@@ -111,6 +117,30 @@ public class SemVerParser {
             }
         } catch (NumberFormatException e) {
             parsingResult.setError1(new Error("Error when parsing patch version " + result.group(5) + ": " + e));
+            return parsingResult;
+        }
+
+        // 5th number
+        try {
+            if (null == result.group(6)) {
+                versionNumber1.setFifth(0);
+            } else {
+                versionNumber1.setFifth(Integer.parseInt(Helper.trimPrefix(result.group(6), "\\.")));
+            }
+        } catch (NumberFormatException e) {
+            parsingResult.setError1(new Error("Error when parsing fifth number " + result.group(6) + ": " + e));
+            return parsingResult;
+        }
+
+        // 6th number
+        try {
+            if (null == result.group(7)) {
+                versionNumber1.setSixth(0);
+            } else {
+                versionNumber1.setSixth(Integer.parseInt(Helper.trimPrefix(result.group(7), "\\.")));
+            }
+        } catch (NumberFormatException e) {
+            parsingResult.setError1(new Error("Error when parsing sixth number " + result.group(7) + ": " + e));
             return parsingResult;
         }
 
@@ -139,62 +169,92 @@ public class SemVerParser {
         Predicate<SemVer> filter = null;
 
         // ******************** Parsing 2nd SemVer ****************************
-        if (result.groupCount() == 23 && null != result.group(12)) {
-            String metadata2 = null != result.group(22) ? result.group(22) : "";
-            String pre2      = null != result.group(19) ? result.group(19) : "";
+        if (result.groupCount() == 27 && null != result.group(14)) {
+            String metadata2 = null != result.group(26) ? result.group(26) : "";
+            String pre2      = null != result.group(23) ? result.group(23) : "";
+
+            if (pre2.equals("ea.0")) { pre2 = "ea"; }
 
             VersionNumber versionNumber2 = new VersionNumber();
 
             Comparison comparison2;
-            if (null == result.group(13)) {
+            if (null == result.group(15)) {
                 comparison2 = Comparison.EQUAL;
             } else {
-                comparison2 = Comparison.fromText(result.group(13));
+                comparison2 = Comparison.fromText(result.group(15));
             }
 
+            // 1st number
             boolean oldFormat;
             try {
-                if (null == result.group(14)) {
+                if (null == result.group(16)) {
                     parsingResult.setError2(new Error("Feature version cannot be null"));
                     return parsingResult;
                 }
-                oldFormat = Integer.parseInt(result.group(14)) == 1;
-                versionNumber2.setFeature(Integer.parseInt(result.group(14)));
+                oldFormat = Integer.parseInt(result.group(16)) == 1;
+                versionNumber2.setFeature(Integer.parseInt(result.group(16)));
             } catch (NumberFormatException e) {
-                parsingResult.setError2(new Error("Error when parsing feature version " + result.group(14) + ": " + e));
+                parsingResult.setError2(new Error("Error when parsing feature version " + result.group(16) + ": " + e));
                 return parsingResult;
             }
 
-            try {
-                if (null == result.group(15)) {
-                    versionNumber2.setInterim(0);
-                } else {
-                    versionNumber2.setInterim(Integer.parseInt(Helper.trimPrefix(result.group(15), "\\.")));
-                }
-            } catch (NumberFormatException e) {
-                parsingResult.setError2(new Error("Error when parsing interim version " + result.group(15) + ": " + e));
-                return parsingResult;
-            }
-
-            try {
-                if (null == result.group(16)) {
-                    versionNumber2.setUpdate(0);
-                } else {
-                    versionNumber2.setUpdate(Integer.parseInt(Helper.trimPrefix(result.group(16), "\\.")));
-                }
-            } catch (NumberFormatException e) {
-                parsingResult.setError2(new Error("Error when parsing update version " + result.group(16) + ": " + e));
-                return parsingResult;
-            }
-
+            // 2nd number
             try {
                 if (null == result.group(17)) {
-                    versionNumber2.setPatch(0);
+                    versionNumber2.setInterim(0);
                 } else {
-                    versionNumber2.setPatch(Integer.parseInt(Helper.trimPrefix(result.group(17), "\\.")));
+                    versionNumber2.setInterim(Integer.parseInt(Helper.trimPrefix(result.group(17), "\\.")));
                 }
             } catch (NumberFormatException e) {
-                parsingResult.setError2(new Error("Error when parsing patch version " + result.group(17) + ": " + e));
+                parsingResult.setError2(new Error("Error when parsing interim version " + result.group(17) + ": " + e));
+                return parsingResult;
+            }
+
+            // 3rd number
+            try {
+                if (null == result.group(18)) {
+                    versionNumber2.setUpdate(0);
+                } else {
+                    versionNumber2.setUpdate(Integer.parseInt(Helper.trimPrefix(result.group(18), "\\.")));
+                }
+            } catch (NumberFormatException e) {
+                parsingResult.setError2(new Error("Error when parsing update version " + result.group(18) + ": " + e));
+                return parsingResult;
+            }
+
+            // 4th number
+            try {
+                if (null == result.group(19)) {
+                    versionNumber2.setPatch(0);
+                } else {
+                    versionNumber2.setPatch(Integer.parseInt(Helper.trimPrefix(result.group(19), "\\.")));
+                }
+            } catch (NumberFormatException e) {
+                parsingResult.setError2(new Error("Error when parsing patch version " + result.group(19) + ": " + e));
+                return parsingResult;
+            }
+
+            // 5th number
+            try {
+                if (null == result.group(20)) {
+                    versionNumber2.setFifth(0);
+                } else {
+                    versionNumber2.setFifth(Integer.parseInt(Helper.trimPrefix(result.group(20), "\\.")));
+                }
+            } catch (NumberFormatException e) {
+                parsingResult.setError2(new Error("Error when parsing fifth number " + result.group(20) + ": " + e));
+                return parsingResult;
+            }
+
+            // 6th number
+            try {
+                if (null == result.group(21)) {
+                    versionNumber2.setSixth(0);
+                } else {
+                    versionNumber2.setSixth(Integer.parseInt(Helper.trimPrefix(result.group(21), "\\.")));
+                }
+            } catch (NumberFormatException e) {
+                parsingResult.setError2(new Error("Error when parsing sixth number " + result.group(21) + ": " + e));
                 return parsingResult;
             }
 
@@ -266,24 +326,24 @@ public class SemVerParser {
         return parsingResult;
     }
 
-    private static Error validatePrerelease(final String prerelease) {
-        String[] eparts = prerelease.split(".");
+    private static Error validatePrerelease(final String preRelease) {
+        String[] eparts = preRelease.split("\\.");
         for (String p : eparts) {
             if (p.matches("[0-9]+")) {
-                if (p.length() > 1 && p.startsWith("0")) {
+                if (p.length() > 0 && p.startsWith("0")) {
                     return new Error("Segment starts with 0: " + p);
                 }
             } else if (!p.matches("[a-zA-Z-0-9]+")) {
-                return new Error("Invalid prerelease: " + prerelease);
+                return new Error("Invalid preRelease: " + preRelease);
             }
         }
         return null;
     }
 
     private static Error validateMetadata(final String metadata) {
-        String[] eparts = metadata.split(".");
+        String[] eparts = metadata.split("\\.");
         for (String p : eparts) {
-            if (!p.matches("[a-zA-Z-0-9]")) {
+            if (!p.matches("[a-zA-Z-0-9]+")) {
                 return new Error("Invalid metadata: " + metadata);
             }
         }

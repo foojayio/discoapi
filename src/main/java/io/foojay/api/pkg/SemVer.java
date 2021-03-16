@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.pkg;
@@ -25,17 +25,27 @@ import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.SemVerParser;
 import io.foojay.api.util.SemVerParsingResult;
 
+import java.util.List;
+import java.util.regex.MatchResult;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 
 public class SemVer implements Comparable<SemVer> {
+    public static final Pattern EA_PATTERN           = Pattern.compile("(ea|EA)((\\.|\\+|\\-)([0-9]+))?");
+    public static final Pattern BUILD_NUMBER_PATTERN = Pattern.compile("\\+?(b|B)([0-9]+)");
+
     private VersionNumber versionNumber;
     private ReleaseStatus releaseStatus;
     private String        pre;
+    private String        preBuild;
     private String        metadata;
     private Comparison    comparison;
 
 
     public SemVer(final VersionNumber versionNumber) {
-        this(versionNumber, ReleaseStatus.GA, "","");
+        this(versionNumber, versionNumber.getReleaseStatus() != null && versionNumber.getReleaseStatus().isPresent() ? versionNumber.getReleaseStatus().get() : ReleaseStatus.GA, versionNumber.getPreBuild() != null && versionNumber.getPreBuild().isPresent() ? "-ea." + versionNumber.getPreBuild().getAsInt() : "", versionNumber.getBuild() != null && versionNumber.getBuild().isPresent() ? "+b" + versionNumber.getBuild().getAsInt() : "");
     }
     public SemVer(final VersionNumber versionNumber, final ReleaseStatus releaseStatus) {
         this(versionNumber, releaseStatus, ReleaseStatus.EA == releaseStatus ? "ea" : "", "");
@@ -48,10 +58,61 @@ public class SemVer implements Comparable<SemVer> {
     }
     public SemVer(final VersionNumber versionNumber, final ReleaseStatus releaseStatus, final String pre, final String metadata) {
         this.versionNumber = versionNumber;
-        this.releaseStatus = releaseStatus;
-        this.pre           = null == pre      ? "" : pre;
+        this.releaseStatus = versionNumber.getReleaseStatus().isPresent() ? versionNumber.getReleaseStatus().get() : releaseStatus;
+        this.pre           = null == pre      ? ReleaseStatus.EA == releaseStatus ? "-ea": "" : pre;
         this.metadata      = null == metadata ? "" : metadata;
         this.comparison    = Comparison.EQUAL;
+        this.preBuild      = "";
+
+        if (null != this.versionNumber.getReleaseStatus() && this.versionNumber.getReleaseStatus().isPresent() && this.versionNumber.getReleaseStatus().get() != this.releaseStatus) {
+            this.versionNumber.setReleaseStatus(this.releaseStatus);
+        }
+
+        // Extract early access preBuild
+        if (null != this.pre) {
+            final Matcher           eaMatcher = EA_PATTERN.matcher(this.pre);
+            final List<MatchResult> eaResults = eaMatcher.results().collect(Collectors.toList());
+            if (eaResults.size() > 0) {
+                final MatchResult eaResult = eaResults.get(0);
+                if (null != eaResult.group(1)) {
+                    this.versionNumber.setReleaseStatus(ReleaseStatus.EA);
+                    if (null != eaResult.group(4)) {
+                        this.preBuild = eaResult.group(4);
+                        if (null == this.versionNumber.getPreBuild() || this.versionNumber.getPreBuild().isEmpty()) {
+                            this.versionNumber.setPreBuild(Integer.parseInt(this.preBuild));
+                        }
+                    }
+                }
+            }
+        }
+
+        if (null != this.pre && !this.pre.isEmpty() && !this.pre.startsWith("+") && !this.pre.startsWith("-")) {
+            this.pre = "-" + pre;
+        }
+        if (null != this.metadata && !this.metadata.isEmpty() && !this.metadata.startsWith("-") && !this.metadata.startsWith("+")) {
+            this.metadata = "+" + metadata;
+        }
+
+        if (!this.pre.isEmpty() && !this.pre.startsWith("-")) { throw new IllegalArgumentException("pre-release argument has to start with \"-\""); }
+        if (!this.metadata.isEmpty() && !this.metadata.startsWith("+")) { throw new IllegalArgumentException("metadata argument has to start with \"+\""); }
+        if (ReleaseStatus.EA == this.releaseStatus && !this.pre.isEmpty() && !this.pre.toLowerCase().startsWith("-ea")) { throw new IllegalArgumentException("ReleaseStatus and pre-release argument cannot be different"); }
+        if (ReleaseStatus.GA == this.releaseStatus && !this.pre.isEmpty() && this.pre.toLowerCase().startsWith("-ea")) { throw new IllegalArgumentException("ReleaseStatus and pre-release argument cannot be different"); }
+
+        // Extract metadata e.g. build number
+        if (null != this.metadata) {
+            final Matcher           buildNumberMatcher = BUILD_NUMBER_PATTERN.matcher(this.metadata);
+            final List<MatchResult> buildNumberResults = buildNumberMatcher.results().collect(Collectors.toList());
+            if (buildNumberResults.size() > 0) {
+                final MatchResult buildNumberResult = buildNumberResults.get(0);
+                if (null != buildNumberResult.group(1)) {
+                    if (null != buildNumberResult.group(2)) {
+                        if (null == this.versionNumber.getBuild() || this.versionNumber.getBuild().isEmpty()) {
+                            this.versionNumber.setBuild(Integer.parseInt(buildNumberResult.group(2)));
+                        }
+                    }
+                }
+            }
+        }
     }
 
 
@@ -69,6 +130,12 @@ public class SemVer implements Comparable<SemVer> {
     public int getPatch() { return versionNumber.getPatch().isPresent() ? versionNumber.getPatch().getAsInt() : 0; }
     public void setPatch(final int patch) { versionNumber.setPatch(patch); }
 
+    public int getFifth() { return versionNumber.getFifth().isPresent() ? versionNumber.getFifth().getAsInt() : 0; }
+    public void setFifth(final int fifth) { versionNumber.setFifth(fifth); }
+
+    public int getSixth() { return versionNumber.getSixth().isPresent() ? versionNumber.getSixth().getAsInt() : 0; }
+    public void setSixth(final int sixth) { versionNumber.setSixth(sixth); }
+
     public ReleaseStatus getReleaseStatus() { return releaseStatus; }
 
     public MajorVersion getMajorVersion() { return new MajorVersion(getFeature()); }
@@ -85,6 +152,18 @@ public class SemVer implements Comparable<SemVer> {
         this.releaseStatus = (null == pre || pre.isEmpty()) ? ReleaseStatus.GA : ReleaseStatus.EA;
     }
 
+    public String getPreBuild() { return preBuild; }
+    public void setPreBuild(final String preBuild) {
+        if (preBuild.matches("[0-9]+")) {
+            if (preBuild.length() > 1 && preBuild.startsWith("0")) {
+                throw new IllegalArgumentException("preBuild cannot starts with 0: " + preBuild);
+            }
+            this.preBuild = preBuild;
+        } else {
+            throw new IllegalArgumentException("Invalid preBuild: " + preBuild);
+        }
+    }
+
     public String getMetadata() { return metadata; }
     public void setMetadata(final String metadata) {
         if (null == metadata && metadata.length() > 0) {
@@ -99,17 +178,34 @@ public class SemVer implements Comparable<SemVer> {
     public Comparison getComparison() { return comparison; }
     public void setComparison(final Comparison comparison) { this.comparison = comparison; }
 
-    public SemVer incPatch() {
+    public SemVer incSixth() {
         SemVer vNext = SemVer.this;
         if (null != pre && !pre.isEmpty()) {
             vNext.setMetadata("");
             vNext.setPre("");
-
         } else {
             vNext.metadata = "";
             vNext.pre      = "";
-            vNext.setPatch(getPatch() + 1);
+            vNext.setSixth(getSixth() + 1);
         }
+        return vNext;
+    }
+
+    public SemVer incFifth() {
+        SemVer vNext = SemVer.this;
+        vNext.setMetadata("");
+        vNext.setPre("");
+        vNext.setSixth(0);
+        vNext.setFifth(getFifth() + 1);
+        return vNext;
+    }
+
+    public SemVer incPatch() {
+        SemVer vNext = SemVer.this;
+        vNext.setMetadata("");
+        vNext.setPre("");
+        vNext.setFifth(0);
+        vNext.setPatch(getPatch() + 1);
         return vNext;
     }
 
@@ -199,6 +295,12 @@ public class SemVer implements Comparable<SemVer> {
         d = compareSegment(getPatch(), semVer.getPatch());
         if (d != 0) { return d; }
 
+        d = compareSegment(getFifth(), semVer.getFifth());
+        if (d != 0) { return d; }
+
+        d = compareSegment(getSixth(), semVer.getSixth());
+        if (d != 0) { return d; }
+
         if ((null != pre && pre.isEmpty()) && (null != semVer.getPre() && semVer.getPre().isEmpty())) { return 0; }
         if (null == pre || pre.isEmpty()) { return 1; }
         if (null == semVer.getPre() || semVer.getPre().isEmpty()) { return -1; }
@@ -218,8 +320,8 @@ public class SemVer implements Comparable<SemVer> {
     }
 
     private int comparePrerelease(final String pre1, final String pre2) {
-        String[] preParts1 = pre1.split(".");
-        String[] preParts2 = pre2.split(".");
+        String[] preParts1 = pre1.split("\\.");
+        String[] preParts2 = pre2.split("\\.");
 
         int preParts1Length = preParts1.length;
         int preParts2Length = preParts2.length;
@@ -289,12 +391,20 @@ public class SemVer implements Comparable<SemVer> {
         return -1;
     }
 
-    @Override public String toString() {
+    public String toString(final boolean javaFormat) {
         StringBuilder versionBuilder = new StringBuilder();
         versionBuilder.append(Comparison.EQUAL != comparison ? comparison.getOperator() : "");
-        versionBuilder.append(versionNumber.toString(OutputFormat.REDUCED));
-        versionBuilder.append(ReleaseStatus.EA == releaseStatus ? "-ea" : "");
-        versionBuilder.append(metadata != null && !metadata.isEmpty() ? ("+" + metadata) : "");
+        versionBuilder.append(versionNumber.toString(OutputFormat.REDUCED, javaFormat, false));
+        if (ReleaseStatus.EA == releaseStatus) {
+            versionBuilder.append("-ea").append(preBuild.isEmpty() ? "" : ("." + preBuild));
+        }
+        if (null != metadata && !metadata.isEmpty()) {
+            versionBuilder.append(metadata.startsWith("+") ? metadata : ("+" + metadata));
+        }
         return versionBuilder.toString();
+    }
+
+    @Override public String toString() {
+        return toString(true);
     }
 }

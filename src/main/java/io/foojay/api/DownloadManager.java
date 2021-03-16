@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api;
@@ -49,28 +49,28 @@ public enum DownloadManager {
         }
     }
 
-    public void increaseCounterForId(final String id, final String ipAddress) {
+    public void increaseCounterForId(final String pkgId, final String ipAddress, final String token) {
         if (downloads.isEmpty()) { preloadDownloads(); }
 
-        if (!CacheManager.INSTANCE.pkgCache.getKeys().contains(id)) { return; }
-        long noOfDownloads = downloads.containsKey(id) ? downloads.get(id) : 0L;
+        if (!CacheManager.INSTANCE.pkgCache.getKeys().contains(pkgId)) { return; }
+        long noOfDownloads = downloads.containsKey(pkgId) ? downloads.get(pkgId) : 0L;
         noOfDownloads++;
-        downloads.put(id, noOfDownloads);
+        downloads.put(pkgId, noOfDownloads);
 
         // Store package id and no of downloads for this package
         try {
-            MongoDbManager.INSTANCE.upsertDownloadForId(id, noOfDownloads);
-            LOGGER.debug("Successfully stored download for package id {} to mongodb.", id);
+            MongoDbManager.INSTANCE.upsertDownloadForId(pkgId, noOfDownloads);
+            LOGGER.debug("Successfully stored download for package id {} to mongodb.", pkgId);
         } catch (Exception e) {
-            LOGGER.error("Error storing download download for package id {} to mongodb. {}", id, e);
+            LOGGER.error("Error storing download download for package id {} to mongodb. {}", pkgId, e);
         }
 
         // Store package id and ip-address from what it was downloaded
         try {
-            MongoDbManager.INSTANCE.addDownloadForIp(id, ipAddress);
-            LOGGER.debug("Download of package id {} from ip-address {}", id, ipAddress);
+            MongoDbManager.INSTANCE.addDownloadForIp(pkgId, ipAddress, token);
+            LOGGER.debug("Download of package id {} from ip-address {}", pkgId, ipAddress);
         } catch (Exception e) {
-            LOGGER.error("Error storing download of package id {} for ip-address {}", id, ipAddress);
+            LOGGER.error("Error storing download of package id {} for ip-address {}", pkgId, ipAddress);
         }
     }
 }

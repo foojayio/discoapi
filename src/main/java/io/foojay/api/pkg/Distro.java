@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.pkg;
@@ -27,16 +27,32 @@ import io.foojay.api.distribution.Dragonwell;
 import io.foojay.api.distribution.GraalVMCE11;
 import io.foojay.api.distribution.GraalVMCE8;
 import io.foojay.api.distribution.Liberica;
+import io.foojay.api.distribution.LibericaNative;
+import io.foojay.api.distribution.Mandrel;
 import io.foojay.api.distribution.OJDKBuild;
 import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.distribution.RedHat;
 import io.foojay.api.distribution.SAPMachine;
+import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
+import io.foojay.api.util.OutputFormat;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static io.foojay.api.util.Constants.COLON;
+import static io.foojay.api.util.Constants.COMMA;
+import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
+import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.CURLY_BRACKET_OPEN;
+import static io.foojay.api.util.Constants.INDENT;
+import static io.foojay.api.util.Constants.INDENTED_QUOTES;
+import static io.foojay.api.util.Constants.NEW_LINE;
+import static io.foojay.api.util.Constants.QUOTES;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 public enum Distro implements ApiFeature {
@@ -47,16 +63,26 @@ public enum Distro implements ApiFeature {
     GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 12),
     GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 12),
     LIBERICA("Liberica", "liberica", new Liberica(), 1),
+    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 1),
+    MANDREL("Mandrel", "mandrel", new Mandrel(), 6),
     OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 12),
     ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 6),
     ORACLE("Oracle", "oracle", new Oracle(), 1),
     RED_HAT("Red Hat", "redhat", new RedHat(), 12),
     SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 12),
+    TRAVA("Trava", "trava", new Trava(), 12),
     ZULU("Zulu", "zulu", new Zulu(), 1),
     NONE("-", "", null, 0),
     NOT_FOUND("", "", null, 0);
 
-    public  static final String       FIELD_VERSIONS = "versions";
+    public  static final String       FIELD_NAME                = "name";
+    public  static final String       FIELD_API_PARAMETER       = "api_parameter";
+    public  static final String       FIELD_HASH_ALGORITHM      = "hash_algorithm";
+    public  static final String       FIELD_HASH_URI            = "hash_uri";
+    public  static final String       FIELD_SIGNATURE_TYPE      = "signature_type";
+    public  static final String       FIELD_SIGNATURE_ALGORITHM = "signature_algorithm";
+    public  static final String       FIELD_SIGNATURE_URI       = "signature_uri";
+    public  static final String       FIELD_VERSIONS            = "versions";
     private        final String       uiString;
     private        final String       apiString;
     private        final Distribution distribution;
@@ -86,6 +112,7 @@ public enum Distro implements ApiFeature {
     public static Distribution distributionFromText(final String text) { return fromText(text).get(); }
 
     public static Distro fromText(final String text) {
+        if (null == text) { return NOT_FOUND; }
         switch (text) {
             case "aoj":
             case "AOJ":
@@ -120,6 +147,18 @@ public enum Distro implements ApiFeature {
             case "LIBERICA":
             case "Liberica":
                 return LIBERICA;
+            case "liberica_native":
+            case "LIBERICA_NATIVE":
+            case "libericaNative":
+            case "LibericaNative":
+            case "liberica native":
+            case "LIBERICA NATIVE":
+            case "Liberica Native":
+                return LIBERICA_NATIVE;
+            case "mandrel":
+            case "MANDREL":
+            case "Mandrel":
+                return MANDREL;
             case "graalvm_ce8":
             case "graalvmce8":
             case "GraalVM CE 8":
@@ -142,6 +181,13 @@ public enum Distro implements ApiFeature {
             case "SAP-Machine":
             case "SAP-MACHINE":
                 return SAP_MACHINE;
+            case "trava":
+            case "TRAVA":
+            case "trava_openjdk":
+            case "TRAVA_OPENJDK":
+            case "trava openjdk":
+            case "TRAVA OPENJDK":
+                return TRAVA;   
             case "zulu":
             case "ZULU":
             case "Zulu":
@@ -206,23 +252,107 @@ public enum Distro implements ApiFeature {
 
     public static List<Distro> getAsList() { return Arrays.asList(values()); }
 
-    @Override public String toString() {
-        if (Distro.NOT_FOUND == Distro.this || Distro.NONE == Distro.this) { return ""; }
+    public static List<Distro> getDistrosWithJavaVersioning() {
+        return Arrays.stream(values())
+                     .filter(distro -> Distro.NONE         != distro)
+                     .filter(distro -> Distro.NOT_FOUND    != distro)
+                     .filter(distro -> Distro.GRAALVM_CE11 != distro)
+                     .filter(distro -> Distro.GRAALVM_CE8  != distro)
+                     .filter(distro -> Distro.MANDREL != distro)
+                     .collect(Collectors.toList());
+    }
+
+    public static List<Distro> getDistributionsBasedOnOpenJDK() {
+        return Arrays.stream(values())
+                     .filter(distro -> Distro.NONE != distro)
+                     .filter(distro -> Distro.NOT_FOUND != distro)
+                     .filter(distro -> Distro.GRAALVM_CE11 != distro)
+                     .filter(distro -> Distro.GRAALVM_CE8 != distro)
+                     .filter(distro -> Distro.MANDREL != distro)
+                     .filter(distro -> Distro.LIBERICA_NATIVE != distro)
+                     .collect(Collectors.toList());
+    }
+
+    public static List<Distro> getDistributionsBasedOnGraalVm() {
+        return Arrays.stream(values())
+                     .filter(distro -> Distro.NONE == distro)
+                     .filter(distro -> Distro.NOT_FOUND == distro)
+                     .filter(distro -> Distro.GRAALVM_CE11 == distro)
+                     .filter(distro -> Distro.GRAALVM_CE8 == distro)
+                     .filter(distro -> Distro.MANDREL == distro)
+                     .filter(distro -> Distro.LIBERICA_NATIVE == distro)
+                     .collect(Collectors.toList());
+    }
+
+    public String toString(final OutputFormat outputFormat) {
+        final StringBuilder msgBuilder = new StringBuilder();
         final List<SemVer> versions = get().getVersions();
-        StringBuilder distributionMsgBuilder = new StringBuilder().append("{").append("\n")
-                                                                  .append("  \"name\"").append(":").append("\"").append(uiString).append("\"").append(",\n")
-                                                                  .append("  \"api_parameter\"").append(":").append("\"").append(apiString).append("\"").append(",\n")
-                                                                  .append("  \"").append(FIELD_VERSIONS).append("\"").append(": [").append(versions.isEmpty() ? "" : "\n");
-        versions.forEach(versionNumber -> distributionMsgBuilder.append("    \"").append(versionNumber).append("\"").append(",\n"));
+        switch(outputFormat) {
+            case FULL:
+                msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_VERSIONS).append(QUOTES).append(COLON).append(" ").append(SQUARE_BRACKET_OPEN).append(versions.isEmpty() ? "" : NEW_LINE);
+                versions.forEach(versionNumber -> msgBuilder.append(INDENT).append(INDENTED_QUOTES).append(versionNumber).append(QUOTES).append(COMMA_NEW_LINE));
         if (!versions.isEmpty()) {
-            distributionMsgBuilder.setLength(distributionMsgBuilder.length() - 2);
-            distributionMsgBuilder.append("\n")
-                                  .append("  ]\n");
+                    msgBuilder.setLength(msgBuilder.length() - 2);
+                    msgBuilder.append(NEW_LINE)
+                              .append(INDENT).append(SQUARE_BRACKET_CLOSE).append(NEW_LINE);
         } else {
-            distributionMsgBuilder.append("]\n");
+                    msgBuilder.append(SQUARE_BRACKET_CLOSE).append(NEW_LINE);
+                }
+                return msgBuilder.append(CURLY_BRACKET_CLOSE).toString();
+            case FULL_COMPRESSED:
+                msgBuilder.append(CURLY_BRACKET_OPEN)
+                          .append(QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(FIELD_VERSIONS).append(QUOTES).append(COLON).append(" ").append(SQUARE_BRACKET_OPEN);
+                versions.forEach(versionNumber -> msgBuilder.append(INDENT).append(INDENTED_QUOTES).append(versionNumber).append(QUOTES).append(COMMA));
+                if (!versions.isEmpty()) {
+                    msgBuilder.setLength(msgBuilder.length() - 2);
+                    msgBuilder.append(NEW_LINE)
+                              .append(INDENT).append(SQUARE_BRACKET_CLOSE);
+                } else {
+                    msgBuilder.append(SQUARE_BRACKET_CLOSE);
+                }
+                return msgBuilder.append(CURLY_BRACKET_CLOSE).toString();
+            case REDUCED:
+                msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(NEW_LINE)
+                          .append(CURLY_BRACKET_CLOSE);
+                return msgBuilder.toString();
+            case REDUCED_COMPRESSED:
+            default:
+                msgBuilder.append(CURLY_BRACKET_OPEN)
+                          .append(QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES)
+                          .append(CURLY_BRACKET_CLOSE);
+                return msgBuilder.toString();
+        }
         }
 
-        return distributionMsgBuilder.append("}")
-                                     .toString();
+    @Override public String toString() {
+        return toString(OutputFormat.FULL);
     }
 }

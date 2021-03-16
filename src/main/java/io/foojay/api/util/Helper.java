@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.util;
@@ -24,26 +24,29 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
-import io.foojay.api.distribution.AOJ_OPENJ9;
-import io.foojay.api.distribution.OJDKBuild;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
-import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.PackageType;
-import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.MajorVersion;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.distribution.AOJ;
+import io.foojay.api.distribution.AOJ_OPENJ9;
 import io.foojay.api.distribution.Distribution;
+import io.foojay.api.distribution.LibericaNative;
+import io.foojay.api.distribution.OJDKBuild;
 import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.distribution.RedHat;
 import io.foojay.api.distribution.SAPMachine;
+import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
+import io.foojay.api.pkg.Architecture;
+import io.foojay.api.pkg.ArchiveType;
+import io.foojay.api.pkg.Bitness;
+import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
+import io.foojay.api.pkg.MajorVersion;
+import io.foojay.api.pkg.OperatingSystem;
+import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.Pkg;
+import io.foojay.api.pkg.ReleaseStatus;
+import io.foojay.api.pkg.TermOfSupport;
+import io.foojay.api.pkg.VersionNumber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +57,7 @@ import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
+import java.net.http.HttpClient.Version;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
@@ -65,12 +69,15 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -83,14 +90,21 @@ import static java.util.stream.Collectors.toCollection;
 
 
 public class Helper {
-    private static final Logger  LOGGER                = LoggerFactory.getLogger(Helper.class);
-    private static final Random  RND                   = new Random();
-    public  static final Pattern FILE_URL_PATTERN      = Pattern.compile("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)");
-    public  static final Pattern HREF_FILE_PATTERN     = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
-    public  static final Pattern HREF_DOWNLOAD_PATTERN = Pattern.compile("(>)(\\s?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(<)");
-    public  static final Matcher FILE_URL_MATCHER      = FILE_URL_PATTERN.matcher("");
-    public  static final Matcher HREF_FILE_MATCHER     = HREF_FILE_PATTERN.matcher("");
-    public  static final Matcher HREF_DOWNLOAD_MATCHER = HREF_DOWNLOAD_PATTERN.matcher("");
+    private static final Logger  LOGGER                 = LoggerFactory.getLogger(Helper.class);
+    private static final Random  RND                    = new Random();
+    public static final  Pattern FILE_URL_PATTERN                       = Pattern.compile("(JDK|JRE)(\\s+\\|\\s?\\[[a-zA-Z0-9\\-\\._]+\\]\\()(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz(?!\\.sig)|\\.deb|\\.rpm|\\.cab|\\.7z))");
+    public static final  Pattern FILE_URL_MD5_PATTERN                   = Pattern.compile("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\\)\\h+\\|\\h+`([0-9a-z]{32})`");
+    public static final  Pattern DRAGONWELL_11_FILE_NAME_SHA256_PATTERN = Pattern.compile("(OpenJDK[0-9]+U[a-z0-9_\\-\\.]+)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)(\\s+\\(Experimental ONLY\\))?\\h+\\|\\h+([0-9a-z]{64})");
+    public static final  Pattern DRAGONWELL_8_FILE_NAME_SHA256_PATTERN  = Pattern.compile("(\\()?(Alibaba_Dragonwell[0-9\\.A-Za-z_\\-]+)(\\)=\\s+)?|([\\\\r\\\\n]+)?([a-z0-9]{64})");
+    public  static final Pattern HREF_FILE_PATTERN      = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
+    public  static final Pattern HREF_DOWNLOAD_PATTERN  = Pattern.compile("(\\>)(\\s|\\h?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(\\<)");
+    public  static final Pattern NUMBER_IN_TEXT_PATTERN = Pattern.compile("(.*)?([0-9]+)(.*)?");
+    public  static final Matcher FILE_URL_MATCHER       = FILE_URL_PATTERN.matcher("");
+    public static final  Matcher FILE_URL_MD5_MATCHER                   = FILE_URL_MD5_PATTERN.matcher("");
+    public static final  Matcher DRAGONWELL_11_FILE_NAME_SHA256_MATCHER = DRAGONWELL_11_FILE_NAME_SHA256_PATTERN.matcher("");
+    public static final  Matcher DRAGONWELL_8_FILE_NAME_SHA256_MATCHER  = DRAGONWELL_8_FILE_NAME_SHA256_PATTERN.matcher("");
+    public  static final Matcher HREF_FILE_MATCHER      = HREF_FILE_PATTERN.matcher("");
+    public  static final Matcher HREF_DOWNLOAD_MATCHER  = HREF_DOWNLOAD_PATTERN.matcher("");
 
 
     public static Callable<List<Pkg>> createTask(final Distro distro) {
@@ -187,6 +201,10 @@ public class Helper {
                     LOGGER.error("Error fetching packages for distribution {} from {}", sapMachine.getName(), query);
                 }
                 break;
+            case TRAVA:
+                Trava trava = (Trava) distro.get();
+                pkgs.addAll(trava.getAllPkgs());
+                break;
             case AOJ:
                 AOJ AOJ = (AOJ) distro.get();
                 for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
@@ -203,11 +221,14 @@ public class Helper {
                     pkgs.addAll(getPkgs(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.EA, TermOfSupport.NONE));
                 }
                 break;
+            case LIBERICA_NATIVE:
+                LibericaNative libericaNative = (LibericaNative) distro.get();
+                pkgs.addAll(libericaNative.getAllPkgs());
+                break;
             default:
                 Distribution distribution = distro.get();
                 for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                    pkgs.addAll(
-                        getPkgs(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
+                    pkgs.addAll(getPkgs(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
                 }
                 break;
         }
@@ -229,8 +250,15 @@ public class Helper {
 
         if (query.isEmpty()) { return List.of(); }
 
-        HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(query)).setHeader("User-Agent", "DiscoAPI").GET().build();
+        HttpClient  client  = HttpClient.newBuilder()
+                                        .followRedirects(Redirect.NORMAL)
+                                        .version(java.net.http.HttpClient.Version.HTTP_2)
+                                        .build();
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri(URI.create(query))
+                                         .setHeader("User-Agent", "DiscoAPI")
+                                         .GET()
+                                         .build();
         List<Pkg>   pkgs    = new LinkedList<>();
         try {
             List<Pkg> pkgsFound = new ArrayList<>();
@@ -252,9 +280,8 @@ public class Helper {
                         //pkgsFound.addAll(pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList()));
                         }
                     } else if (element instanceof JsonObject) {
-                        JsonObject    pkgJsonObj         = element.getAsJsonObject();
-                        List<Pkg> pkgsInDistribution =
-                            distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
+                        JsonObject pkgJsonObj         = element.getAsJsonObject();
+                        List<Pkg>  pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
                     pkgsFound.addAll(pkgsInDistribution);
                     //pkgsFound.addAll(pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList()));
                     }
@@ -285,8 +312,15 @@ public class Helper {
                                           final Architecture architecture, final Bitness bitness, final ArchiveType archiveType,
                                           final PackageType packageType, final boolean javaFX, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         String      query   = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, javaFX, releaseStatus, termOfSupport);
-        HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_1_1).build();
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(query)).setHeader("User-Agent", "DiscoAPI").GET().build();
+        HttpClient  client  = HttpClient.newBuilder()
+                                        .followRedirects(Redirect.NEVER)
+                                        .version(java.net.http.HttpClient.Version.HTTP_1_1)
+                                        .build();
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri(URI.create(query))
+                                         .setHeader("User-Agent", "DiscoAPI")
+                                         .GET()
+                                         .build();
         List<Pkg>   pkgs    = new LinkedList<>();
         try {
             String      body     = getResponseAsync(client, request);
@@ -366,9 +400,84 @@ public class Helper {
         Set<String> urlsFound = new HashSet<>();
         FILE_URL_MATCHER.reset(text);
         while (FILE_URL_MATCHER.find()) {
-            urlsFound.add(FILE_URL_MATCHER.group());
+            // JDK / JRE -> FILE_URL_MATCHER.group(1)
+            // File URL  -> FILE_URL_MATCHER.group(3)
+            urlsFound.add(FILE_URL_MATCHER.group(3));
         }
         return urlsFound;
+    }
+
+    public static Set<Pair<String,String>> getPackageTypeAndFileUrlFromString(final String text) {
+        Set<Pair<String,String>> pairsFound = new HashSet<>();
+        FILE_URL_MATCHER.reset(text);
+        while (FILE_URL_MATCHER.find()) {
+            pairsFound.add(new Pair<>(FILE_URL_MATCHER.group(1), FILE_URL_MATCHER.group(3)));
+        }
+        return pairsFound;
+    }
+
+    public static Set<Pair<String,String>> getFileUrlsAndMd5sFromString(final String text) {
+        Set<Pair<String,String>> pairsFound = new HashSet<>();
+        FILE_URL_MD5_MATCHER.reset(text);
+        while(FILE_URL_MD5_MATCHER.find()) {
+            pairsFound.add(new Pair<>(FILE_URL_MD5_MATCHER.group(1), FILE_URL_MD5_MATCHER.group(5)));
+        }
+        return pairsFound;
+    }
+
+    public static Set<Pair<String,String>> getFileNameAndSha256FromStringDragonwell8(final String text) {
+        Set<Pair<String,String>> pairsFound = new HashSet<>();
+        DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.reset(text);
+        while(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.find()) {
+            pairsFound.add(new Pair<>(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(1) + DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(2), DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(4)));
+        }
+        return pairsFound;
+    }
+
+    public static Set<Pair<String,String>> getDragonwell11FileNameAndSha256FromString(final String text) {
+        Set<Pair<String,String>> pairsFound = new HashSet<>();
+        DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.reset(text);
+        while(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.find()) {
+            pairsFound.add(new Pair<>(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(1) + DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(2), DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(4)));
+        }
+        return pairsFound;
+    }
+
+    public static Set<Pair<String,String>> getDragonwell8FileNameAndSha256FromString(final String text) {
+        Set<Pair<String,String>> pairsFound = new HashSet<>();
+        DRAGONWELL_8_FILE_NAME_SHA256_MATCHER.reset(text);
+        final List<MatchResult> results = DRAGONWELL_8_FILE_NAME_SHA256_MATCHER.results().collect(Collectors.toList());
+        boolean filenameFound = false;
+        String  filename      = "";
+        boolean sha256Found   = false;
+        String  sha256        = "";
+        for (MatchResult result : results) {
+            String group0 = result.group(0);
+            if (null != group0) {
+                if (group0.length() == 64) {
+                    sha256Found = true;
+                    sha256 = group0.trim();
+                    if (filenameFound) {
+                        pairsFound.add(new Pair<>(filename, sha256));
+                        sha256Found = false;
+                        filenameFound = false;
+                    }
+                }
+            }
+            String group2 = result.group(2);
+            if (null != group2) {
+                if (group2.startsWith("Alibaba")) {
+                    filenameFound = true;
+                    filename      = group2.trim();
+                    if (sha256Found) {
+                        pairsFound.add(new Pair<>(filename, sha256));
+                        filenameFound = false;
+                        sha256Found   = false;
+                    }
+                }
+            }
+        }
+        return pairsFound;
     }
 
     public static Set<String> getFileHrefsFromString(final String text) {
@@ -384,7 +493,7 @@ public class Helper {
         Set<String> hrefsFound = new HashSet<>();
         HREF_DOWNLOAD_MATCHER.reset(text);
         while (HREF_DOWNLOAD_MATCHER.find()) {
-            hrefsFound.add(HREF_DOWNLOAD_MATCHER.group(2).strip());
+            hrefsFound.add(HREF_DOWNLOAD_MATCHER.group(2).trim().replaceFirst("\\h", ""));
         }
         return hrefsFound;
     }
@@ -518,19 +627,78 @@ public class Helper {
         return crc32.getValue();
     }
 
-    public static byte[] getMD5(final byte[] bytes) {
+    public static String getHash(final HashAlgorithm hashAlgorithm, final String text) {
+        switch (hashAlgorithm) {
+            case MD5     : return getMD5(text);
+            case SHA1    : return getSHA1(text);
+            case SHA256  : return getSHA256(text);
+            case SHA3_256: return getSHA3_256(text);
+            default      : return "";
+        }
+    }
+
+    public static String getMD5(final String text) { return bytesToHex(getMD5Bytes(text.getBytes(UTF_8))); }
+    public static String getMD5(final byte[] bytes) {
+        return bytesToHex(getMD5Bytes(bytes));
+    }
+    public static byte[] getMD5Bytes(final byte[] bytes) {
         final MessageDigest md;
         try {
             md = MessageDigest.getInstance("MD5");
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalArgumentException(e);
+            LOGGER.error("Error getting MD5 algorithm. {}", e.getMessage());
+            return new byte[]{};
         }
         final byte[] result = md.digest(bytes);
         return result;
     }
 
-    public static String getMD5Hex(final byte[] bytes) {
-        return bytesToHex(getMD5(bytes));
+    public static String getSHA1(final String text) { return bytesToHex(getSHA1Bytes(text.getBytes(UTF_8))); }
+    public static String getSHA1(final byte[] bytes) {
+        return bytesToHex(getSHA1Bytes(bytes));
+    }
+    public static byte[] getSHA1Bytes(final byte[] bytes) {
+        final MessageDigest md;
+        try {
+            md = MessageDigest.getInstance("SHA-1");
+        } catch (NoSuchAlgorithmException e) {
+            LOGGER.error("Error getting SHA-1 algorithm. {}", e.getMessage());
+            return new byte[]{};
+        }
+        final byte[] result = md.digest(bytes);
+        return result;
+    }
+
+    public static String getSHA256(final String text) { return bytesToHex(getSHA256Bytes(text.getBytes(UTF_8))); }
+    public static String getSHA256(final byte[] bytes) {
+        return bytesToHex(getSHA256Bytes(bytes));
+    }
+    public static byte[] getSHA256Bytes(final byte[] bytes) {
+        final MessageDigest md;
+        try {
+            md = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            LOGGER.error("Error getting SHA2-256 algorithm. {}", e.getMessage());
+            return new byte[]{};
+        }
+        final byte[] result = md.digest(bytes);
+        return result;
+    }
+
+    public static String getSHA3_256(final String text) { return bytesToHex(getSHA3_256Bytes(text.getBytes(UTF_8))); }
+    public static String getSHA3_256(final byte[] bytes) {
+        return bytesToHex(getSHA3_256Bytes(bytes));
+    }
+    public static byte[] getSHA3_256Bytes(final byte[] bytes) {
+        final MessageDigest md;
+        try {
+            md = MessageDigest.getInstance("SHA3-256");
+        } catch (NoSuchAlgorithmException e) {
+            LOGGER.error("Error getting SHA3-256 algorithm. {}", e.getMessage());
+            return new byte[]{};
+        }
+        final byte[] result = md.digest(bytes);
+        return result;
     }
 
     public static String bytesToHex(final byte[] bytes) {
@@ -540,7 +708,7 @@ public class Helper {
     }
 
     public static String createEphemeralId(final long number, final String  id) {
-        return new StringBuilder().append(RND.nextInt(100) + 312).append(id).append(number).toString();
+        return getSHA1(number + id);
     }
 
     public static String trimPrefix(final String text, final String prefix) {
@@ -616,5 +784,124 @@ public class Helper {
                                                                                 .filter(p -> featureVersion         == pkg.getVersionNumber().getFeature().getAsInt())
                                                                                 .max(Comparator.comparing(Pkg::getVersionNumber));
         return pkgWithMaxVersionNumber;
+    }
+
+    public static Integer getPositiveIntFromText(final String text) {
+        if (Helper.isPositiveInteger(text)) {
+            return Integer.valueOf(text);
+        } else {
+            //LOGGER.info("Given text {} did not contain positive integer. Full text to parse was: {}", text, fullTextToParse);
+            return -1;
+        }
+    }
+
+    public static CompletableFuture<GeoIP> lookupGeoIP(final String ipAdress) {
+        final String geoApiKey = Config.INSTANCE.getFoojayGeoIpApiKey();
+        final String geoApiUrl = Constants.GEO_API_URL + "?apiKey=" + geoApiKey + "&ip=" + ipAdress;
+
+        return getAsync(geoApiUrl).thenApply(response -> {
+            final Gson        gson    = new Gson();
+            final JsonElement element = gson.fromJson(response, JsonElement.class);
+            if (element instanceof JsonObject) {
+                final JsonObject jsonObj      = element.getAsJsonObject();
+                final String     countryCode2 = jsonObj.get(DownloadInfo.FIELD_COUNTRY_CODE2).getAsString();
+                final String     city         = jsonObj.get(DownloadInfo.FIELD_CITY).getAsString();
+                return new GeoIP(countryCode2, city);
+            } else {
+                LOGGER.error("Error retrieving geo ip json data from api.ipgeolocation.io");
+                return null;
+            }
+        });
+    }
+
+    public static final OperatingSystem fetchOperatingSystem(final String text) {
+        return Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
+                                                .stream()
+                                                .filter(entry -> text.contains(entry.getKey()))
+                                                .findFirst()
+                                                .map(Entry::getValue)
+                                                .orElse(OperatingSystem.NOT_FOUND);
+    }
+
+    public static final OperatingSystem fetchOperatingSystemByArchiveType(final String text) {
+        return Constants.OPERATING_SYSTEM_BY_ARCHIVE_TYPE_LOOKUP.entrySet()
+                                                                .stream()
+                                                                .filter(entry -> text.toLowerCase().equals(entry.getKey()))
+                                                                .findFirst()
+                                                                .map(Entry::getValue)
+                                                                .orElse(OperatingSystem.NOT_FOUND);
+    }
+
+    public static final Architecture fetchArchitecture(final String text) {
+        return Constants.ARCHITECTURE_LOOKUP.entrySet()
+                                            .stream()
+                                            .filter(entry -> text.contains(entry.getKey()))
+                                            .findFirst()
+                                            .map(Entry::getValue)
+                                            .orElse(Architecture.NOT_FOUND);
+    }
+
+    public static final ArchiveType fetchArchiveType(final String text) {
+        return Constants.ARCHIVE_TYPE_LOOKUP.entrySet()
+                                            .stream()
+                                            .filter(entry -> text.endsWith(entry.getKey()))
+                                            .findFirst()
+                                            .map(Entry::getValue)
+                                            .orElse(ArchiveType.NOT_FOUND);
+    }
+
+    public static final PackageType fetchPackageType(final String text) {
+        return Constants.PACKAGE_TYPE_LOOKUP.entrySet()
+                                            .stream()
+                                            .filter(entry -> text.contains(entry.getKey()))
+                                            .findFirst()
+                                            .map(Entry::getValue)
+                                            .orElse(PackageType.NOT_FOUND);
+    }
+
+    public static final ReleaseStatus fetchReleaseStatus(final String text) {
+        return Constants.RELEASE_STATUS_LOOKUP.entrySet()
+                                              .stream()
+                                              .filter(entry -> text.contains(entry.getKey()))
+                                              .findFirst()
+                                              .map(Entry::getValue)
+                                              .orElse(ReleaseStatus.NOT_FOUND);
+    }
+
+
+    // ******************** REST calls ****************************************
+    public static final String get(final String uri) {
+        HttpClient  client  = HttpClient.newBuilder()
+                                        .followRedirects(Redirect.NORMAL)
+                                        .version(Version.HTTP_2)
+                                        .build();
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri(URI.create(uri))
+                                         .GET()
+                                         .build();
+        try {
+            HttpResponse<String> response  = client.send(request, BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                return response.body();
+            } else {
+                // Problem with url request
+                LOGGER.debug("Error executing get request {}", uri);
+                LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
+                return "";
+            }
+        } catch (InterruptedException | IOException e) {
+            LOGGER.error("Error executing get request {} : {}", uri, e.getMessage());
+            return "";
+        }
+    }
+
+    public static final CompletableFuture<String> getAsync(final String uri) {
+        HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri(URI.create(uri))
+                                         .GET()
+                                         .build();
+        return client.sendAsync(request, BodyHandlers.ofString())
+                     .thenApply(HttpResponse::body);
     }
 }

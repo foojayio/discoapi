@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -27,11 +27,13 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -89,14 +91,6 @@ public class Zulu implements Distribution {
     private static final Pattern                      FEATURE_PREFIX_PATTERN     = Pattern.compile("^((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?");
     private static final Matcher                      FEATURE_PREFIX_MATCHER     = FEATURE_PREFIX_PATTERN.matcher("");
     private static final String                       PACKAGE_URL                = "https://api.azul.com/zulu/download/community/v1.0/bundles/";
-    private static final List<Architecture>           ARCHITECTURES              = List.of(ARM, MIPS, PPC, SPARCV9, X86);
-    private static final List<OperatingSystem>        OPERATING_SYSTEMS          = List.of(LINUX, LINUX_MUSL, ALPINE_LINUX, MACOS, QNX, SOLARIS, WINDOWS);
-    private static final List<ArchiveType>            ARCHIVE_TYPES              = List.of(CAB, DEB, DMG, MSI, RPM, TAR_GZ, ZIP);
-    private static final List<PackageType>            PACKAGE_TYPES              = List.of(JDK, JRE);
-    private static final List<ReleaseStatus>          RELEASE_STATUSES           = List.of(EA, GA);
-    private static final List<TermOfSupport>          TERMS_OF_SUPPORT           = List.of(STS, MTS, LTS);
-    private static final List<Bitness>                BITNESSES                  = List.of(BIT_32, BIT_64);
-    private static final Boolean                      BUNDLED_WITH_JAVA_FX       = true;
 
     // URL parameters
     private static final String                       JDK_VERSION_PARAM          = "jdk_version";
@@ -119,10 +113,18 @@ public class Zulu implements Distribution {
     private static final Map<Bitness, String>         BITNESS_MAP                = Map.of(BIT_32, "32", BIT_64, "64");
 
     // JSON fields
+    private static final String                       FIELD_ID                   = "id";
     private static final String                       FIELD_NAME                 = "name";
     private static final String                       FIELD_URL                  = "url";
     private static final String                       FIELD_JDK_VERSION          = "jdk_version";
     private static final String                       FIELD_ZULU_VERSION         = "zulu_version";
+    private static final String                       FIELD_SHA_256_HASH         = "sha256_hash";
+
+    private static final HashAlgorithm                HASH_ALGORITHM             = HashAlgorithm.NONE;
+    private static final String                       HASH_URI                   = "";
+    private static final SignatureType                SIGNATURE_TYPE             = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM        = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI              = "";
 
 
     @Override public Distro getDistro() { return Distro.ZULU; }
@@ -144,6 +146,16 @@ public class Zulu implements Distribution {
     @Override public String getTermOfSupportParam() { return TERM_OF_SUPPORT_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
+
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -210,7 +222,6 @@ public class Zulu implements Distribution {
         }
 
         LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder.toString());
-
         return queryBuilder.toString();
     }
 
@@ -266,6 +277,7 @@ public class Zulu implements Distribution {
                                                        .findFirst()
                                                        .map(Entry::getValue)
                                                        .orElse(ArchiveType.NONE);
+
         if (ArchiveType.NONE == ext) {
             LOGGER.debug("Archive Type not found in Zulu for filename: {}", fileName);
             return pkgs;
@@ -310,6 +322,11 @@ public class Zulu implements Distribution {
                                                          .findFirst()
                                                          .map(Entry::getValue)
                                                          .orElse(Architecture.NONE);
+
+        if (Architecture.NONE == arch && fileName.contains("macos")) {
+            arch = X64;
+        }
+
         if (Architecture.NONE == arch) {
             LOGGER.debug("Architecture not found in Zulu for filename: {}", fileName);
             return pkgs;

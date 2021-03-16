@@ -10,13 +10,16 @@ The foojay Disco API is a general purpose API to discover builds of OpenJDK from
 * AdoptOpenJDK OpenJ9
 * Corretto
 * Dragonwell
-* Liberica
 * GraalVM CE
+* Liberica
+* Liberica Native  
+* Mandrel  
 * OJDKBuild  
 * Oracle (contains only links to download site)
 * Oracle OpenJDK
 * Red Hat (contains only links to download site)
 * SAP Machine
+* Trava  
 * Zulu
   
 ---
@@ -30,7 +33,7 @@ The foojay Disco API is a general purpose API to discover builds of OpenJDK from
 ---
 ### Terms and parameters used in the disco API:
 * **archive_type** stands more or less for the file extension of the package e.g. tar.gz, zip, dmg, msi etc.
-* **distribution** stands for the name of the distribution (aoj, corretto, dragonwell, liberica, oracle, oracle_open_jdk, sap_machine, zulu etc.)
+* **distribution** stands for the name of the distribution (aoj, aoj_openj9, corretto, dragonwell, liberica, liberica_native, oracle, oracle_open_jdk, sap_machine, trava, zulu etc.)
 * **major_version** stands for the major version of a package e.g. 8, 11, 13, 15 (it is the feature version in the [JEP 322](https://openjdk.java.net/jeps/322))
 * **java_version** stands for the full version without trailing '0' which can also include '-ea' for early access builds (e.g. 15-ea, 13.0.5.1 etc.)
 * **distribution_version** stands for a distribution specific version number which could also contain additional information

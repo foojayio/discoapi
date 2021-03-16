@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.pkg;
@@ -70,8 +70,26 @@ public class VersionNumberTest {
         assert versionNumber7.compareTo(versionNumber8) == 0;
 
         VersionNumber versionNumber9  = new VersionNumber(2, 06);
-        VersionNumber versionNumber10 = new VersionNumber(2, 060);
-        assert versionNumber7.compareTo(versionNumber8) == 0;
+        VersionNumber versionNumber10 = new VersionNumber(2, 060); // leading 0 will be interpreted as octal and 0x as hexadecimal
+        assert versionNumber9.compareTo(versionNumber10) != 0;
+
+        VersionNumber versionNumber11 = new VersionNumber(17, null, null, null, null, null, null, ReleaseStatus.EA, 28);
+        VersionNumber versionNumber12 = VersionNumber.fromText("17-ea.28");
+        VersionNumber versionNumber13 = VersionNumber.fromText("17-ea.34");
+        assert versionNumber11.equals(versionNumber12);
+        assert versionNumber11.compareTo(versionNumber12) == 0;
+
+        assert !versionNumber11.equals(versionNumber13);
+        assert versionNumber11.compareTo(versionNumber13) != 0;
+
+        assert versionNumber11.compareTo(versionNumber13) < 0;
+        assert versionNumber13.compareTo(versionNumber11) > 0;
+
+        VersionNumber versionNumber14 = VersionNumber.fromText("16-ea.30");
+        VersionNumber versionNumber15 = new VersionNumber(16, null, null, null, null, null, null, ReleaseStatus.EA, 30);
+        VersionNumber versionNumber16 = VersionNumber.fromText("16-ea");
+        assert versionNumber14.compareTo(versionNumber15) == 0;
+        assert versionNumber14.compareTo(versionNumber16) != 0;
     }
 
     @Test
@@ -112,51 +130,62 @@ public class VersionNumberTest {
 
     @Test
     public void versionNumberFromString() {
-        final String versionNumber1String  = "8";                        // 8
-        final String versionNumber2String  = "8.2";                      // 8.2
-        final String versionNumber3String  = "1.2.3";                    // 1.2.3
-        final String versionNumber4String  = "8.2.3.4";                  // 8.2.3.4
-        final String versionNumber5String  = "11.26.2-DEBUG";            // 11.26.2
-        final String versionNumber6String  = "11.0.2+13-LTS";            // 11.0.2.13
-        final String versionNumber7String  = "signed.7.5.4.3.2.1.0";     // 7.5.4.3
-        final String versionNumber8String  = "20.30.0";                  // 20.30.0
-        final String versionNumber9String  = "11.25.3.DEBUG";            // 11.25.3
-        final String versionNumber10String = "1.8.0_262";                // 8.0.262
-        final String versionNumber11String = "1.8u262";                  // 8.0.262
-        final String versionNumber12String = "8u262";                    // 8.0.262
-        final String versionNumber13String = "11";                       // 11
-        final String versionNumber14String = "8.0.272-ea+10";            // 8.0.272 b10
-        final String versionNumber15String = "1.8.0_275.b01-x86.rpm";    // 8.0.275 b1
-        final String versionNumber16String = "8u272b09_ea.tar.gz";       // 8.0.272 b9
-        final String versionNumber17String = "11.0.9.1_1.tar.gz";        // 11.0.9.1 b1
-        final String versionNumber18String = "11.0.9.12-1_amd64.deb";    // 11.0.9.12 b1
-        final String versionNumber19String = "13.0.5.1-macosx_x64.dmg";  // 13.0.5.1
-        final String versionNumber20String = "13.0.5.1-win_i686.zip";    // 13.0.5.1
-        final String versionNumber21String = "1.7.0_25-b15";             // 7.0.25 b15
-        final String versionNumber22String = "7u25";                     // 7.0.25
-        final String versionNumber23String = "8u172-b11";                // 8.0.162 b12
-        final String versionNumber24String = "8u162-b12_openj9-0.8.0";   // 8.0.162 b12
-        final String versionNumber25String = "11.0.1+13";                // 11.0.1 b13
-        final String versionNumber26String = "11+28";                    // 11 b28
-        final String versionNumber27String = "14.0.0-ea.28";             // 14.0.0.0 ea build 28
-        final String versionNumber28String = "15.0.0-ea";                // 15.0.0. ea
+        final String versionNumber1String  = "8";                                 // 8
+        final String versionNumber2String  = "8.2";                               // 8.2
+        final String versionNumber3String  = "1.2.3";                             // 1.2.3
+        final String versionNumber4String  = "8.2.3.4";                           // 8.2.3.4
+        final String versionNumber5String  = "11.26.2-DEBUG";                     // 11.26.2
+        final String versionNumber6String  = "11.0.2+13-LTS";                     // 11.0.2.13
+        final String versionNumber7String  = "signed.7.5.4.3.2.1.0";              // 7.5.4.3
+        final String versionNumber8String  = "20.30.0";                           // 20.30.0
+        final String versionNumber9String  = "11.25.3.DEBUG";                     // 11.25.3
+        final String versionNumber10String = "1.8.0_262";                         // 8.0.262
+        final String versionNumber11String = "1.8u262";                           // 8.0.262
+        final String versionNumber12String = "8u262";                             // 8.0.262
+        final String versionNumber13String = "11";                                // 11
+        final String versionNumber14String = "8.0.272-ea+10";                     // 8.0.272
+        final String versionNumber15String = "1.8.0_275.b01-x86.rpm";             // 8.0.275 build 1
+        final String versionNumber16String = "8u272b09_ea.tar.gz";                // 8.0.272 build 9
+        final String versionNumber17String = "11.0.9.1_1.tar.gz";                 // 11.0.9.1
+        final String versionNumber18String = "11.0.9.12-1_amd64.deb";             // 11.0.9.12
+        final String versionNumber19String = "13.0.5.1-macosx_x64.dmg";           // 13.0.5.1
+        final String versionNumber20String = "13.0.5.1-win_i686.zip";             // 13.0.5.1
+        final String versionNumber21String = "1.7.0_25-b15";                      // 7.0.25 build 15
+        final String versionNumber22String = "7u25";                              // 7.0.25
+        final String versionNumber23String = "8u172-b11";                         // 8.0.172 build 11
+        final String versionNumber24String = "8u162-b12_openj9-0.8.0";            // 8.0.162 build 12
+        final String versionNumber25String = "11.0.1+13";                         // 11.0.1
+        final String versionNumber26String = "11+28";                             // 11
+        final String versionNumber27String = "14.0.0-ea.28";                      // 14-ea preBuild 28
+        final String versionNumber28String = "15.0.0-ea";                         // 15.0.0. ea
+        final String versionNumber29String = "11.0.9.1.5.2";                      // 11.0.9.1.5.2
+        final String versionNumber30String = "11.0.9.1.5.2-ea";                   // 11.0.9.1.5.2 ea
+        final String versionNumber31String = "17.0.0-ea.1";                       // 17-ea preBuild 1
+        final String versionNumber32String = "14-ea.36";                          // 14-ea preBuild 36
+        final String versionNumber33String = "14-ea+36";                          // 14-ea preBuild 36
+        final String versionNumber34String = "14-ea-36";                          // 14-ea preBuild 36
+        final String versionNumber35String = "14-EA.36";                          // 14-ea preBuild 36
+        final String versionNumber36String = "14-EA+36";                          // 14-ea preBuild 36
+        final String versionNumber37String = "14-EA-36";                          // 14-ea preBuild 36
+        final String versionNumber38String = "17-ea+8";                           // 17-ea preBuild 8
+        final String versionNumber39String = "17-ea+5_linux-x64-musl_bin.tar.gz"; // 17-ea preBuild 5
 
         final VersionNumber versionNumber1  = new VersionNumber(8);
         final VersionNumber versionNumber2  = new VersionNumber(8, 2);
         final VersionNumber versionNumber3  = new VersionNumber(2, 3);
         final VersionNumber versionNumber4  = new VersionNumber(8, 2, 3, 4);
-        final VersionNumber versionNumber5  = new VersionNumber(11, 26, 2, null,"-DEBUG");
-        final VersionNumber versionNumber6  = new VersionNumber(11, 0, 2, null, "+13-LTS");
-        final VersionNumber versionNumber7  = new VersionNumber(7, 5, 4, 3);
+        final VersionNumber versionNumber5  = new VersionNumber(11, 26, 2, null);
+        final VersionNumber versionNumber6  = new VersionNumber(11, 0, 2, null);
+        final VersionNumber versionNumber7  = new VersionNumber(7, 5, 4, 3, 2, 1);
         final VersionNumber versionNumber8  = new VersionNumber(20, 30, 0);
-        final VersionNumber versionNumber9  = new VersionNumber(11, 25, 3, null, "DEBUG");
+        final VersionNumber versionNumber9  = new VersionNumber(11, 25, 3, null);
         final VersionNumber versionNumber10 = new VersionNumber(8, 0, 262);
         final VersionNumber versionNumber11 = new VersionNumber(8, 0, 262);
         final VersionNumber versionNumber12 = new VersionNumber(8, 0, 262);
         final VersionNumber versionNumber13 = new VersionNumber(11);
         final VersionNumber versionNumber14 = new VersionNumber(8, 0, 272);
         final VersionNumber versionNumber15 = new VersionNumber(8, 0, 275);
-        final VersionNumber versionNumber16 = new VersionNumber(8, 0, 272,0, "b09");
+        final VersionNumber versionNumber16 = new VersionNumber(8, 0, 272,0);
         final VersionNumber versionNumber17 = new VersionNumber(11, 0, 9, 1);
         final VersionNumber versionNumber18 = new VersionNumber(11, 0, 9, 12);
         final VersionNumber versionNumber19 = new VersionNumber(13, 0, 5, 1);
@@ -164,15 +193,22 @@ public class VersionNumberTest {
         final VersionNumber versionNumber21 = new VersionNumber(7, 0, 25, 0);
         final VersionNumber versionNumber22 = new VersionNumber(7, 0, 25, 0);
         final VersionNumber versionNumber23 = new VersionNumber(8, 0, 172, 0);
-        versionNumber23.setBuild(11);
         final VersionNumber versionNumber24 = new VersionNumber(8, 0, 162, 0);
-        versionNumber24.setBuild(12);
         final VersionNumber versionNumber25 = new VersionNumber(11, 0, 1, 0);
-        versionNumber25.setBuild(13);
         final VersionNumber versionNumber26 = new VersionNumber(11, 0, 0, 0);
-        versionNumber26.setBuild(28);
-        final VersionNumber versionNumber27 = new VersionNumber(14, 0, 0);
+        final VersionNumber versionNumber27 = new VersionNumber(14, 0, 0, null, null, null, null, ReleaseStatus.EA, 28);
         final VersionNumber versionNumber28 = new VersionNumber(15, 0, 0);
+        final VersionNumber versionNumber29 = new VersionNumber(11, 0, 9, 1, 5, 2);
+        final VersionNumber versionNumber30 = new VersionNumber(11, 0, 9, 1, 5, 2);
+        final VersionNumber versionNumber31 = new VersionNumber(17, 0, 0, 0, null, null, null, ReleaseStatus.EA, 1);
+        final VersionNumber versionNumber32 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
+        final VersionNumber versionNumber33 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
+        final VersionNumber versionNumber34 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
+        final VersionNumber versionNumber35 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
+        final VersionNumber versionNumber36 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
+        final VersionNumber versionNumber37 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
+        final VersionNumber versionNumber38 = new VersionNumber(17, null, null, null, null, null, null, ReleaseStatus.EA, 8);
+        final VersionNumber versionNumber39 = new VersionNumber(17, null, null, null, null, null, null, ReleaseStatus.EA, 5);
 
         assert versionNumber1.compareTo(VersionNumber.fromText(versionNumber1String))   == 0;
         assert versionNumber2.compareTo(VersionNumber.fromText(versionNumber2String))   == 0;
@@ -202,6 +238,41 @@ public class VersionNumberTest {
         assert versionNumber26.compareTo(VersionNumber.fromText(versionNumber26String)) == 0;
         assert versionNumber27.compareTo(VersionNumber.fromText(versionNumber27String)) == 0;
         assert versionNumber28.compareTo(VersionNumber.fromText(versionNumber28String)) == 0;
+        assert versionNumber29.compareTo(VersionNumber.fromText(versionNumber29String)) == 0;
+        assert versionNumber30.compareTo(VersionNumber.fromText(versionNumber30String)) == 0;
+        assert versionNumber31.compareTo(VersionNumber.fromText(versionNumber31String)) == 0;
+        assert versionNumber32.compareTo(VersionNumber.fromText(versionNumber32String)) == 0;
+        assert versionNumber33.compareTo(VersionNumber.fromText(versionNumber33String)) == 0;
+        assert versionNumber34.compareTo(VersionNumber.fromText(versionNumber34String)) == 0;
+        assert versionNumber35.compareTo(VersionNumber.fromText(versionNumber35String)) == 0;
+        assert versionNumber36.compareTo(VersionNumber.fromText(versionNumber36String)) == 0;
+        assert versionNumber37.compareTo(VersionNumber.fromText(versionNumber37String)) == 0;
+        assert versionNumber38.compareTo(VersionNumber.fromText(versionNumber38String)) == 0;
+        assert versionNumber39.compareTo(VersionNumber.fromText(versionNumber39String)) == 0;
+
+        assert VersionNumber.fromText(versionNumber27String).toString().equals(versionNumber27.toString());
+        assert VersionNumber.fromText(versionNumber31String).toString(OutputFormat.REDUCED, true, true).equals(versionNumber31.toString(OutputFormat.REDUCED, true, true));
+    }
+
+    @Test
+    public void compareIncludingBuildNumberTest() {
+        final String versionNumber1String = "1.8.0_275.b01-x86.rpm";     // 8.0.275 build 1
+        final String versionNumber2String = "8u272b09_ea.tar.gz";        // 8.0.272 build 9
+        final String versionNumber3String = "1.7.0_25-b15";              // 7.0.25 build 15
+        final String versionNumber4String = "8u172-b11";                 // 8.0.172 build 11
+        final String versionNumber5String = "8u162-b12_openj9-0.8.0";    // 8.0.162 build 12
+
+        final VersionNumber versionNumber1 = new VersionNumber(8, 0, 275, null, null, null, 1, null, null);
+        final VersionNumber versionNumber2 = new VersionNumber(8, 0, 272, null, null, null, 9, null, null);
+        final VersionNumber versionNumber3 = new VersionNumber(7, 0, 25, null, null, null, 15, null, null);
+        final VersionNumber versionNumber4 = new VersionNumber(8, 0, 172, null, null, null, 11, null, null);
+        final VersionNumber versionNumber5 = new VersionNumber(8, 0, 162, null, null, null, 12, null, null);
+
+        assert VersionNumber.fromText(versionNumber1String).toString().equals(versionNumber1.toString());
+        assert VersionNumber.fromText(versionNumber2String).toString().equals(versionNumber2.toString());
+        assert VersionNumber.fromText(versionNumber3String).toString().equals(versionNumber3.toString());
+        assert VersionNumber.fromText(versionNumber4String).toString().equals(versionNumber4.toString());
+        assert VersionNumber.fromText(versionNumber5String).toString().equals(versionNumber5.toString());
     }
 
     @Test
@@ -229,12 +300,12 @@ public class VersionNumberTest {
         VersionNumber v6 = new VersionNumber(1,0,0,0);
         VersionNumber v7 = new VersionNumber(1,0,0,4);
 
-        assert v1.toString(OutputFormat.REDUCED).equals("1.2.3.4");
-        assert v2.toString(OutputFormat.REDUCED).equals("1.2.3");
-        assert v3.toString(OutputFormat.REDUCED).equals("1.2.0.4");
-        assert v4.toString(OutputFormat.REDUCED).equals("1.0.3.4");
-        assert v5.toString(OutputFormat.REDUCED).equals("1.2");
-        assert v6.toString(OutputFormat.REDUCED).equals("1");
-        assert v7.toString(OutputFormat.REDUCED).equals("1.0.0.4");
+        assert v1.toString(OutputFormat.REDUCED, true, false).equals("1.2.3.4");
+        assert v2.toString(OutputFormat.REDUCED, true, false).equals("1.2.3");
+        assert v3.toString(OutputFormat.REDUCED, true, false).equals("1.2.0.4");
+        assert v4.toString(OutputFormat.REDUCED, true, false).equals("1.0.3.4");
+        assert v5.toString(OutputFormat.REDUCED, true, false).equals("1.2");
+        assert v6.toString(OutputFormat.REDUCED, true, false).equals("1");
+        assert v7.toString(OutputFormat.REDUCED, true, false).equals("1.0.0.4");
     }
 }

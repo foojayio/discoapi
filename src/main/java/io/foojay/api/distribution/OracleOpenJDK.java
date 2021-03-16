@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -27,11 +27,15 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
+import io.foojay.api.pkg.LibCType;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -47,6 +51,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.TreeSet;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -64,40 +69,49 @@ import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
 public class OracleOpenJDK implements Distribution {
-    private static final Logger LOGGER = LoggerFactory.getLogger(OracleOpenJDK.class);
+    private static final Logger                       LOGGER                     = LoggerFactory.getLogger(OracleOpenJDK.class);
 
-    private static final String                       PACKAGE_URL             = "https://download.java.net/java/";
-    private static final String                       GITHUB_USER             = "AdoptOpenJDK";
-    private static final String                       GITHUB_PACKAGE_8_URL    = "https://api.github.com/repos/" + GITHUB_USER + "/openjdk8-upstream-binaries";
-    private static final String                       GITHUB_PACKAGE_11_URL   = "https://api.github.com/repos/" + GITHUB_USER + "/openjdk11-upstream-binaries";
-    private static final String                       FILENAME_PREFIX         = "openjdk-";
-    private static final Pattern                      FILENAME_PREFIX_PATTERN = Pattern.compile("OpenJDK(8|11)U-");
-    private static final Matcher                      FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
+    private static final String                       PACKAGE_URL                = "https://download.java.net/java/";
+    private static final String                       JDK_URL                    = "https://jdk.java.net/";
+    private static final String                       JDK_ARCHIVE_URL            = "https://jdk.java.net/archive";
+    private static final String                       GITHUB_USER                = "AdoptOpenJDK";
+    private static final String                       GITHUB_PACKAGE_8_URL       = "https://api.github.com/repos/" + GITHUB_USER + "/openjdk8-upstream-binaries";
+    private static final String                       GITHUB_PACKAGE_11_URL      = "https://api.github.com/repos/" + GITHUB_USER + "/openjdk11-upstream-binaries";
+    private static final String                       FILENAME_PREFIX            = "openjdk-";
+    private static final Pattern                      FILENAME_PREFIX_PATTERN    = Pattern.compile("OpenJDK(8|11)U-");
+    private static final Matcher                      FILENAME_PREFIX_MATCHER    = FILENAME_PREFIX_PATTERN.matcher("");
 
     // URL parameters
-    private static final String                       ARCHITECTURE_PARAM      = "";
-    private static final String                       OPERATING_SYSTEM_PARAM  = "";
-    private static final String                       ARCHIVE_TYPE_PARAM      = "";
-    private static final String                       PACKAGE_TYPE_PARAM      = "";
-    private static final String                       RELEASE_STATUS_PARAM    = "";
-    private static final String                       SUPPORT_TERM_PARAM      = "";
-    private static final String                       BITNESS_PARAM           = "";
+    private static final String                       ARCHITECTURE_PARAM         = "";
+    private static final String                       OPERATING_SYSTEM_PARAM     = "";
+    private static final String                       ARCHIVE_TYPE_PARAM         = "";
+    private static final String                       PACKAGE_TYPE_PARAM         = "";
+    private static final String                       RELEASE_STATUS_PARAM       = "";
+    private static final String                       SUPPORT_TERM_PARAM         = "";
+    private static final String                       BITNESS_PARAM              = "";
 
     // Mappings for url parameters
-    private static final Map<Architecture, String>    ARCHITECTURE_MAP        = Map.of(X64, "x64", AARCH64, "aarch64");
-    private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP    = Map.of(LINUX_MUSL, "linux", LINUX, "linux", WINDOWS, "windows", MACOS, "osx");
-    private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP      = Map.of(EA, "early_access", GA, "GA");
+    private static final Map<Architecture, String>    ARCHITECTURE_MAP           = Map.of(X64, "x64", AARCH64, "aarch64");
+    private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP       = Map.of(LINUX_MUSL, "linux", LINUX, "linux", WINDOWS, "windows", MACOS, "osx");
+    private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP         = Map.of(EA, "early_access", GA, "GA");
 
-    private static final String                       OPEN_JDK_ARCHIVE_URL    = "https://jdk.java.net/archive/";
-    private static final String                       OPEN_JDK_PROPERTIES     = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk.properties";
-    private        final Properties                   properties              = new Properties();
+    private static final String                       OPEN_JDK_ARCHIVE_URL       = "https://jdk.java.net/archive/";
+    public  static final String                       OPEN_JDK_PKGS_PROPERTIES   = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk.properties";
+    private        final Properties                   propertiesPkgs             = new Properties();
+    private        final Properties                   propertiesHashes           = new Properties();
+
+    private static final HashAlgorithm                HASH_ALGORITHM             = HashAlgorithm.NONE;
+    private static final String                       HASH_URI                   = "";
+    private static final SignatureType                SIGNATURE_TYPE             = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM        = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI              = "";
 
 
     public OracleOpenJDK() {
         try {
-            this.properties.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PROPERTIES)));
+            this.propertiesPkgs.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PKGS_PROPERTIES)));
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("Error reading OpenJDK properties file from github. {}", e.getMessage());
         }
     }
 
@@ -124,6 +138,16 @@ public class OracleOpenJDK implements Distribution {
     @Override public String getTermOfSupportParam() { return SUPPORT_TERM_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
+
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -438,44 +462,28 @@ public class OracleOpenJDK implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromHtml(final String html) {
-        List<Pkg> pkgs = new ArrayList<>();
-        if (null == html || html.isEmpty()) { return pkgs; }
-        List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
+    public List<Pkg> getAllPkgsFromJavaDotNet() {
+        List<Pkg> pkgs = new CopyOnWriteArrayList<>();
 
-        for (String href : fileHrefs) {
-            if (href.contains("/GA/") || href.contains("/ga/")) {
-                String          filename        = Helper.getFileNameFromText(href);
-                String[]        nameParts       = filename.split("_");
-                VersionNumber   versionNumber   = VersionNumber.fromText(nameParts[0].replace(FILENAME_PREFIX, ""));
-                String[]        osArchParts     = nameParts[1].split("-");
-                OperatingSystem operatingSystem = OperatingSystem.fromText(osArchParts[0]);
-                Architecture    architecture    = Architecture.fromText(osArchParts[1]);
-                Bitness         bitness         = architecture.getBitness();
-                ArchiveType     archiveType     = Helper.getFileEnding(filename);
-                TermOfSupport   termOfSupport   = Helper.getTermOfSupport(versionNumber);
-                String          downloadLink    = href.replaceAll("\"", "").replace("href=", "");
-
-                Pkg pkg = new Pkg();
-                pkg.setDistribution(Distro.ORACLE_OPEN_JDK.get());
-                pkg.setVersionNumber(versionNumber);
-                pkg.setJavaVersion(versionNumber);
-                pkg.setDistributionVersion(versionNumber);
-                pkg.setPackageType(PackageType.JDK);
-                pkg.setArchitecture(architecture);
-                pkg.setBitness(bitness);
-                pkg.setOperatingSystem(operatingSystem);
-                pkg.setReleaseStatus(ReleaseStatus.GA);
-                pkg.setTermOfSupport(termOfSupport);
-                pkg.setFileName(filename);
-                pkg.setArchiveType(archiveType);
-                pkg.setDirectDownloadUri(downloadLink);
-                pkg.setJavaFXBundled(false);
-
-                pkgs.add(pkg);
-            }
+        // Get packages from archive
+        try {
+            String html = Helper.getTextFromUrl(JDK_ARCHIVE_URL);
+            pkgs.addAll(extractPackagesFromHtml(html));
+        } catch (Exception e) {
+            LOGGER.debug("Error fetching packages from Oracle OpenJDK archive url. {}", e.getMessage());
         }
 
+        // Get packages from latest 3 versions
+        int latestMajorVersion = CacheManager.INSTANCE.getMajorVersions().stream().max(Comparator.comparing(MajorVersion::getAsInt)).get().getAsInt();
+        for (int i = latestMajorVersion ; i > latestMajorVersion - 3 ; i--) {
+            String jdkUrl = JDK_URL + i + "/";
+            try {
+                String html = Helper.getTextFromUrl(jdkUrl);
+                pkgs.addAll(extractPackagesFromHtml(html));
+            } catch (Exception e) {
+                LOGGER.debug("Error fetching packages from Oracle OpenJDK url {}. {}", jdkUrl, e.getMessage());
+            }
+        }
         return pkgs;
     }
 
@@ -484,14 +492,15 @@ public class OracleOpenJDK implements Distribution {
 
         // Reload openjdk properties
         try {
-            properties.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PROPERTIES)));
+            propertiesPkgs.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PKGS_PROPERTIES)));
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("Error reading OpenJDK properties file from github. {}", e.getMessage());
         }
 
-        properties.forEach((key, value) -> {
+        propertiesPkgs.forEach((key, value) -> {
             String downloadLink = value.toString();
             String fileName     = Helper.getFileNameFromText(downloadLink);
+            boolean isMusl      = false;
 
             Pkg pkg = new Pkg();
 
@@ -514,7 +523,8 @@ public class OracleOpenJDK implements Distribution {
                 String[]     keyParts     = key.toString().split("-");
                 int          noOfKeyParts = keyParts.length;
                 if (keyParts[noOfKeyParts - 1].equals("musl")) {
-                    arch = Architecture.fromText(keyParts[noOfKeyParts - 2]);
+                    arch   = Architecture.fromText(keyParts[noOfKeyParts - 2]);
+                    isMusl = true;
                 } else {
                     arch = Architecture.fromText(keyParts[noOfKeyParts - 1]);
                 }
@@ -532,12 +542,35 @@ public class OracleOpenJDK implements Distribution {
 
                 pkg.setReleaseStatus(rs);
 
-                OperatingSystem os;
-                String[]        fileNameParts = fileName.split("_");
-                if (fileNameParts.length > 1) {
-                    String[] osArchParts = fileNameParts[1].split("-");
-                    os = OperatingSystem.fromText(osArchParts[0]);
+
+                OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
+                                                                      .filter(entry -> fileName.contains(entry.getKey()))
+                                                                      .findFirst()
+                                                                      .map(Entry::getValue)
+                                                                      .orElse(OperatingSystem.NONE);
                     pkg.setOperatingSystem(os);
+                    switch (os) {
+                        case WINDOWS:
+                            pkg.setLibCType(LibCType.C_STD_LIB);
+                            break;
+                        case LINUX:
+                            pkg.setLibCType(LibCType.GLIBC);
+                            break;
+                        case MACOS:
+                            pkg.setLibCType(LibCType.LIBC);
+                            break;
+                    }
+                    if (isMusl) { pkg.setLibCType(LibCType.MUSL); }
+
+                String[] fileNameParts = fileName.split("_");
+                if (fileNameParts.length > 1) {
+                    SemVer semVer = SemVer.fromText(fileNameParts[0].replace("openjdk", "")).getSemVer1();
+                    if (null != semVer) {
+                        pkg.setReleaseStatus(semVer.getReleaseStatus());
+                    }
+                }
+                if (keyParts.length > 1 && keyParts[1].equals("rc")) {
+                    pkg.setReleaseStatus(EA);
                 }
 
                 pkgs.add(pkg);
@@ -554,10 +587,24 @@ public class OracleOpenJDK implements Distribution {
                                                       .append(ARCHITECTURE_MAP.get(architecture));
         if (LINUX_MUSL == operatingSystem) { keyBuilder.append("-musl"); }
 
-        String downloadLink = properties.getProperty(keyBuilder.toString());
+        String downloadLink = propertiesPkgs.getProperty(keyBuilder.toString());
+
+        if (null == downloadLink && MajorVersion.getLatest(false).getAsInt() < versionNumber.getMajorVersion().getAsInt()) {
+            // Might be Release Candidate
+            keyBuilder.setLength(0);
+            keyBuilder = new StringBuilder().append(versionNumber.getFeature().getAsInt()).append("-")
+                                            .append("rc").append("-")
+                                            .append(OPERATING_SYSTEM_MAP.get(operatingSystem)).append("-")
+                                            .append(ARCHITECTURE_MAP.get(architecture));
+            if (LINUX_MUSL == operatingSystem) { keyBuilder.append("-musl"); }
+            downloadLink = propertiesPkgs.getProperty(keyBuilder.toString());
+        }
+
         String fileName     = Helper.getFileNameFromText(downloadLink);
 
         if (null == downloadLink) { return null; }
+
+        String directDownloadLink = downloadLink;
 
         Pkg pkg = new Pkg();
 
@@ -565,7 +612,7 @@ public class OracleOpenJDK implements Distribution {
         pkg.setArchiveType(ext);
 
         ReleaseStatus rs = Constants.RELEASE_STATUS_LOOKUP.entrySet().stream()
-                                                          .filter(entry -> downloadLink.contains(entry.getKey()))
+                                                          .filter(entry -> directDownloadLink.contains(entry.getKey()))
                                                           .findFirst()
                                                           .map(Entry::getValue)
                                                           .orElse(ReleaseStatus.NONE);
@@ -603,5 +650,42 @@ public class OracleOpenJDK implements Distribution {
         pkg.setOperatingSystem(operatingSystem);
 
         return pkg;
+    }
+
+    private List<Pkg> extractPackagesFromHtml(final String html) {
+        final List<Pkg> pkgs      = new ArrayList<>();
+        List<String>    fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
+        for (String href : fileHrefs) {
+            String          filename        = Helper.getFileNameFromText(href);
+            String[]        nameParts       = filename.split("_");
+            VersionNumber   versionNumber   = VersionNumber.fromText(nameParts[0].replace(FILENAME_PREFIX, ""));
+            String[]        osArchParts     = nameParts[1].split("-");
+            OperatingSystem operatingSystem = OperatingSystem.fromText(osArchParts[0]);
+            Architecture    architecture    = Architecture.fromText(osArchParts[1]);
+            Bitness         bitness         = architecture.getBitness();
+            ArchiveType     archiveType     = Helper.getFileEnding(filename);
+            TermOfSupport   termOfSupport   = Helper.getTermOfSupport(versionNumber);
+            ReleaseStatus   releaseStatus   = (href.contains("/GA/") || href.contains("/ga/")) ? ReleaseStatus.GA : ReleaseStatus.EA;
+            String          downloadLink    = href.replaceAll("\"", "").replace("href=", "");
+
+            Pkg pkg = new Pkg();
+            pkg.setDistribution(Distro.ORACLE_OPEN_JDK.get());
+            pkg.setVersionNumber(versionNumber);
+            pkg.setJavaVersion(versionNumber);
+            pkg.setDistributionVersion(versionNumber);
+            pkg.setPackageType(PackageType.JDK);
+            pkg.setArchitecture(architecture);
+            pkg.setBitness(bitness);
+            pkg.setOperatingSystem(operatingSystem);
+            pkg.setReleaseStatus(releaseStatus);
+            pkg.setTermOfSupport(termOfSupport);
+            pkg.setFileName(filename);
+            pkg.setArchiveType(archiveType);
+            pkg.setDirectDownloadUri(downloadLink);
+            pkg.setJavaFXBundled(versionNumber.getFeature().getAsInt() <= 10);
+
+            pkgs.add(pkg);
+        }
+        return pkgs;
     }
 }

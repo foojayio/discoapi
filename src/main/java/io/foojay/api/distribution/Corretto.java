@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -25,15 +25,18 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
+import io.foojay.api.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,6 +72,12 @@ public class Corretto implements Distribution {
     private static final String                       SUPPORT_TERM_PARAM      = "";
     private static final String                       BITNESS_PARAM           = "";
 
+    private static final HashAlgorithm                HASH_ALGORITHM          = HashAlgorithm.NONE;
+    private static final String                       HASH_URI                = "";
+    private static final SignatureType                SIGNATURE_TYPE          = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI           = "";
+
 
     @Override public Distro getDistro() { return Distro.CORRETTO; }
 
@@ -90,6 +99,16 @@ public class Corretto implements Distribution {
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
 
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
+
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
@@ -109,10 +128,10 @@ public class Corretto implements Distribution {
         switch (versionNumber.getFeature().getAsInt()) {
             case 8:
             case 11:
-                queryBuilder.append("corretto-").append(versionNumber.getFeature().getAsInt()).append("/releases");
+                queryBuilder.append("corretto-").append(versionNumber.getFeature().getAsInt()).append("/releases").append("?per_page=100");
                 break;
             case 15:
-                queryBuilder.append("corretto-jdk").append("/releases");
+                queryBuilder.append("corretto-jdk").append("/releases").append("?per_page=100");
                 break;
         }
 
@@ -130,19 +149,24 @@ public class Corretto implements Distribution {
         supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
 
         String       bodyText      = jsonObj.get("body").getAsString();
-        Set<String>  fileUrlsFound = Helper.getFileUrlsFromString(bodyText);
-        for (String url : fileUrlsFound) {
+
+        Set<Pair<String,String>> pairsFound = Helper.getPackageTypeAndFileUrlFromString(bodyText);
+
+        for (Pair<String, String> pair : pairsFound) {
+            final PackageType pkgType = PackageType.fromText(pair.getKey());
+            final String      url     = pair.getValue();
+
             Pkg pkg = new Pkg();
 
-            String fileName = Helper.getFileNameFromText(url);
+            String filename = Helper.getFileNameFromText(url);
 
-            String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
+            String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
 
             pkg.setDistribution(Distro.CORRETTO.get());
-            pkg.setFileName(fileName);
+            pkg.setFileName(filename);
             pkg.setDirectDownloadUri(url);
 
-            ArchiveType ext = ArchiveType.getFromFileName(fileName);
+            ArchiveType ext = ArchiveType.getFromFileName(filename);
             if (ArchiveType.NONE != archiveType && ext != archiveType) { continue; }
             pkg.setArchiveType(ext);
 
@@ -175,8 +199,7 @@ public class Corretto implements Distribution {
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
 
-            VersionNumber dNumber = VersionNumber.fromText(withoutPrefix);
-            pkg.setDistributionVersion(dNumber);
+            pkg.setDistributionVersion(correttoNumber);
 
             pkg.setTermOfSupport(supTerm);
 
@@ -190,7 +213,7 @@ public class Corretto implements Distribution {
                     pkg.setPackageType(JRE);
                     break;
                 case NONE:
-                    pkg.setPackageType(withoutPrefix.contains(Constants.JRE_POSTFIX) ? JRE : JDK);
+                    pkg.setPackageType(pkgType);
                     break;
             }
 
@@ -207,7 +230,7 @@ public class Corretto implements Distribution {
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
             if (Architecture.NONE == arch) {
-                LOGGER.debug("Architecture not found in Corretto for filename: {}", fileName);
+                LOGGER.debug("Architecture not found in Corretto for filename: {}", filename);
                 continue;
             }
 
@@ -238,7 +261,7 @@ public class Corretto implements Distribution {
                 }
             }
             if (OperatingSystem.NONE == os) {
-                LOGGER.debug("Operating System not found in Corretto for filename: {}", fileName);
+                LOGGER.debug("Operating System not found in Corretto for filename: {}", filename);
                 continue;
             }
             pkg.setOperatingSystem(os);

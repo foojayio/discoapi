@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -27,11 +27,13 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -106,6 +108,13 @@ public class AOJ implements Distribution {
     private static final String                       FIELD_ARCHITECTURE     = "architecture";
     private static final String                       FIELD_JVM_IMPL         = "jvm_impl";
     private static final String                       FIELD_OS               = "os";
+    private static final String                       FIELD_CHECKSUM         = "checksum";
+
+    private static final HashAlgorithm                HASH_ALGORITHM             = HashAlgorithm.NONE;
+    private static final String                       HASH_URI                   = "";
+    private static final SignatureType                SIGNATURE_TYPE             = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM        = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI              = "";
 
 
     @Override public Distro getDistro() { return Distro.AOJ; }
@@ -127,6 +136,16 @@ public class AOJ implements Distribution {
     @Override public String getTermOfSupportParam() { return SUPPORT_TERM_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
+
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -163,12 +182,19 @@ public class AOJ implements Distribution {
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
         queryBuilder.append("heap_size=").append("normal");
 
+        /*
         if (packageType == PackageType.NONE) {
             queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
             queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(JDK));
             queryBuilder.append("&");
             queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(JRE));
         } else {
+            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+            queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(packageType));
+        }
+        */
+
+        if (packageType != PackageType.NONE) {
             queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
             queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(packageType));
         }
@@ -181,11 +207,11 @@ public class AOJ implements Distribution {
             queryBuilder.append(OPERATING_SYSTEM_PARAM).append("=").append(OPERATING_SYSTEM_MAP.get(operatingSystem));
         }
 
-        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-        queryBuilder.append("page=").append("0");
+        //queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+        //queryBuilder.append("page=").append("0");
 
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-        queryBuilder.append("page_size=").append("10");
+        queryBuilder.append("page_size=").append("100");
 
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
         queryBuilder.append("project=").append("jdk");

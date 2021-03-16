@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -24,11 +24,13 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.scopes.Scope;
@@ -57,6 +59,16 @@ public interface Distribution {
     String getTermOfSupportParam();
 
     String getBitnessParam();
+
+    HashAlgorithm getHashAlgorithm();
+
+    String getHashUri();
+
+    SignatureType getSignatureType();
+
+    HashAlgorithm getSignatureAlgorithm();
+
+    String getSignatureUri();
 
     List<SemVer> getVersions();
 

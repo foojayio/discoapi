@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api;
@@ -32,6 +32,8 @@ import com.mongodb.client.model.UpdateOptions;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Config;
 import io.foojay.api.util.Constants;
+import io.foojay.api.util.DownloadInfo;
+import io.foojay.api.util.Helper;
 import io.foojay.api.util.OutputFormat;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -63,7 +65,6 @@ public enum MongoDbManager {
 
     private static final String        FIELD_PACKAGE_ID = "id";
     private static final String        FIELD_DOWNLOADS  = "downloads";
-    private static final String        FIELD_IP_ADDRESS = "ipaddress";
     private static final String        FIELD_TIMESTAMP  = "timestamp";
 
     private              MongoClient   mongoClient;
@@ -124,6 +125,10 @@ public enum MongoDbManager {
         init();
     }
 
+    /**
+     * Returns list of all packages in the packages collection
+     * @return list of all packages in the packages collection
+     */
     public List<Pkg> getPkgs() {
         if (!connected) { init(); }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
@@ -148,6 +153,10 @@ public enum MongoDbManager {
         return result;
     }
 
+    /**
+     * Inserts given list of packages to packages collection
+     * @param pkgs
+     */
     public void insertAllPkgs(final Collection<Pkg> pkgs) {
         if (!connected) { init(); }
         if (null == pkgs || pkgs.isEmpty()) {
@@ -179,6 +188,11 @@ public enum MongoDbManager {
         LOGGER.debug("Successfully inserted {} packages to mongodb.", pkgs.size());
     }
 
+    /**
+     * Adds the given list of packages to the packages collection where existing packages will be updated
+     * @param pkgs
+     * @return true when packages have been added successfully
+     */
     public boolean addNewPkgs(final Collection<Pkg> pkgs) {
         if (!connected) { init(); }
         if (null == pkgs || pkgs.isEmpty()) {
@@ -212,6 +226,11 @@ public enum MongoDbManager {
         return true;
     }
 
+    /**
+     * Removes the given list of packages from the packages collection
+     * @param pkgs
+     * @return true when packages have been removed successfully
+     */
     public boolean removePkgs(final Collection<Pkg> pkgs) {
         if (!connected) { init(); }
         if (null == pkgs || pkgs.isEmpty()) {
@@ -244,6 +263,39 @@ public enum MongoDbManager {
         return true;
     }
 
+    /**
+     * Removes all documents from the packages collection.
+     * This method can be called from Updater.runOnceAtStartup() to wipe all documents
+     * in case a new cache warmup file is provided that contains additional information
+     * @return true when all documents have been removed successfully
+     */
+    public boolean removeAllPkgs() {
+        if (!connected) { init(); }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Packages have not been removed because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return false;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.PACKAGES_COLLECTION) {
+            LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
+            return false;
+        };
+
+        MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
+        collection.deleteMany(new Document());
+
+        LOGGER.debug("Successfully deleted all packages from mongodb.");
+        return true;
+    }
+
+    /**
+     * Returns a map with the packageId as key and the number of downloads as value.
+     * With this one can determine which are most loaded packages.
+     * @return a map with the packageId as key and the number of downloads as value
+     */
     public Map<String, Long> getDowloads() {
         if (!connected) { init(); }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
@@ -269,7 +321,12 @@ public enum MongoDbManager {
         return downloads;
     }
 
-    public void upsertDownloadForId(final String id, final Long noOfDownloads) {
+    /**
+     * Update number of downloads for given packageId
+     * @param pkgId
+     * @param noOfDownloads
+     */
+    public void upsertDownloadForId(final String pkgId, final Long noOfDownloads) {
         if (!connected) { init(); }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
             LOGGER.debug("Could not upsert download because FOOJAY_MONGODB_DATABASE environment variable was not set.");
@@ -284,12 +341,20 @@ public enum MongoDbManager {
             return;
         }
         database.getCollection(Constants.DOWNLOADS_COLLECTION)
-                .updateOne(eq(FIELD_PACKAGE_ID, id), combine(set(FIELD_PACKAGE_ID, id), set(FIELD_DOWNLOADS, noOfDownloads)), new UpdateOptions().upsert(true));
+                .updateOne(eq(FIELD_PACKAGE_ID, pkgId), combine(set(FIELD_PACKAGE_ID, pkgId), set(FIELD_DOWNLOADS, noOfDownloads)), new UpdateOptions().upsert(true));
 
-        LOGGER.debug("Successfully updated no of downloads for id {}", id);
+        LOGGER.debug("Successfully updated no of downloads for id {}", pkgId);
     }
 
-    public void addDownloadForIp(final String id, final String ipAddress) {
+    /**
+     * Looks up some package information and the geoip information for the given ipAddress
+     * and stores it the downloadsip collection.
+     * Will be called when a user requests the download link for a package which doesn't mean that
+     * the user really downloads the package.
+     * @param pkgId
+     * @param ipAddress
+     */
+    public void addDownloadForIp(final String pkgId, final String ipAddress, final String token) {
         if (!connected) { init(); }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
             LOGGER.debug("Download not added because FOOJAY_MONGODB_DATABASE environment variable was not set.");
@@ -305,13 +370,32 @@ public enum MongoDbManager {
         };
         final MongoCollection<Document> collection = database.getCollection(Constants.DOWNLOADS_IP_COLLECTION);
 
-        Document document = new Document();
-        document.put(FIELD_PACKAGE_ID, id);
-        document.put(FIELD_IP_ADDRESS, ipAddress);
-        document.put(FIELD_TIMESTAMP, Instant.now().toEpochMilli());
+        Pkg pkg = CacheManager.INSTANCE.pkgCache.get(pkgId);
 
-        collection.insertOne(document);
-        LOGGER.debug("Successfully stored ip-address {} for download of package id {} to mongodb.", ipAddress, id);
+        Document document = new Document();
+        document.put(DownloadInfo.FIELD_PACKAGE_ID, pkgId);
+        document.put(DownloadInfo.FIELD_TOKEN, null == token ? "" : token);
+        document.put(DownloadInfo.FIELD_TIMESTAMP, Instant.now().toEpochMilli());
+        document.put(DownloadInfo.FIELD_DISTRIBUTION, pkg.getDistribution().getDistro().getApiString());
+        document.put(DownloadInfo.FIELD_PACKAGE_TYPE, pkg.getPackageType().getApiString());
+        document.put(DownloadInfo.FIELD_RELEASE_STATUS, pkg.getReleaseStatus().getApiString());
+        document.put(DownloadInfo.FIELD_JAVA_VERSION, pkg.getJavaVersion().toString(OutputFormat.REDUCED, true, true));
+        document.put(DownloadInfo.FIELD_OPERATING_SYSTEM, pkg.getOperatingSystem().getApiString());
+        document.put(DownloadInfo.FIELD_ARCHITECTURE, pkg.getArchitecture().getApiString());
+
+        // Try to get geo ip data
+        Helper.lookupGeoIP(ipAddress).thenAccept(geoIP -> {
+            LOGGER.info("Lookup ip address in geo-ip service");
+            if (null == geoIP) {
+                LOGGER.warn("No geoip information received for ip-address: {}", ipAddress);
+                document.put(DownloadInfo.FIELD_COUNTRY_CODE2, "");
+                document.put(DownloadInfo.FIELD_CITY, "");
+            } else {
+                document.put(DownloadInfo.FIELD_COUNTRY_CODE2, geoIP.getCountryCode2());
+                document.put(DownloadInfo.FIELD_CITY, geoIP.getCity());
+            }
+            collection.insertOne(document);
+        });
     }
 
     public void updateLatestBuildAvailable(final List<Pkg> pkgs) {

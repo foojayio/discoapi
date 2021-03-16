@@ -1,17 +1,20 @@
 /*
- * Copyright (c) 2020 by Gerrit Grunwald
+ * Copyright (c) 2021.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This file is part of DiscoAPI.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *     DiscoAPI is free software: you can redistribute it and/or modify
+ *     it under the terms of the GNU General Public License as published by
+ *     the Free Software Foundation, either version 2 of the License, or
+ *     (at your option) any later version.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *     DiscoAPI is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.distribution;
@@ -24,11 +27,13 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
+import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
@@ -55,7 +60,7 @@ import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
 public class GraalVMCE11 implements Distribution {
-    private static final Logger LOGGER = LoggerFactory.getLogger(GraalVMCE11.class);
+    private static final Logger                       LOGGER                  = LoggerFactory.getLogger(GraalVMCE11.class);
 
     private static final String                       GITHUB_USER             = "graalvm";
     private static final String                       PACKAGE_URL             = "https://api.github.com/repos/" + GITHUB_USER + "/graalvm-ce-builds/releases";
@@ -70,6 +75,12 @@ public class GraalVMCE11 implements Distribution {
     private static final String                       RELEASE_STATUS_PARAM    = "";
     private static final String                       SUPPORT_TERM_PARAM      = "";
     private static final String                       BITNESS_PARAM           = "";
+
+    private static final HashAlgorithm                HASH_ALGORITHM          = HashAlgorithm.NONE;
+    private static final String                       HASH_URI                = "";
+    private static final SignatureType                SIGNATURE_TYPE          = SignatureType.NONE;
+    private static final HashAlgorithm                SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
+    private static final String                       SIGNATURE_URI           = "";
 
 
     @Override public Distro getDistro() { return Distro.GRAALVM_CE11; }
@@ -91,6 +102,16 @@ public class GraalVMCE11 implements Distribution {
     @Override public String getTermOfSupportParam() { return SUPPORT_TERM_PARAM; }
 
     @Override public String getBitnessParam() { return BITNESS_PARAM; }
+
+    @Override public HashAlgorithm getHashAlgorithm() { return HASH_ALGORITHM; }
+
+    @Override public String getHashUri() { return HASH_URI; }
+
+    @Override public SignatureType getSignatureType() { return SIGNATURE_TYPE; }
+
+    @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
+
+    @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
 
     @Override public List<SemVer> getVersions() {
@@ -135,39 +156,43 @@ public class GraalVMCE11 implements Distribution {
         JsonArray assets = jsonObj.getAsJsonArray("assets");
         for (JsonElement element : assets) {
             JsonObject assetJsonObj = element.getAsJsonObject();
-            String     fileName     = assetJsonObj.get("name").getAsString();
-            if (fileName.endsWith(Constants.FILE_ENDING_TXT) || fileName.endsWith(Constants.FILE_ENDING_JAR)) { continue; }
+            String     filename     = assetJsonObj.get("name").getAsString();
+            if (filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_JAR) ||
+                filename.endsWith(Constants.FILE_ENDING_SHA1) || filename.endsWith(Constants.FILE_ENDING_SHA256)) { continue; }
 
-            FILENAME_MATCHER.reset(fileName);
+            FILENAME_MATCHER.reset(filename);
             if (!FILENAME_MATCHER.matches()) { continue; }
+
+            String   strippedFilename = filename.replaceFirst("graalvm-ce-java11-", "").replaceAll("(\\.tar\\.gz|\\.zip)", "");
+            String[] filenameParts    = strippedFilename.split("-");
 
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
             Pkg pkg = new Pkg();
 
-            ArchiveType ext = getFromFileName(fileName);
+            pkg.setDistribution(Distro.GRAALVM_CE11.get());
+            pkg.setFileName(filename);
+            pkg.setDirectDownloadUri(downloadLink);
+
+            ArchiveType ext = getFromFileName(filename);
             if (SRC_TAR == ext || (ArchiveType.NONE != archiveType && ext != archiveType)) { continue; }
             pkg.setArchiveType(ext);
 
-            pkg.setDistribution(Distro.GRAALVM_CE11.get());
-            pkg.setFileName(fileName);
-            pkg.setDirectDownloadUri(downloadLink);
-
             Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                             .filter(entry -> fileName.contains(entry.getKey()))
+                                                             .filter(entry -> strippedFilename.contains(entry.getKey()))
                                                              .findFirst()
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
             if (Architecture.NONE == arch) {
-                LOGGER.debug("Architecture not found in GraalVM CE11 for filename: {}", fileName);
+                LOGGER.debug("Architecture not found in GraalVM CE11 for filename: {}", filename);
                 continue;
             }
 
             pkg.setArchitecture(arch);
             pkg.setBitness(arch.getBitness());
 
-            if (null == vNumber) {
-                vNumber = VersionNumber.fromText(downloadLink);
+            if (null == vNumber && filenameParts.length > 2) {
+                vNumber = VersionNumber.fromText(filenameParts[2]);
             }
             if (latest) {
                 if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { continue; }
@@ -176,8 +201,7 @@ public class GraalVMCE11 implements Distribution {
             }
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
-            VersionNumber dNumber = VersionNumber.fromText(fileName);
-            pkg.setDistributionVersion(dNumber);
+            pkg.setDistributionVersion(vNumber);
 
             pkg.setTermOfSupport(supTerm);
 
@@ -186,7 +210,7 @@ public class GraalVMCE11 implements Distribution {
             pkg.setReleaseStatus(GA);
 
             OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                                  .filter(entry -> fileName.contains(entry.getKey()))
+                                                                  .filter(entry -> strippedFilename.contains(entry.getKey()))
                                                                   .findFirst()
                                                                   .map(Entry::getValue)
                                                                   .orElse(OperatingSystem.NONE);
@@ -209,7 +233,7 @@ public class GraalVMCE11 implements Distribution {
                 }
             }
             if (OperatingSystem.NONE == os) {
-                LOGGER.debug("Operating System not found in GraalVM CE11 for filename: {}", fileName);
+                LOGGER.debug("Operating System not found in GraalVM CE11 for filename: {}", filename);
                 continue;
             }
             pkg.setOperatingSystem(os);
