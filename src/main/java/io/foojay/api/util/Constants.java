@@ -63,7 +63,7 @@ public class Constants {
 
     public static final String        MAINTAINED_PROPERTIES_URL = "https://github.com/foojay2020/maintained_major_versions/raw/main/maintained.properties";
 
-    public static final String        BASE_URL                  = "https://api.foojay.io/disco/";
+    public static final String        BASE_URL                  = null == Config.INSTANCE.getFoojayApiBaseUrl() ? "https://api.foojay.io/disco" : Config.INSTANCE.getFoojayApiBaseUrl();
     public static final String        API_VERSION               = "1.0";
     public static final String        ENDPOINT_PACKAGES         = "packages";
     public static final String        ENDPOINT_EPHEMERAL_IDS    = "ephemeral_ids";
@@ -86,6 +86,7 @@ public class Constants {
     public static final String        QUOTES                    = "\"";
     public static final String        COLON                     = ":";
     public static final String        COMMA                     = ",";
+    public static final String        SLASH                     = "/";
     public static final String        NEW_LINE                  = "\n";
     public static final String        COMMA_NEW_LINE            = ",\n";
     public static final String        INDENT                    = "  ";

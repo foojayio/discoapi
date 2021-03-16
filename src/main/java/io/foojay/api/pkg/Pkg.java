@@ -44,6 +44,7 @@ import static io.foojay.api.util.Constants.INDENT;
 import static io.foojay.api.util.Constants.INDENTED_QUOTES;
 import static io.foojay.api.util.Constants.NEW_LINE;
 import static io.foojay.api.util.Constants.QUOTES;
+import static io.foojay.api.util.Constants.SLASH;
 
 
 public class Pkg {
@@ -290,7 +291,7 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                          .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES)
+                                          .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES)
                                           .append(INDENT).append(CURLY_BRACKET_CLOSE)
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();
@@ -337,7 +338,7 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                          .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES)
+                                          .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES)
                                           .append(CURLY_BRACKET_CLOSE)
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();

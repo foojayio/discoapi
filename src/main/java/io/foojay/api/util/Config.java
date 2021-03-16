@@ -28,7 +28,7 @@ public enum Config {
 
     private static final Logger LOGGER                    = LoggerFactory.getLogger(Config.class);
 
-    public static final String FOOJAY_API_BASE_URL         = "FOOJAY_API_BASE_URL";         // api.foojay.io/disco
+    public static final String FOOJAY_API_BASE_URL         = "FOOJAY_API_BASE_URL";         // https://api.foojay.io/disco
     public static final String FOOJAY_API_MONGODB_URL      = "FOOJAY_API_MONGODB_URL";
     public static final String FOOJAY_API_MONGODB_PORT     = "FOOJAY_API_MONGODB_PORT";
     public static final String FOOJAY_API_MONGODB_DATABASE = "FOOJAY_API_MONGODB_DATABASE";
@@ -94,12 +94,22 @@ public enum Config {
     }
 
     public String getFoojayGeoIpApiKey() {
-        final String geoipApiKey = System.getenv(FOOJAY_GEO_IP_API_KEY);
-        if (null == geoipApiKey) {
-            LOGGER.warn("No environment variable {} found.", FOOJAY_GEO_IP_API_KEY);
+        final String foojayBaseUrl = System.getenv(FOOJAY_GEO_IP_API_KEY);
+        if (null == foojayBaseUrl) {
+            LOGGER.warn("No environment variable {} found.", FOOJAY_API_BASE_URL);
             return null;
         } else {
-            return geoipApiKey;
+            return foojayBaseUrl;
+        }
+    }
+
+    public String getFoojayApiBaseUrl() {
+        final String baseUrl = System.getenv(FOOJAY_API_BASE_URL);
+        if (null == baseUrl) {
+            LOGGER.warn("No environment variable {} found.", FOOJAY_API_BASE_URL);
+            return null;
+        } else {
+            return baseUrl;
         }
     }
 }
