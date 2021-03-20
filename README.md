@@ -60,7 +60,6 @@ Please find more information here:
 3. Call the endpoint https://api.foojay.io/disco/v1.0/ephemeral_ids/PACKAGE_EPHEMERAL_ID
 4. Get the download link from the json response
 
-The plan is to provide useful statistics about download numbers. For that reason we use the ip address to geolocate the request when packages will be downloaded via the API. At the moment we evaluating if this information is valuable and we will add these statistics to the packages soon.
 
 ### Here are some use cases and ways how to handle them using the disco API:
 

@@ -24,17 +24,17 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.foojay.api.distribution.SAPMachine;
 import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
+import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.VersionNumber;
-import io.foojay.api.util.EphemeralIdCache;
 import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.util.PkgCache;
+import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
+import io.foojay.api.util.EphemeralIdCache;
 import io.foojay.api.util.Helper;
+import io.foojay.api.util.PkgCache;
 import io.micronaut.context.annotation.Requires;
 import io.micronaut.context.env.Environment;
 import org.slf4j.Logger;
@@ -64,6 +64,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
@@ -97,10 +98,11 @@ public enum CacheManager {
         put(16, true);
         put(17, true);
     }};
+    public               AtomicBoolean                    initialized                = new AtomicBoolean(false);
     public               AtomicBoolean                    pkgCacheIsUpdating         = new AtomicBoolean(false);
     public               AtomicBoolean                    ephemeralIdCacheIsUpdating = new AtomicBoolean(false);
     public               AtomicBoolean                    cleaning                   = new AtomicBoolean(false);
-    private final        Map<Distro, Integer>             updateHourCounters         = new ConcurrentHashMap<>();
+    private final        Map<Distro, Integer>             updateMinuteCounters         = new ConcurrentHashMap<>();
     private final        Map<String, Pkg>                 deltaPkgs                  = new ConcurrentHashMap<>();
     private final        List<MajorVersion>               majorVersions              = new LinkedList<>();
 
@@ -109,9 +111,11 @@ public enum CacheManager {
         Arrays.stream(Distro.values())
               .filter(distro -> Distro.NONE != distro)
               .filter(distro -> Distro.NOT_FOUND != distro)
-              .forEach(distro -> updateHourCounters.put(distro, 12));
+              .forEach(distro -> updateMinuteCounters.put(distro, 720));
     }
 
+
+    public boolean isInitialized() { return initialized.get(); }
 
     public boolean preloadPkgCache() {
         try {
@@ -144,6 +148,7 @@ public enum CacheManager {
                 LOGGER.debug("Successfully preloaded cache with {} packages from mongodb in {} ms", pkgCache.size(), (System.currentTimeMillis() - start));
             }
             updateEphemeralIdCache();
+            initialized.set(true);
             return true;
         } catch (IOException e) {
             LOGGER.error("Error loading packages from json file. {}", e.getMessage());
@@ -152,6 +157,8 @@ public enum CacheManager {
     }
 
     public void updatePkgCache() {
+        LOGGER.debug("Updating cache and release variables and store downloads (every 1h)");
+
         // Pre-Load cache if it is empty
         if (pkgCache.isEmpty()) { preloadPkgCache(); }
 
@@ -175,14 +182,14 @@ public enum CacheManager {
         List<Pkg> pkgs = new CopyOnWriteArrayList<>(); // contains all packages found
         try {
             List<Callable<List<Pkg>>> callables = new ArrayList<>();
-            // Update packages only if the updateHourCounter for each distro == the minUpdateIntervalInHours of that distro
+            // Update packages only if the updateMinuteCounter for each distro == the minUpdateIntervalInMinutes of that distro
             // Increase all counters by 1 on each update call
             Arrays.stream(Distro.values())
                   .filter(distro -> Distro.NONE != distro)
                   .filter(distro -> Distro.NOT_FOUND != distro)
                   .forEach(distro -> {
-                      LOGGER.debug("Update hour counter for distro {} -> {}", distro.name(), updateHourCounters.get(distro));
-                updateHourCounters.computeIfPresent(distro, (k, v) -> v + 1);
+                      LOGGER.debug("Update minute counter for distro {} -> {}", distro.name(), updateMinuteCounters.get(distro));
+                      updateMinuteCounters.computeIfPresent(distro, (k, v) -> v + 1);
             });
 
             // Only update the distros where the counter == minUpdateIntervalInHours
@@ -190,11 +197,11 @@ public enum CacheManager {
                   .filter(distro -> distro != Distro.NONE)
                   .filter(distro -> distro != Distro.NOT_FOUND)
                   .forEach(distro -> {
-                if (updateHourCounters.get(distro) >= distro.getMinUpdateIntervalInHours()) {
+                      if (updateMinuteCounters.get(distro) >= distro.getMinUpdateIntervalInMinutes()) {
                             callables.add(Helper.createTask(distro));
                           LOGGER.debug("Adding package fetch task to callables for {}", distro.name());
-                            updateHourCounters.put(distro, 0);
-                          LOGGER.debug("Reset hour counter for distro {} -> {}", distro.name(), updateHourCounters.get(distro));
+                          updateMinuteCounters.put(distro, 0);
+                          LOGGER.debug("Reset minute counter for distro {} -> {}", distro.name(), updateMinuteCounters.get(distro));
                 }
             });
 
@@ -300,7 +307,7 @@ public enum CacheManager {
         pkgCacheIsUpdating.set(false);
 
         // Check latest builds for GraalVM and set latest_build_available=true
-        for (int i = 19 ; i <= 30 ; i++) {
+        for (int i = 19 ; i <= 40 ; i++) {
             int featureVersion = i;
             Distro.getDistributions()
                   .stream()
@@ -323,15 +330,78 @@ public enum CacheManager {
                       }
                   });
         }
-        LOGGER.info("\"Latest build info updated GraalVM versions in package cache.");
+        LOGGER.debug("\"Latest build info updated GraalVM versions in package cache.");
 
         // Synchronize latestBuildAvailable in mongodb database with cache
         MongoDbManager.INSTANCE.syncLatestBuildAvailableInDatabaseWithCache(pkgCache.getPkgs());
 
-        LOGGER.info("Cache updated in {} ms, no of packages in cache {}", (System.currentTimeMillis() - start), pkgCache.size());
+        LOGGER.debug("Cache updated in {} ms, no of packages in cache {}", (System.currentTimeMillis() - start), pkgCache.size());
+    }
+
+    public void updateEphemeralIdCache() {
+        LOGGER.debug("Updating ephemeral id cache (every 10m)");
+        long startUpdating = System.currentTimeMillis();
+        ephemeralIdCacheIsUpdating.set(true);
+        ephemeralIdCache.clear();
+        final long epoch = Instant.now().getEpochSecond();
+        pkgCache.getKeys().forEach(id -> ephemeralIdCache.add(Helper.createEphemeralId(epoch, id), id));
+        ephemeralIdCacheIsUpdating.set(false);
+        LOGGER.debug("Finished updating EphemeralIDCache in {}ms", (System.currentTimeMillis() - startUpdating));
+
+        // Update all available major versions
+        updateMajorVersions();
+
+        // Update maintained major versions
+        updateMaintainedMajorVersions();
+    }
+
+    public void updateMajorVersions() {
+        LOGGER.debug("Updating major versions");
+        // Update all available major versions (exclude GraalVM based pkgs because they have different version numbers)
+        /*
+        while(CacheManager.INSTANCE.pkgCacheIsUpdating.get()) {
+            try {
+                TimeUnit.SECONDS.sleep(1);
+                LOGGER.debug("Waiting for updating package cache");
+            } catch(InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        */
+        majorVersions.clear();
+        majorVersions.addAll(pkgCache.getPkgs()
+                                     .stream()
+                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8)
+                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11)
+                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE)
+                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.MANDREL)
+                                     .map(pkg -> pkg.getVersionNumber().getFeature().getAsInt())
+                                     .distinct()
+                                     .map(majorVersion -> new MajorVersion(majorVersion))
+                                     .sorted(Comparator.comparing(MajorVersion::getVersionNumber).reversed())
+                                     .collect(Collectors.toList()));
+        LOGGER.debug("Successfully updated major versions");
+    }
+
+    public void updateMaintainedMajorVersions() {
+        LOGGER.debug("Updating maintained major versions");
+        final Properties maintainedProperties = new Properties();
+        try {
+            maintainedProperties.load(new StringReader(Helper.getTextFromUrl(Constants.MAINTAINED_PROPERTIES_URL)));
+            maintainedProperties.entrySet().forEach(entry -> {
+                Integer majorVersion = Integer.valueOf(entry.getKey().toString().replaceAll("jdk-", ""));
+                Boolean maintained   = Boolean.valueOf(entry.getValue().toString().toLowerCase());
+                maintainedMajorVersions.put(majorVersion, maintained);
+            });
+            LOGGER.debug("Successfully updated maintained major versions");
+        } catch (Exception e) {
+            LOGGER.error("Error loading maintained version properties from github. {}", e);
+        }
     }
 
     public void cleanupPkgCache() {
+        LOGGER.debug("Cleanup cache and update database (every 3h27m)");
+
         if (cleaning.get() || pkgCacheIsUpdating.get()) { return; }
         final long start = System.currentTimeMillis();
         LOGGER.debug("Started cleaning up the cache");
@@ -556,7 +626,7 @@ public enum CacheManager {
 
         }
 
-        LOGGER.info("Updated latest build available for all packages.");
+        LOGGER.debug("Updated latest build available for all packages.");
     }
 
     private void updateLatestBuild(final ReleaseStatus releaseStatus) {
@@ -581,65 +651,6 @@ public enum CacheManager {
                       }
                   });
               });
-    }
-
-    public void updateEphemeralIdCache() {
-        LOGGER.debug("Updating EphemeralIdCache");
-        long startUpdating = System.currentTimeMillis();
-        ephemeralIdCacheIsUpdating.set(true);
-        ephemeralIdCache.clear();
-        final long epoch = Instant.now().getEpochSecond();
-        pkgCache.getKeys().forEach(id -> ephemeralIdCache.add(Helper.createEphemeralId(epoch, id), id));
-        ephemeralIdCacheIsUpdating.set(false);
-        LOGGER.debug("Finished updating EphemeralIDCache in {}ms", (System.currentTimeMillis() - startUpdating));
-
-        // Update all available major versions
-        updateMajorVersions();
-
-        // Update maintained major versions
-        updateMaintainedMajorVersions();
-    }
-
-    public void updateMajorVersions() {
-        LOGGER.debug("Updating major versions");
-        // Update all available major versions (exclude GraalVM based pkgs because they have different version numbers)
-        while(CacheManager.INSTANCE.pkgCacheIsUpdating.get()) {
-            try {
-                TimeUnit.SECONDS.sleep(1);
-                LOGGER.debug("Waiting for updating package cache");
-            } catch(InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        majorVersions.clear(); 
-        majorVersions.addAll(pkgCache.getPkgs()
-                                     .stream()
-                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8)
-                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11)
-                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE)
-                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.MANDREL)
-                                                            .map(pkg -> pkg.getVersionNumber().getFeature().getAsInt())
-                                                            .distinct()
-                                                            .map(majorVersion -> new MajorVersion(majorVersion))
-                                                            .sorted(Comparator.comparing(MajorVersion::getVersionNumber).reversed())
-                                                            .collect(Collectors.toList()));
-        LOGGER.debug("Successfully updated major versions");
-    }
-
-    public void updateMaintainedMajorVersions() {
-        LOGGER.debug("Updating maintained major versions");
-        final Properties maintainedProperties = new Properties();
-        try {
-            maintainedProperties.load(new StringReader(Helper.getTextFromUrl(Constants.MAINTAINED_PROPERTIES_URL)));
-            maintainedProperties.entrySet().forEach(entry -> {
-                Integer majorVersion = Integer.valueOf(entry.getKey().toString().replaceAll("jdk-", ""));
-                Boolean maintained   = Boolean.valueOf(entry.getValue().toString().toLowerCase());
-                maintainedMajorVersions.put(majorVersion, maintained);
-            });
-            LOGGER.debug("Successfully updated maintained major versions");
-        } catch (Exception e) {
-            LOGGER.error("Error loading maintained version properties from github. {}", e);
-        }
     }
 
     public String getEphemeralIdForPkg(final String pkgId) {

@@ -43,7 +43,6 @@ import java.util.regex.Pattern;
 public class Constants {
     public static final String        PACKAGES_COLLECTION      = "packages";
     public static final String        DOWNLOADS_COLLECTION     = "downloads";
-    public static final String        DOWNLOADS_IP_COLLECTION  = "downloadsip";
 
     public static final String        CACHE_DATA_FILE          = "disco.json";
     public static final String        CACHE_DELTA_FILE         = "delta.json";
@@ -74,10 +73,7 @@ public class Constants {
     public static final String        FILE_ENDING_TXT           = "txt";
     public static final String        FILE_ENDING_SHA1          = "sha1";
     public static final String        FILE_ENDING_SHA256        = "sha256";
-
-    public static final long          EPHEMERAL_ID_DELAY        = 120; // [sec]
-    public static final long          EPHEMERAL_ID_TIMEOUT      = 600; // [sec]
-
+    
     public static final String        SQUARE_BRACKET_OPEN       = "[";
     public static final String        SQUARE_BRACKET_CLOSE      = "]";
     public static final String        CURLY_BRACKET_OPEN        = "{";
@@ -95,7 +91,7 @@ public class Constants {
         put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
         put(Pkg.FIELD_ARCHIVE_TYPE, "apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip");
         put(Pkg.FIELD_BITNESS, "32, 64");
-        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, liberica, liberica_native, mandrel, ojdk_build, oracle, oracle_open_jdk, redhat, sap_machine, trava, zulu");
+        put(Pkg.FIELD_DISTRIBUTION, "adoptium, aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, liberica, liberica_native, mandrel, ojdk_build, oracle, oracle_open_jdk, redhat, sap_machine, trava, zulu");
         put(Pkg.FIELD_OPERATING_SYSTEM, "aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows");
         put(Pkg.FIELD_LIB_C_TYPE, "c_std_lib, glibc, libc, musl");
         put(Pkg.FIELD_PACKAGE_TYPE, "jdk, jre");
@@ -228,6 +224,7 @@ public class Constants {
     }};
 
     public static final ConcurrentHashMap<Distro, List<Scope>> SCOPE_LOOKUP = new ConcurrentHashMap<>() {{
+        put(Distro.ADOPTIUM, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
         put(Distro.AOJ, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
         put(Distro.AOJ_OPENJ9, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.CORRETTO, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));

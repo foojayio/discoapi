@@ -49,7 +49,7 @@ public enum DownloadManager {
         }
     }
 
-    public void increaseCounterForId(final String pkgId, final String ipAddress, final String token) {
+    public void increaseCounterForId(final String pkgId) {
         if (downloads.isEmpty()) { preloadDownloads(); }
 
         if (!CacheManager.INSTANCE.pkgCache.getKeys().contains(pkgId)) { return; }
@@ -63,14 +63,6 @@ public enum DownloadManager {
             LOGGER.debug("Successfully stored download for package id {} to mongodb.", pkgId);
         } catch (Exception e) {
             LOGGER.error("Error storing download download for package id {} to mongodb. {}", pkgId, e);
-        }
-
-        // Store package id and ip-address from what it was downloaded
-        try {
-            MongoDbManager.INSTANCE.addDownloadForIp(pkgId, ipAddress, token);
-            LOGGER.debug("Download of package id {} from ip-address {}", pkgId, ipAddress);
-        } catch (Exception e) {
-            LOGGER.error("Error storing download of package id {} for ip-address {}", pkgId, ipAddress);
         }
     }
 }

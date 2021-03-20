@@ -371,4 +371,92 @@ public class Zulu implements Distribution {
 
         return pkgs;
     }
+
+    /**
+     * Returns all packages found on the Azul Zulu Community CDN
+     * @return all packages found on the Azul Zulu Community CDN
+     */
+    public List<Pkg> getAllPackagesFromCDN() {
+        List<Pkg> pkgs = new ArrayList<>();
+        try {
+            final String       html                        = Helper.getTextFromUrl("https://cdn.azul.com/zulu/bin/");
+            final Pattern      filenamePrefixVersion       = Pattern.compile("(zulu|zre|zulu-repo|zulurepo)((-|_)?)(\\d+)\\.(\\d+)(\\.|\\+)(\\d+)(\\.|_?)(\\d+)?(-|_)([0-9]+-)?((ca|ea)(-))?(hl-)?(fx-)?(cp[0-9]+)?(jdk|jre)?");
+            final Pattern      filenamePrefixDistroVersion = Pattern.compile("(zulu|zre|zulu-repo|zulurepo)");
+            final List<String> fileHrefs                   = new ArrayList<>(Helper.getFileHrefsFromString(html));
+            for (String href : fileHrefs) {
+                String filename = Helper.getFileNameFromText(href);
+                if (filename.contains("noarch")) { continue; }
+
+                String          reducedToVersionFilename       = filename.replaceAll(filenamePrefixVersion.pattern(), "");
+                VersionNumber   versionNumber                  = VersionNumber.fromText(reducedToVersionFilename);
+                TermOfSupport   termOfSupport                  = Helper.getTermOfSupport(versionNumber);
+                String          downloadLink                   = "https://cdn.azul.com/zulu/bin/" + filename;
+
+                String          reducedToDistroVersionFilename = filename.replaceAll(filenamePrefixDistroVersion.pattern(), "");
+                VersionNumber   distroVersionNumber            = VersionNumber.fromText(reducedToDistroVersionFilename);
+
+                Pkg pkg = new Pkg();
+                pkg.setDistribution(Distro.ZULU.get());
+                pkg.setVersionNumber(versionNumber);
+                pkg.setJavaVersion(versionNumber);
+                pkg.setDistributionVersion(distroVersionNumber);
+
+                PackageType packageType = Constants.PACKAGE_TYPE_LOOKUP.entrySet().stream()
+                                                                       .filter(entry -> filename.contains(entry.getKey()))
+                                                                       .findFirst()
+                                                                       .map(Entry::getValue)
+                                                                       .orElse(PackageType.NOT_FOUND);
+                if (PackageType.NOT_FOUND == packageType) { packageType = PackageType.JDK; }
+                pkg.setPackageType(packageType);
+
+                ArchiveType archiveType = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
+                                                                       .filter(entry -> filename.endsWith(entry.getKey()))
+                                                                       .findFirst()
+                                                                       .map(Entry::getValue)
+                                                                       .orElse(ArchiveType.NOT_FOUND);
+                if (ArchiveType.NOT_FOUND == archiveType) { continue; }
+                pkg.setArchiveType(archiveType);
+
+                OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
+                                                                      .filter(entry -> filename.contains(entry.getKey()))
+                                                                      .findFirst()
+                                                                      .map(Entry::getValue)
+                                                                      .orElse(OperatingSystem.NOT_FOUND);
+                if (OperatingSystem.NOT_FOUND == os) {
+                    os = Helper.fetchOperatingSystemByArchiveType(archiveType.getUiString());
+                }
+
+                if (OperatingSystem.NOT_FOUND == os) { continue; }
+                pkg.setOperatingSystem(os);
+
+                Architecture architecture = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                                                                         .filter(entry -> filename.contains(entry.getKey()))
+                                                                         .findFirst()
+                                                                         .map(Entry::getValue)
+                                                                         .orElse(Architecture.NOT_FOUND);
+                if (Architecture.NOT_FOUND == architecture) {
+                    if (OperatingSystem.MACOS == pkg.getOperatingSystem()) {
+                        architecture = Architecture.X64;
+                    } else {
+                        continue;
+                    }
+                }
+                pkg.setArchitecture(architecture);
+                pkg.setBitness(architecture.getBitness());
+
+                pkg.setReleaseStatus(filename.contains("ea") ? ReleaseStatus.EA : ReleaseStatus.GA);
+
+                pkg.setTermOfSupport(termOfSupport);
+                pkg.setFileName(filename);
+                pkg.setArchiveType(archiveType);
+                pkg.setDirectDownloadUri(downloadLink);
+                pkg.setJavaFXBundled(filename.contains("-fx"));
+
+                pkgs.add(pkg);
+            }
+        } catch (Exception e) {
+            LOGGER.debug("Error fetching packages from Zulu CDN. {}", e.getMessage());
+        }
+        return pkgs;
+    }
 }

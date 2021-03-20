@@ -34,7 +34,6 @@ public enum Config {
     public static final String FOOJAY_API_MONGODB_DATABASE = "FOOJAY_API_MONGODB_DATABASE";
     public static final String FOOJAY_API_MONGODB_USER     = "FOOJAY_API_MONGODB_USER";
     public static final String FOOJAY_API_MONGODB_PASSWORD = "FOOJAY_API_MONGODB_PASSWORD";
-    public static final String FOOJAY_GEO_IP_API_KEY       = "FOOJAY_API_GEO_IP_API_KEY";
 
 
     public String getFoojayMongoDbUrl() {
@@ -90,16 +89,6 @@ public enum Config {
             return null;
         } else {
             return mongoDbPassword;
-        }
-    }
-
-    public String getFoojayGeoIpApiKey() {
-        final String foojayBaseUrl = System.getenv(FOOJAY_GEO_IP_API_KEY);
-        if (null == foojayBaseUrl) {
-            LOGGER.warn("No environment variable {} found.", FOOJAY_API_BASE_URL);
-            return null;
-        } else {
-            return foojayBaseUrl;
         }
     }
 

@@ -32,8 +32,6 @@ import com.mongodb.client.model.UpdateOptions;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Config;
 import io.foojay.api.util.Constants;
-import io.foojay.api.util.DownloadInfo;
-import io.foojay.api.util.Helper;
 import io.foojay.api.util.OutputFormat;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -41,7 +39,6 @@ import org.bson.json.JsonParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -65,7 +62,6 @@ public enum MongoDbManager {
 
     private static final String        FIELD_PACKAGE_ID = "id";
     private static final String        FIELD_DOWNLOADS  = "downloads";
-    private static final String        FIELD_TIMESTAMP  = "timestamp";
 
     private              MongoClient   mongoClient;
     private              boolean       connected;
@@ -105,11 +101,6 @@ public enum MongoDbManager {
                 if (null == downloadsCollection) {
                     LOGGER.debug("Creating mongodb collection {}", Constants.DOWNLOADS_COLLECTION);
                     database.createCollection(Constants.DOWNLOADS_COLLECTION, null);
-                }
-                MongoCollection downloadsIpCollection = database.getCollection(Constants.DOWNLOADS_IP_COLLECTION);
-                if (null == downloadsIpCollection) {
-                    LOGGER.debug("Creating mongodb collection {}", Constants.DOWNLOADS_IP_COLLECTION);
-                    database.createCollection(Constants.DOWNLOADS_IP_COLLECTION, null);
                 }
             } catch (MongoException e) {
                 connected = false;
@@ -344,58 +335,6 @@ public enum MongoDbManager {
                 .updateOne(eq(FIELD_PACKAGE_ID, pkgId), combine(set(FIELD_PACKAGE_ID, pkgId), set(FIELD_DOWNLOADS, noOfDownloads)), new UpdateOptions().upsert(true));
 
         LOGGER.debug("Successfully updated no of downloads for id {}", pkgId);
-    }
-
-    /**
-     * Looks up some package information and the geoip information for the given ipAddress
-     * and stores it the downloadsip collection.
-     * Will be called when a user requests the download link for a package which doesn't mean that
-     * the user really downloads the package.
-     * @param pkgId
-     * @param ipAddress
-     */
-    public void addDownloadForIp(final String pkgId, final String ipAddress, final String token) {
-        if (!connected) { init(); }
-        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
-            LOGGER.debug("Download not added because FOOJAY_MONGODB_DATABASE environment variable was not set.");
-            return;
-        }
-        if (null == database) {
-            LOGGER.error("Database is not set.");
-            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
-        }
-        if (null == Constants.DOWNLOADS_IP_COLLECTION) {
-            LOGGER.error("Constants.DOWNLOADS_IP_COLLECTION not set.");
-            return;
-        };
-        final MongoCollection<Document> collection = database.getCollection(Constants.DOWNLOADS_IP_COLLECTION);
-
-        Pkg pkg = CacheManager.INSTANCE.pkgCache.get(pkgId);
-
-        Document document = new Document();
-        document.put(DownloadInfo.FIELD_PACKAGE_ID, pkgId);
-        document.put(DownloadInfo.FIELD_TOKEN, null == token ? "" : token);
-        document.put(DownloadInfo.FIELD_TIMESTAMP, Instant.now().toEpochMilli());
-        document.put(DownloadInfo.FIELD_DISTRIBUTION, pkg.getDistribution().getDistro().getApiString());
-        document.put(DownloadInfo.FIELD_PACKAGE_TYPE, pkg.getPackageType().getApiString());
-        document.put(DownloadInfo.FIELD_RELEASE_STATUS, pkg.getReleaseStatus().getApiString());
-        document.put(DownloadInfo.FIELD_JAVA_VERSION, pkg.getJavaVersion().toString(OutputFormat.REDUCED, true, true));
-        document.put(DownloadInfo.FIELD_OPERATING_SYSTEM, pkg.getOperatingSystem().getApiString());
-        document.put(DownloadInfo.FIELD_ARCHITECTURE, pkg.getArchitecture().getApiString());
-
-        // Try to get geo ip data
-        Helper.lookupGeoIP(ipAddress).thenAccept(geoIP -> {
-            LOGGER.info("Lookup ip address in geo-ip service");
-            if (null == geoIP) {
-                LOGGER.warn("No geoip information received for ip-address: {}", ipAddress);
-                document.put(DownloadInfo.FIELD_COUNTRY_CODE2, "");
-                document.put(DownloadInfo.FIELD_CITY, "");
-            } else {
-                document.put(DownloadInfo.FIELD_COUNTRY_CODE2, geoIP.getCountryCode2());
-                document.put(DownloadInfo.FIELD_CITY, geoIP.getCity());
-            }
-            collection.insertOne(document);
-        });
     }
 
     public void updateLatestBuildAvailable(final List<Pkg> pkgs) {

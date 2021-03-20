@@ -61,6 +61,11 @@ import java.net.http.HttpClient.Version;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.nio.charset.Charset;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -91,7 +96,6 @@ import static java.util.stream.Collectors.toCollection;
 
 public class Helper {
     private static final Logger  LOGGER                 = LoggerFactory.getLogger(Helper.class);
-    private static final Random  RND                    = new Random();
     public static final  Pattern FILE_URL_PATTERN                       = Pattern.compile("(JDK|JRE)(\\s+\\|\\s?\\[[a-zA-Z0-9\\-\\._]+\\]\\()(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz(?!\\.sig)|\\.deb|\\.rpm|\\.cab|\\.7z))");
     public static final  Pattern FILE_URL_MD5_PATTERN                   = Pattern.compile("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\\)\\h+\\|\\h+`([0-9a-z]{32})`");
     public static final  Pattern DRAGONWELL_11_FILE_NAME_SHA256_PATTERN = Pattern.compile("(OpenJDK[0-9]+U[a-z0-9_\\-\\.]+)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)(\\s+\\(Experimental ONLY\\))?\\h+\\|\\h+([0-9a-z]{64})");
@@ -131,7 +135,7 @@ public class Helper {
                 pkgs.addAll(oracleOpenJDK.getAllPkgs());
                 // Get all jdk 8 packages from github
                 String       query8     = oracleOpenJDK.getGithubPkg8Url() + "/releases?per_page=100";
-                HttpClient  clientOJ    = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
+                HttpClient  clientOJ    = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(Version.HTTP_1_1).build();
                 HttpRequest request8 = HttpRequest.newBuilder().uri(URI.create(query8)).setHeader("User-Agent", "DiscoAPI").GET().build();
                 try {
                     HttpResponse<String> response = clientOJ.send(request8, BodyHandlers.ofString());
@@ -181,7 +185,7 @@ public class Helper {
 
                 // Search through github release and fetch packages from there
                 String      query      = sapMachine.getPkgUrl() + "?per_page=100";
-                HttpClient  clientSAP  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
+                HttpClient  clientSAP = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(Version.HTTP_1_1).build();
                 HttpRequest request   = HttpRequest.newBuilder().uri(URI.create(query)).setHeader("User-Agent", "DiscoAPI").GET().build();
                 try {
                     HttpResponse<String> response = clientSAP.send(request, BodyHandlers.ofString());
@@ -221,9 +225,29 @@ public class Helper {
                     pkgs.addAll(getPkgs(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.EA, TermOfSupport.NONE));
                 }
                 break;
+            case ADOPTIUM:
+                break;
             case LIBERICA_NATIVE:
                 LibericaNative libericaNative = (LibericaNative) distro.get();
                 pkgs.addAll(libericaNative.getAllPkgs());
+                break;
+            case ZULU:
+                Zulu zulu = (Zulu) distro.get();
+                // Get packages from API
+                for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
+                    pkgs.addAll(getPkgs(zulu, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
+                }
+
+                // Get packages from CDN
+                List<Pkg>    cdnPkgs       = ((Zulu) Distro.ZULU.get()).getAllPackagesFromCDN();
+                List<Pkg>    pkgsToAdd     = new LinkedList<>();
+                List<String> pkgsFilenames = pkgs.stream().map(pkg -> pkg.getFileName()).collect(Collectors.toList());
+                for (Pkg cdnPkg : cdnPkgs) {
+                    if (!pkgsFilenames.contains(cdnPkg.getFileName())) {
+                        pkgsToAdd.add(cdnPkg);
+                    }
+                }
+                pkgs.addAll(pkgsToAdd);
                 break;
             default:
                 Distribution distribution = distro.get();
@@ -252,7 +276,7 @@ public class Helper {
 
         HttpClient  client  = HttpClient.newBuilder()
                                         .followRedirects(Redirect.NORMAL)
-                                        .version(java.net.http.HttpClient.Version.HTTP_2)
+                                        .version(Version.HTTP_1_1)
                                         .build();
         HttpRequest request = HttpRequest.newBuilder()
                                          .uri(URI.create(query))
@@ -795,23 +819,21 @@ public class Helper {
         }
     }
 
-    public static CompletableFuture<GeoIP> lookupGeoIP(final String ipAdress) {
-        final String geoApiKey = Config.INSTANCE.getFoojayGeoIpApiKey();
-        final String geoApiUrl = Constants.GEO_API_URL + "?apiKey=" + geoApiKey + "&ip=" + ipAdress;
-
-        return getAsync(geoApiUrl).thenApply(response -> {
-            final Gson        gson    = new Gson();
-            final JsonElement element = gson.fromJson(response, JsonElement.class);
-            if (element instanceof JsonObject) {
-                final JsonObject jsonObj      = element.getAsJsonObject();
-                final String     countryCode2 = jsonObj.get(DownloadInfo.FIELD_COUNTRY_CODE2).getAsString();
-                final String     city         = jsonObj.get(DownloadInfo.FIELD_CITY).getAsString();
-                return new GeoIP(countryCode2, city);
-            } else {
-                LOGGER.error("Error retrieving geo ip json data from api.ipgeolocation.io");
-                return null;
+    public static final Set<String> getFilesFromFolder(final String folder) throws IOException {
+        Set<String> fileList = new HashSet<>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(folder))) {
+            for (Path path : stream) {
+                if (!Files.isDirectory(path)) {
+                    fileList.add(path.getFileName().toString());
+                }
             }
-        });
+        }
+        return fileList;
+    }
+
+    public static final List<String> readTextFile(final String filename, final Charset charset) throws IOException {
+        //Charset charset = Charset.forName("UTF-8");
+        return Files.readAllLines(Paths.get(filename), charset);
     }
 
     public static final OperatingSystem fetchOperatingSystem(final String text) {
@@ -873,7 +895,7 @@ public class Helper {
     public static final String get(final String uri) {
         HttpClient  client  = HttpClient.newBuilder()
                                         .followRedirects(Redirect.NORMAL)
-                                        .version(Version.HTTP_2)
+                                        .version(Version.HTTP_1_1)
                                         .build();
         HttpRequest request = HttpRequest.newBuilder()
                                          .uri(URI.create(uri))
@@ -896,7 +918,7 @@ public class Helper {
     }
 
     public static final CompletableFuture<String> getAsync(final String uri) {
-        HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
+        HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(Version.HTTP_1_1).build();
         HttpRequest request = HttpRequest.newBuilder()
                                          .uri(URI.create(uri))
                                          .GET()
