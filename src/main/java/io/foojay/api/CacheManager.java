@@ -57,14 +57,12 @@ import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
@@ -121,7 +119,7 @@ public enum CacheManager {
         try {
             final long start = System.currentTimeMillis();
 
-            List<Pkg> pkgsFromMongoDb = new CopyOnWriteArrayList<>();
+            List<Pkg> pkgsFromMongoDb = new ArrayList<>();
             pkgsFromMongoDb.addAll(MongoDbManager.INSTANCE.getPkgs());
 
             if (pkgsFromMongoDb.isEmpty()) {
@@ -157,7 +155,7 @@ public enum CacheManager {
     }
 
     public void updatePkgCache() {
-        LOGGER.debug("Updating cache and release variables and store downloads (every 1h)");
+        LOGGER.debug("Updating cache and release variables and store downloads");
 
         // Pre-Load cache if it is empty
         if (pkgCache.isEmpty()) { preloadPkgCache(); }
@@ -179,7 +177,7 @@ public enum CacheManager {
         LOGGER.debug("Started updating package cache");
         pkgCacheIsUpdating.set(true);
 
-        List<Pkg> pkgs = new CopyOnWriteArrayList<>(); // contains all packages found
+        List<Pkg> pkgs = new ArrayList<>(); // contains all packages found
         try {
             List<Callable<List<Pkg>>> callables = new ArrayList<>();
             // Update packages only if the updateMinuteCounter for each distro == the minUpdateIntervalInMinutes of that distro
@@ -192,7 +190,7 @@ public enum CacheManager {
                       updateMinuteCounters.computeIfPresent(distro, (k, v) -> v + 1);
             });
 
-            // Only update the distros where the counter == minUpdateIntervalInHours
+            // Only update the distros where the counter == minUpdateIntervalInMinutes
             Arrays.stream(Distro.values())
                   .filter(distro -> distro != Distro.NONE)
                   .filter(distro -> distro != Distro.NOT_FOUND)
@@ -228,9 +226,7 @@ public enum CacheManager {
             if (TermOfSupport.NOT_FOUND == pkg.getTermOfSupport()) {
                 pkg.setTermOfSupport(Helper.getTermOfSupport(pkg.getVersionNumber(), Distro.valueOf(pkg.getDistribution().getDistro().getName())));
             }
-        });
 
-        pkgs.forEach(pkg -> {
             if (!pkgCache.containsKey(pkg.getId()) && !deltaPkgs.containsKey(pkg.getId())) {
                 if (ReleaseStatus.EA == pkg.getReleaseStatus()) {
                     pkg.setLatestBuildAvailable(true);
@@ -297,8 +293,6 @@ public enum CacheManager {
             if (successfullyAddedToMongoDb) { deltaPkgs.clear(); }
         }
 
-        //updateDistributionSpecificLatestBuild();
-
         updateLatestBuild(ReleaseStatus.GA);
         updateLatestBuild(ReleaseStatus.EA);
         LOGGER.info("Latest build info updated for GA and EA releases with Java version number in package cache.");
@@ -306,7 +300,7 @@ public enum CacheManager {
         LOGGER.info("Cache updated in {} ms, no of packages in cache {}", (System.currentTimeMillis() - start), pkgCache.size());
         pkgCacheIsUpdating.set(false);
 
-        // Check latest builds for GraalVM and set latest_build_available=true
+        // Check latest builds for GraalVM based distros and set latest_build_available=true
         for (int i = 19 ; i <= 40 ; i++) {
             int featureVersion = i;
             Distro.getDistributions()
@@ -330,7 +324,7 @@ public enum CacheManager {
                       }
                   });
         }
-        LOGGER.debug("\"Latest build info updated GraalVM versions in package cache.");
+        LOGGER.debug("\"Latest build info updated for GraalVM based distros in package cache.");
 
         // Synchronize latestBuildAvailable in mongodb database with cache
         MongoDbManager.INSTANCE.syncLatestBuildAvailableInDatabaseWithCache(pkgCache.getPkgs());

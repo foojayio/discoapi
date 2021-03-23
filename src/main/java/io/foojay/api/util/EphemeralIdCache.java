@@ -22,6 +22,7 @@ package io.foojay.api.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -68,7 +69,14 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
 
     public T getEphemeralIdForPkgId(final U pkgId) {
         Optional<Entry<T, U>> optionalEntry = ephemeralIdCache.entrySet().stream().filter(entry -> entry.getValue().equals(pkgId)).findFirst();
-        return optionalEntry.isPresent() ? optionalEntry.get().getKey() : null;
+
+        if (optionalEntry.isPresent()) {
+            return optionalEntry.get().getKey();
+        } else {
+            final T ephemeralId = (T) Helper.createEphemeralId(Instant.now().getEpochSecond(), pkgId);
+            add(ephemeralId, pkgId);
+            return ephemeralId;
+        }
     }
 
     public Set<Entry<T,U>> getEntrySet() { return ephemeralIdCache.entrySet(); }

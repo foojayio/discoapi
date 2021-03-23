@@ -51,6 +51,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -68,6 +70,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -76,12 +79,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -95,27 +96,27 @@ import static java.util.stream.Collectors.toCollection;
 
 
 public class Helper {
-    private static final Logger  LOGGER                 = LoggerFactory.getLogger(Helper.class);
-    public static final  Pattern FILE_URL_PATTERN                       = Pattern.compile("(JDK|JRE)(\\s+\\|\\s?\\[[a-zA-Z0-9\\-\\._]+\\]\\()(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz(?!\\.sig)|\\.deb|\\.rpm|\\.cab|\\.7z))");
-    public static final  Pattern FILE_URL_MD5_PATTERN                   = Pattern.compile("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\\)\\h+\\|\\h+`([0-9a-z]{32})`");
-    public static final  Pattern DRAGONWELL_11_FILE_NAME_SHA256_PATTERN = Pattern.compile("(OpenJDK[0-9]+U[a-z0-9_\\-\\.]+)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)(\\s+\\(Experimental ONLY\\))?\\h+\\|\\h+([0-9a-z]{64})");
-    public static final  Pattern DRAGONWELL_8_FILE_NAME_SHA256_PATTERN  = Pattern.compile("(\\()?(Alibaba_Dragonwell[0-9\\.A-Za-z_\\-]+)(\\)=\\s+)?|([\\\\r\\\\n]+)?([a-z0-9]{64})");
-    public  static final Pattern HREF_FILE_PATTERN      = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
-    public  static final Pattern HREF_DOWNLOAD_PATTERN  = Pattern.compile("(\\>)(\\s|\\h?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(\\<)");
-    public  static final Pattern NUMBER_IN_TEXT_PATTERN = Pattern.compile("(.*)?([0-9]+)(.*)?");
-    public  static final Matcher FILE_URL_MATCHER       = FILE_URL_PATTERN.matcher("");
-    public static final  Matcher FILE_URL_MD5_MATCHER                   = FILE_URL_MD5_PATTERN.matcher("");
-    public static final  Matcher DRAGONWELL_11_FILE_NAME_SHA256_MATCHER = DRAGONWELL_11_FILE_NAME_SHA256_PATTERN.matcher("");
-    public static final  Matcher DRAGONWELL_8_FILE_NAME_SHA256_MATCHER  = DRAGONWELL_8_FILE_NAME_SHA256_PATTERN.matcher("");
-    public  static final Matcher HREF_FILE_MATCHER      = HREF_FILE_PATTERN.matcher("");
-    public  static final Matcher HREF_DOWNLOAD_MATCHER  = HREF_DOWNLOAD_PATTERN.matcher("");
+    private static final Logger     LOGGER                                 = LoggerFactory.getLogger(Helper.class);
+    private static final HttpClient HTTP_CLIENT                            = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).priority(1).version(Version.HTTP_2).followRedirects(Redirect.NORMAL).build();
+    public  static final Pattern    FILE_URL_PATTERN                       = Pattern.compile("(JDK|JRE)(\\s+\\|\\s?\\[[a-zA-Z0-9\\-\\._]+\\]\\()(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz(?!\\.sig)|\\.deb|\\.rpm|\\.cab|\\.7z))");
+    public  static final Pattern    FILE_URL_MD5_PATTERN                   = Pattern.compile("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\\)\\h+\\|\\h+`([0-9a-z]{32})`");
+    public  static final Pattern    DRAGONWELL_11_FILE_NAME_SHA256_PATTERN = Pattern.compile("(OpenJDK[0-9]+U[a-z0-9_\\-\\.]+)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)(\\s+\\(Experimental ONLY\\))?\\h+\\|\\h+([0-9a-z]{64})");
+    public  static final Pattern    DRAGONWELL_8_FILE_NAME_SHA256_PATTERN  = Pattern.compile("(\\()?(Alibaba_Dragonwell[0-9\\.A-Za-z_\\-]+)(\\)=\\s+)?|([\\\\r\\\\n]+)?([a-z0-9]{64})");
+    public  static final Pattern    HREF_FILE_PATTERN                      = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
+    public  static final Pattern    HREF_DOWNLOAD_PATTERN                  = Pattern.compile("(\\>)(\\s|\\h?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(\\<)");
+    public  static final Matcher    FILE_URL_MATCHER                       = FILE_URL_PATTERN.matcher("");
+    public  static final Matcher    FILE_URL_MD5_MATCHER                   = FILE_URL_MD5_PATTERN.matcher("");
+    public  static final Matcher    DRAGONWELL_11_FILE_NAME_SHA256_MATCHER = DRAGONWELL_11_FILE_NAME_SHA256_PATTERN.matcher("");
+    public  static final Matcher    DRAGONWELL_8_FILE_NAME_SHA256_MATCHER  = DRAGONWELL_8_FILE_NAME_SHA256_PATTERN.matcher("");
+    public  static final Matcher    HREF_FILE_MATCHER                      = HREF_FILE_PATTERN.matcher("");
+    public  static final Matcher    HREF_DOWNLOAD_MATCHER                  = HREF_DOWNLOAD_PATTERN.matcher("");
 
 
     public static Callable<List<Pkg>> createTask(final Distro distro) {
-        return () -> getPkgs(distro);
+        return () -> getPkgsOfDistro(distro);
     }
 
-    public static List<Pkg> getPkgs(final Distro distro) {
+    public static List<Pkg> getPkgsOfDistro(final Distro distro) {
         final List<Pkg> pkgs = new LinkedList<>();
         switch(distro) {
             case ORACLE:
@@ -135,12 +136,9 @@ public class Helper {
                 pkgs.addAll(oracleOpenJDK.getAllPkgs());
                 // Get all jdk 8 packages from github
                 String       query8     = oracleOpenJDK.getGithubPkg8Url() + "/releases?per_page=100";
-                HttpClient  clientOJ    = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(Version.HTTP_1_1).build();
-                HttpRequest request8 = HttpRequest.newBuilder().uri(URI.create(query8)).setHeader("User-Agent", "DiscoAPI").GET().build();
-                try {
-                    HttpResponse<String> response = clientOJ.send(request8, BodyHandlers.ofString());
-                    if (response.statusCode() == 200) {
-                        String      bodyText = response.body();
+                HttpResponse<String> response8 = get(query8);
+                if (response8.statusCode() == 200) {
+                    String      bodyText = response8.body();
                         Gson        gson     = new Gson();
                         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
                         if (element instanceof JsonArray) {
@@ -149,18 +147,13 @@ public class Helper {
                         }
                     } else {
                         // Problem with url request
-                        LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
-                    }
-                } catch (InterruptedException | IOException e) {
-                    LOGGER.error("Error fetching packages for distribution {} from {}", oracleOpenJDK.getName(), query8);
+                    LOGGER.debug("Response ({}) {} ", response8.statusCode(), response8.body());
                 }
                 // Get all jdk 11 packages from github
                 String       query11    = oracleOpenJDK.getGithubPkg11Url() + "/releases?per_page=100";
-                HttpRequest request11 = HttpRequest.newBuilder().uri(URI.create(query11)).setHeader("User-Agent", "DiscoAPI").GET().build();
-                try {
-                    HttpResponse<String> response = clientOJ.send(request11, BodyHandlers.ofString());
-                    if (response.statusCode() == 200) {
-                        String      bodyText = response.body();
+                HttpResponse<String> response11 = get(query11);
+                if (response11.statusCode() == 200) {
+                    String      bodyText = response11.body();
                         Gson        gson     = new Gson();
                         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
                         if (element instanceof JsonArray) {
@@ -169,10 +162,7 @@ public class Helper {
                         }
                     } else {
                         // Problem with url request
-                        LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
-                    }
-                } catch (InterruptedException | IOException e) {
-                    LOGGER.error("Error fetching packages for distribution {} from {}", oracleOpenJDK.getName(), query8);
+                    LOGGER.debug("Response ({}) {} ", response11.statusCode(), response11.body());
                 }
                 break;
             case SAP_MACHINE:
@@ -185,25 +175,19 @@ public class Helper {
 
                 // Search through github release and fetch packages from there
                 String      query      = sapMachine.getPkgUrl() + "?per_page=100";
-                HttpClient  clientSAP = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(Version.HTTP_1_1).build();
-                HttpRequest request   = HttpRequest.newBuilder().uri(URI.create(query)).setHeader("User-Agent", "DiscoAPI").GET().build();
-                try {
-                    HttpResponse<String> response = clientSAP.send(request, BodyHandlers.ofString());
+                HttpResponse<String> response = get(query);
                     if (response.statusCode() == 200) {
                         String      bodyText = response.body();
                         Gson        gson     = new Gson();
                         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
                         if (element instanceof JsonArray) {
                             JsonArray jsonArray = element.getAsJsonArray();
-                            pkgs.addAll(sapMachine.getAllPkgs(jsonArray));
+                        pkgs.addAll(sapMachine.getAllPkgsFromJson(jsonArray));
                         }
                     } else {
                         // Problem with url request
                         LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
                     }
-                } catch (InterruptedException | IOException e) {
-                    LOGGER.error("Error fetching packages for distribution {} from {}", sapMachine.getName(), query);
-                }
                 break;
             case TRAVA:
                 Trava trava = (Trava) distro.get();
@@ -261,53 +245,34 @@ public class Helper {
         return new LinkedList<>(unique);
     }
 
-    public static Callable<List<Pkg>> createTask(final Distribution distribution, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
-                                                 final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType, final Boolean fx, final ReleaseStatus releaseStatus,
-                                                 final TermOfSupport termOfSupport) {
-        return () -> getPkgs(distribution, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
-    }
-
     private static List<Pkg> getPkgs(final Distribution distribution, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                      final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                                      final Boolean fx, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         String query = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
-
         if (query.isEmpty()) { return List.of(); }
-
-        HttpClient  client  = HttpClient.newBuilder()
-                                        .followRedirects(Redirect.NORMAL)
-                                        .version(Version.HTTP_1_1)
-                                        .build();
-        HttpRequest request = HttpRequest.newBuilder()
-                                         .uri(URI.create(query))
-                                         .setHeader("User-Agent", "DiscoAPI")
-                                         .GET()
-                                         .build();
         List<Pkg>   pkgs    = new LinkedList<>();
-        try {
             List<Pkg> pkgsFound = new ArrayList<>();
             if (distribution.equals(Distro.ORACLE_OPEN_JDK.get())) {
                 List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(null, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
                 pkgsFound.addAll(pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList()));
             } else {
-                HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
+            HttpResponse<String> response = get(query);
                 if (response.statusCode() == 200) {
-                    String      bodyText = response.body();
+                String      body     = response.body();
                     Gson        gson     = new Gson();
-                    JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
+                JsonElement element  = gson.fromJson(body, JsonElement.class);
                     if (element instanceof JsonArray) {
                         JsonArray jsonArray = element.getAsJsonArray();
                         for (int i = 0; i < jsonArray.size(); i++) {
                             JsonObject pkgJsonObj         = jsonArray.get(i).getAsJsonObject();
                             List<Pkg>  pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
                         pkgsFound.addAll(pkgsInDistribution);
-                        //pkgsFound.addAll(pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList()));
                         }
                     } else if (element instanceof JsonObject) {
                         JsonObject pkgJsonObj         = element.getAsJsonObject();
-                        List<Pkg>  pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
+                    List<Pkg>  pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture,
+                                                                                bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
                     pkgsFound.addAll(pkgsInDistribution);
-                    //pkgsFound.addAll(pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList()));
                     }
                 } else {
                     // Problem with url request
@@ -326,59 +291,8 @@ public class Helper {
             pkgs.addAll(pkgsFound);
             HashSet<Pkg> unique = new HashSet<>(pkgs);
             pkgs = new LinkedList<>(unique);
-        } catch (InterruptedException | IOException e) {
-            LOGGER.error("Error fetching packages for distribution {} from {}", distribution.getName(), query);
-        }
+
         return pkgs;
-    }
-
-    private static List<Pkg> getPkgsAsync(final Distribution distribution, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
-                                          final Architecture architecture, final Bitness bitness, final ArchiveType archiveType,
-                                          final PackageType packageType, final boolean javaFX, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
-        String      query   = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, javaFX, releaseStatus, termOfSupport);
-        HttpClient  client  = HttpClient.newBuilder()
-                                        .followRedirects(Redirect.NEVER)
-                                        .version(java.net.http.HttpClient.Version.HTTP_1_1)
-                                        .build();
-        HttpRequest request = HttpRequest.newBuilder()
-                                         .uri(URI.create(query))
-                                         .setHeader("User-Agent", "DiscoAPI")
-                                         .GET()
-                                         .build();
-        List<Pkg>   pkgs    = new LinkedList<>();
-        try {
-            String      body     = getResponseAsync(client, request);
-            Gson        gson     = new Gson();
-            JsonElement element  = gson.fromJson(body, JsonElement.class);
-            if (element instanceof JsonArray) {
-                JsonArray jsonArray = element.getAsJsonArray();
-                for (int i = 0; i < jsonArray.size(); i++) {
-                    JsonObject    pkgJsonObj         = jsonArray.get(i).getAsJsonObject();
-                    List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType,
-                                                                               packageType, javaFX, releaseStatus,
-                                                                               termOfSupport);
-                    List<Pkg> pkgsFound = pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList());
-                    pkgs.addAll(pkgsFound);
-                }
-            } else if (element instanceof JsonObject) {
-                JsonObject    pkgJsonObj         = element.getAsJsonObject();
-                List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType,
-                                                                           packageType, javaFX, releaseStatus,
-                                                                           termOfSupport);
-                List<Pkg> pkgsFound = pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList());
-                pkgs.addAll(pkgsFound);
-            }
-
-            HashSet<Pkg> unique = new HashSet<>(pkgs);
-            pkgs = new LinkedList<>(unique);
-        } catch (ExecutionException | InterruptedException e) {
-            LOGGER.error("Error fetching packages async for distribution {} from {}", distribution.getName(), query);
-        }
-        return pkgs;
-    }
-
-    private static String getResponseAsync(final HttpClient client, final HttpRequest request) throws ExecutionException, InterruptedException {
-        return client.sendAsync(request, BodyHandlers.ofString()).thenApply(HttpResponse::body).get();
     }
 
     private static boolean isVersionNumberInPkg(final VersionNumber versionNumber, final Pkg pkg) {
@@ -676,6 +590,24 @@ public class Helper {
         final byte[] result = md.digest(bytes);
         return result;
     }
+    public static String getMD5ForFile(final File file) throws Exception {
+        final MessageDigest md  = MessageDigest.getInstance("MD5");
+        final InputStream   fis = new FileInputStream(file);
+        try {
+            int n = 0;
+            byte[] buffer = new byte[4096];
+            while (n != -1) {
+                n = fis.read(buffer);
+                if (n > 0) {
+                    md.update(buffer, 0, n);
+                }
+            }
+        } finally {
+            fis.close();
+        }
+        byte byteData[] = md.digest();
+        return getMD5(bytesToHex(byteData));
+    }
 
     public static String getSHA1(final String text) { return bytesToHex(getSHA1Bytes(text.getBytes(UTF_8))); }
     public static String getSHA1(final byte[] bytes) {
@@ -691,6 +623,24 @@ public class Helper {
         }
         final byte[] result = md.digest(bytes);
         return result;
+    }
+    public static String getSHA1ForFile(final File file) throws Exception {
+        final MessageDigest md  = MessageDigest.getInstance("SHA-1");
+        final InputStream   fis = new FileInputStream(file);
+        try {
+            int n = 0;
+            byte[] buffer = new byte[4096];
+            while (n != -1) {
+                n = fis.read(buffer);
+                if (n > 0) {
+                    md.update(buffer, 0, n);
+                }
+            }
+        } finally {
+            fis.close();
+        }
+        byte byteData[] = md.digest();
+        return getSHA1(bytesToHex(byteData));
     }
 
     public static String getSHA256(final String text) { return bytesToHex(getSHA256Bytes(text.getBytes(UTF_8))); }
@@ -708,6 +658,24 @@ public class Helper {
         final byte[] result = md.digest(bytes);
         return result;
     }
+    public static String getSHA256ForFile(final File file) throws Exception {
+        final MessageDigest md  = MessageDigest.getInstance("SHA-256");
+        final InputStream   fis = new FileInputStream(file);
+        try {
+            int n = 0;
+            byte[] buffer = new byte[4096];
+            while (n != -1) {
+                n = fis.read(buffer);
+                if (n > 0) {
+                    md.update(buffer, 0, n);
+                }
+            }
+        } finally {
+            fis.close();
+        }
+        byte byteData[] = md.digest();
+        return getSHA256(bytesToHex(byteData));
+    }
 
     public static String getSHA3_256(final String text) { return bytesToHex(getSHA3_256Bytes(text.getBytes(UTF_8))); }
     public static String getSHA3_256(final byte[] bytes) {
@@ -723,6 +691,24 @@ public class Helper {
         }
         final byte[] result = md.digest(bytes);
         return result;
+    }
+    public static String getSHA3_256ForFile(final File file) throws Exception {
+        final MessageDigest md  = MessageDigest.getInstance("SHA3-256");
+        final InputStream   fis = new FileInputStream(file);
+        try {
+            int n = 0;
+            byte[] buffer = new byte[4096];
+            while (n != -1) {
+                n = fis.read(buffer);
+                if (n > 0) {
+                    md.update(buffer, 0, n);
+                }
+            }
+        } finally {
+            fis.close();
+        }
+        byte byteData[] = md.digest();
+        return getSHA3_256(bytesToHex(byteData));
     }
 
     public static String bytesToHex(final byte[] bytes) {
@@ -892,38 +878,26 @@ public class Helper {
 
 
     // ******************** REST calls ****************************************
-    public static final String get(final String uri) {
-        HttpClient  client  = HttpClient.newBuilder()
-                                        .followRedirects(Redirect.NORMAL)
-                                        .version(Version.HTTP_1_1)
-                                        .build();
-        HttpRequest request = HttpRequest.newBuilder()
-                                         .uri(URI.create(uri))
-                                         .GET()
-                                         .build();
+    public static final HttpResponse<String> get(final String uri) {
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(uri)).setHeader("User-Agent", "DiscoAPI").GET().build();
         try {
-            HttpResponse<String> response  = client.send(request, BodyHandlers.ofString());
+            HttpResponse<String> response = HTTP_CLIENT.send(request, BodyHandlers.ofString());
             if (response.statusCode() == 200) {
-                return response.body();
+                return response;
             } else {
                 // Problem with url request
                 LOGGER.debug("Error executing get request {}", uri);
                 LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
-                return "";
+                return response;
             }
         } catch (InterruptedException | IOException e) {
             LOGGER.error("Error executing get request {} : {}", uri, e.getMessage());
-            return "";
+            return null;
         }
     }
 
-    public static final CompletableFuture<String> getAsync(final String uri) {
-        HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(Version.HTTP_1_1).build();
-        HttpRequest request = HttpRequest.newBuilder()
-                                         .uri(URI.create(uri))
-                                         .GET()
-                                         .build();
-        return client.sendAsync(request, BodyHandlers.ofString())
-                     .thenApply(HttpResponse::body);
+    public static final CompletableFuture<HttpResponse<String>> getAsync(final String uri) {
+        final HttpRequest request = HttpRequest.newBuilder().uri(URI.create(uri)).setHeader("User-Agent", "DiscoAPI").GET().build();
+        return HTTP_CLIENT.sendAsync(request, BodyHandlers.ofString());
     }
 }

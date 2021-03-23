@@ -125,14 +125,15 @@ public class Corretto implements Distribution {
                                                    final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append(PACKAGE_URL);
-        switch (versionNumber.getFeature().getAsInt()) {
-            case 8:
-            case 11:
-                queryBuilder.append("corretto-").append(versionNumber.getFeature().getAsInt()).append("/releases").append("?per_page=100");
-                break;
-            case 15:
+        int featureVersion = versionNumber.getFeature().getAsInt();
+        if (featureVersion == 8 || featureVersion == 11) {
+            queryBuilder.append("corretto-").append(featureVersion).append("/releases").append("?per_page=100");
+        } else if (featureVersion == 15 || featureVersion == 16) {
                 queryBuilder.append("corretto-jdk").append("/releases").append("?per_page=100");
-                break;
+        } else if (featureVersion == 17) {
+            //queryBuilder.append("corretto-").append(featureVersion).append("/releases").append("?per_page=100");
+        } else if (featureVersion == 18 || featureVersion == 19) {
+            //queryBuilder.append("corretto-jdk").append("/releases").append("?per_page=100");
         }
 
         LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder.toString());
@@ -148,6 +149,10 @@ public class Corretto implements Distribution {
         TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
         supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
 
+        if (jsonObj.has("message")) {
+            LOGGER.debug("Github rate limit reached when trying to get packges for Corretto {}", versionNumber);
+            return pkgs;
+        }
         String       bodyText      = jsonObj.get("body").getAsString();
 
         Set<Pair<String,String>> pairsFound = Helper.getPackageTypeAndFileUrlFromString(bodyText);

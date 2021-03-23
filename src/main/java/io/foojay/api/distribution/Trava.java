@@ -291,7 +291,7 @@ public class Trava implements Distribution {
                         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
                         if (element instanceof JsonArray) {
                             JsonArray jsonArray = element.getAsJsonArray();
-                            pkgs.addAll(getAllPkgs(jsonArray));
+                            pkgs.addAll(getAllPkgsFromJson(jsonArray));
                         }
                     } else {
                         // Problem with url request
@@ -307,7 +307,7 @@ public class Trava implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs(final JsonArray jsonArray) {
+    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray) {
         List<Pkg> pkgs = new ArrayList<>();
 
         for (int i = 0; i < jsonArray.size(); i++) {

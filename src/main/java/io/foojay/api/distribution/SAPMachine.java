@@ -284,7 +284,7 @@ public class SAPMachine implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs(final JsonArray jsonArray) {
+    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray) {
         List<Pkg> pkgs = new ArrayList<>();
 
         for (int i = 0; i < jsonArray.size(); i++) {
