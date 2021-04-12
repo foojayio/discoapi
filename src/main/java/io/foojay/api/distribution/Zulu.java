@@ -380,19 +380,19 @@ public class Zulu implements Distribution {
         List<Pkg> pkgs = new ArrayList<>();
         try {
             final String       html                        = Helper.getTextFromUrl("https://cdn.azul.com/zulu/bin/");
-            final Pattern      filenamePrefixVersion       = Pattern.compile("(zulu|zre|zulu-repo|zulurepo)((-|_)?)(\\d+)\\.(\\d+)(\\.|\\+)(\\d+)(\\.|_?)(\\d+)?(-|_)([0-9]+-)?((ca|ea)(-))?(hl-)?(fx-)?(cp[0-9]+)?(jdk|jre)?");
+            final Pattern      filenamePrefixVersion       = Pattern.compile("(zulu|zre|zulu-repo|zulurepo)((-|_)?)(\\d+)\\.(\\d+)(\\.|\\+)(\\d+)(\\.|_?)(\\d+)?(-|_)([0-9]+-)?((ca|ea)(-))?(hl-)?(fx-)?(cp[0-9]+-)?(jdk|jre)?");
             final Pattern      filenamePrefixDistroVersion = Pattern.compile("(zulu|zre|zulu-repo|zulurepo)");
             final List<String> fileHrefs                   = new ArrayList<>(Helper.getFileHrefsFromString(html));
             for (String href : fileHrefs) {
                 String filename = Helper.getFileNameFromText(href);
                 if (filename.contains("noarch")) { continue; }
 
-                String          reducedToVersionFilename       = filename.replaceAll(filenamePrefixVersion.pattern(), "");
+                String          reducedToVersionFilename       = filename.startsWith("zulu1.") ? filename.replaceAll(filenamePrefixDistroVersion.pattern(), "") : filename.replaceAll(filenamePrefixVersion.pattern(), "");
                 VersionNumber   versionNumber                  = VersionNumber.fromText(reducedToVersionFilename);
                 TermOfSupport   termOfSupport                  = Helper.getTermOfSupport(versionNumber);
                 String          downloadLink                   = "https://cdn.azul.com/zulu/bin/" + filename;
 
-                String          reducedToDistroVersionFilename = filename.replaceAll(filenamePrefixDistroVersion.pattern(), "");
+                String          reducedToDistroVersionFilename = filename.startsWith("zulu1.") ? filename.replaceAll(filenamePrefixVersion.pattern(), "") : filename.replaceAll(filenamePrefixDistroVersion.pattern(), "");
                 VersionNumber   distroVersionNumber            = VersionNumber.fromText(reducedToDistroVersionFilename);
 
                 Pkg pkg = new Pkg();
