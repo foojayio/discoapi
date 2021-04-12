@@ -30,6 +30,7 @@ import io.foojay.api.distribution.GraalVMCE8;
 import io.foojay.api.distribution.Liberica;
 import io.foojay.api.distribution.LibericaNative;
 import io.foojay.api.distribution.Mandrel;
+import io.foojay.api.distribution.Microsoft;
 import io.foojay.api.distribution.OJDKBuild;
 import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
@@ -67,6 +68,7 @@ public enum Distro implements ApiFeature {
     LIBERICA("Liberica", "liberica", new Liberica(), 60),
     LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 60),
     MANDREL("Mandrel", "mandrel", new Mandrel(), 360),
+    MICROSOFT("Microsoft OpenJDK", "microsoft", new Microsoft(), 60),
     OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 720),
     ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 360),
     ORACLE("Oracle", "oracle", new Oracle(), 60),
@@ -154,6 +156,11 @@ public enum Distro implements ApiFeature {
             case "MANDREL":
             case "Mandrel":
                 return MANDREL;
+            case "microsoft":
+            case "Microsoft":
+            case "MICROSOFT":
+            case "Microsoft Build of OpenJDK":
+                return MICROSOFT;
             case "graalvm_ce8":
             case "graalvmce8":
             case "GraalVM CE 8":
@@ -246,6 +253,22 @@ public enum Distro implements ApiFeature {
     }
 
     public static List<Distro> getAsList() { return Arrays.asList(values()); }
+
+    public static List<Distro> getPublicDistros() {
+        return Arrays.stream(values())
+                     .filter(distro -> Distro.NONE       != distro)
+                     .filter(distro -> Distro.NOT_FOUND  != distro)
+                     .collect(Collectors.toList());
+    }
+
+    public static List<Distro> getPublicDistrosDirectlyDownloadable() {
+        return Arrays.stream(values())
+                     .filter(distro -> Distro.NONE       != distro)
+                     .filter(distro -> Distro.NOT_FOUND  != distro)
+                     .filter(distro -> Distro.ORACLE     != distro)
+                     .filter(distro -> Distro.RED_HAT    != distro)
+                     .collect(Collectors.toList());
+    }
 
     public static List<Distro> getDistrosWithJavaVersioning() {
         return Arrays.stream(values())

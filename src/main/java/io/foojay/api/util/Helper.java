@@ -28,6 +28,7 @@ import io.foojay.api.distribution.AOJ;
 import io.foojay.api.distribution.AOJ_OPENJ9;
 import io.foojay.api.distribution.Distribution;
 import io.foojay.api.distribution.LibericaNative;
+import io.foojay.api.distribution.Microsoft;
 import io.foojay.api.distribution.OJDKBuild;
 import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
@@ -45,6 +46,7 @@ import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
+import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import org.slf4j.Logger;
@@ -73,6 +75,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -82,7 +85,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -97,7 +104,6 @@ import static java.util.stream.Collectors.toCollection;
 
 public class Helper {
     private static final Logger     LOGGER                                 = LoggerFactory.getLogger(Helper.class);
-    private static final HttpClient HTTP_CLIENT                            = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).priority(1).version(Version.HTTP_2).followRedirects(Redirect.NORMAL).build();
     public  static final Pattern    FILE_URL_PATTERN                       = Pattern.compile("(JDK|JRE)(\\s+\\|\\s?\\[[a-zA-Z0-9\\-\\._]+\\]\\()(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz(?!\\.sig)|\\.deb|\\.rpm|\\.cab|\\.7z))");
     public  static final Pattern    FILE_URL_MD5_PATTERN                   = Pattern.compile("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\\)\\h+\\|\\h+`([0-9a-z]{32})`");
     public  static final Pattern    DRAGONWELL_11_FILE_NAME_SHA256_PATTERN = Pattern.compile("(OpenJDK[0-9]+U[a-z0-9_\\-\\.]+)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)(\\s+\\(Experimental ONLY\\))?\\h+\\|\\h+([0-9a-z]{64})");
@@ -110,6 +116,7 @@ public class Helper {
     public  static final Matcher    DRAGONWELL_8_FILE_NAME_SHA256_MATCHER  = DRAGONWELL_8_FILE_NAME_SHA256_PATTERN.matcher("");
     public  static final Matcher    HREF_FILE_MATCHER                      = HREF_FILE_PATTERN.matcher("");
     public  static final Matcher    HREF_DOWNLOAD_MATCHER                  = HREF_DOWNLOAD_PATTERN.matcher("");
+    private static       HttpClient httpClient;
 
 
     public static Callable<List<Pkg>> createTask(final Distro distro) {
@@ -137,6 +144,9 @@ public class Helper {
                 // Get all jdk 8 packages from github
                 String       query8     = oracleOpenJDK.getGithubPkg8Url() + "/releases?per_page=100";
                 HttpResponse<String> response8 = get(query8);
+                if (null == response8) {
+                    LOGGER.debug("Response (Oracle OpenJDK) returned null");
+                } else {
                 if (response8.statusCode() == 200) {
                     String      bodyText = response8.body();
                         Gson        gson     = new Gson();
@@ -147,11 +157,15 @@ public class Helper {
                         }
                     } else {
                         // Problem with url request
-                    LOGGER.debug("Response ({}) {} ", response8.statusCode(), response8.body());
+                        LOGGER.debug("Response (Status Code {}) {} ", response8.statusCode(), response8.body());
+                    }
                 }
                 // Get all jdk 11 packages from github
                 String       query11    = oracleOpenJDK.getGithubPkg11Url() + "/releases?per_page=100";
                 HttpResponse<String> response11 = get(query11);
+                if (null == response11) {
+                    LOGGER.debug("Response (Oracle OpenJDK) returned null");
+                } else {
                 if (response11.statusCode() == 200) {
                     String      bodyText = response11.body();
                         Gson        gson     = new Gson();
@@ -162,20 +176,19 @@ public class Helper {
                         }
                     } else {
                         // Problem with url request
-                    LOGGER.debug("Response ({}) {} ", response11.statusCode(), response11.body());
+                        LOGGER.debug("Response (Status Code {}) {} ", response11.statusCode(), response11.body());
+                    }
                 }
                 break;
             case SAP_MACHINE:
                 SAPMachine  sapMachine = (SAPMachine) distro.get();
-                // Fetch packages from sap.github.io -> sapmachine_releases.json
-                pkgs.addAll(sapMachine.getAllPkgsFromJsonUrl());
-
-                // Fetch major versions 10, 12, 13 from github
-                pkgs.addAll(sapMachine.getAllPkgs());
 
                 // Search through github release and fetch packages from there
                 String      query      = sapMachine.getPkgUrl() + "?per_page=100";
                 HttpResponse<String> response = get(query);
+                if (null == response) {
+                    LOGGER.debug("Response (SAP Machine) returned null");
+                } else {
                     if (response.statusCode() == 200) {
                         String      bodyText = response.body();
                         Gson        gson     = new Gson();
@@ -186,8 +199,14 @@ public class Helper {
                         }
                     } else {
                         // Problem with url request
-                        LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
+                        LOGGER.debug("Response (Status Code {}) {} ", response.statusCode(), response.body());
                     }
+                    }
+                // Fetch packages from sap.github.io -> sapmachine_releases.json
+                pkgs.addAll(sapMachine.getAllPkgsFromJsonUrl());
+
+                // Fetch major versions 10, 12, 13 from github
+                pkgs.addAll(sapMachine.getAllPkgs());
                 break;
             case TRAVA:
                 Trava trava = (Trava) distro.get();
@@ -197,19 +216,23 @@ public class Helper {
                 AOJ AOJ = (AOJ) distro.get();
                 for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
                     VersionNumber versionNumber = majorVersion.getVersionNumber();
-                    pkgs.addAll(getPkgs(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.GA, TermOfSupport.NONE));
-                    pkgs.addAll(getPkgs(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.EA, TermOfSupport.NONE));
+                    pkgs.addAll(getPkgsAsync(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.GA, TermOfSupport.NONE));
+                    pkgs.addAll(getPkgsAsync(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.EA, TermOfSupport.NONE));
                 }
                 break;
             case AOJ_OPENJ9:
                 AOJ_OPENJ9 AOJ_OPENJ9 = (AOJ_OPENJ9) distro.get();
                 for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
                     VersionNumber versionNumber = majorVersion.getVersionNumber();
-                    pkgs.addAll(getPkgs(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.GA, TermOfSupport.NONE));
-                    pkgs.addAll(getPkgs(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.EA, TermOfSupport.NONE));
+                    pkgs.addAll(getPkgsAsync(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.GA, TermOfSupport.NONE));
+                    pkgs.addAll(getPkgsAsync(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.EA, TermOfSupport.NONE));
                 }
                 break;
             case ADOPTIUM:
+                break;
+            case MICROSOFT:
+                Microsoft microsoft = (Microsoft) distro.get();
+                pkgs.addAll(microsoft.getAllPkgs());
                 break;
             case LIBERICA_NATIVE:
                 LibericaNative libericaNative = (LibericaNative) distro.get();
@@ -219,7 +242,7 @@ public class Helper {
                 Zulu zulu = (Zulu) distro.get();
                 // Get packages from API
                 for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                    pkgs.addAll(getPkgs(zulu, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
+                    pkgs.addAll(getPkgsAsync(zulu, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
                 }
 
                 // Get packages from CDN
@@ -236,7 +259,7 @@ public class Helper {
             default:
                 Distribution distribution = distro.get();
                 for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                    pkgs.addAll(getPkgs(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
+                    pkgs.addAll(getPkgsAsync(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
                 }
                 break;
         }
@@ -257,6 +280,9 @@ public class Helper {
                 pkgsFound.addAll(pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList()));
             } else {
             HttpResponse<String> response = get(query);
+            if (null == response) {
+                LOGGER.debug("Response {} returned null.", distribution.getDistro().getApiString());
+            } else {
                 if (response.statusCode() == 200) {
                 String      body     = response.body();
                     Gson        gson     = new Gson();
@@ -265,13 +291,16 @@ public class Helper {
                         JsonArray jsonArray = element.getAsJsonArray();
                         for (int i = 0; i < jsonArray.size(); i++) {
                             JsonObject pkgJsonObj         = jsonArray.get(i).getAsJsonObject();
-                            List<Pkg>  pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
+                            List<Pkg> pkgsInDistribution =
+                                distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus,
+                                                            termOfSupport);
                         pkgsFound.addAll(pkgsInDistribution);
                         }
                     } else if (element instanceof JsonObject) {
                         JsonObject pkgJsonObj         = element.getAsJsonObject();
-                    List<Pkg>  pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture,
-                                                                                bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
+                        List<Pkg> pkgsInDistribution =
+                            distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus,
+                                                        termOfSupport);
                     pkgsFound.addAll(pkgsInDistribution);
                     }
                 } else {
@@ -281,6 +310,7 @@ public class Helper {
                     return pkgs;
                 }
             }
+        }
             if (latest) {
                 Optional<Pkg> pkgWithMaxVersionNumber = pkgsFound.stream().max(Comparator.comparing(Pkg::getVersionNumber));
                 if (pkgWithMaxVersionNumber.isPresent()) {
@@ -293,6 +323,75 @@ public class Helper {
             pkgs = new LinkedList<>(unique);
 
         return pkgs;
+    }
+
+    private static List<Pkg> getPkgsAsync(final Distribution distribution, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
+                                          final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
+                                          final Boolean fx, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+        String query = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
+        Collection<CompletableFuture<List<Pkg>>> futures = Collections.synchronizedList(new ArrayList<>());
+        CompletableFuture<List<Pkg>> future = Helper.getAsync(query).thenApply(response -> {
+            List<Pkg> pkgs      = new LinkedList<>();
+            List<Pkg> pkgsFound = new ArrayList<>();
+            if (null == response) {
+                LOGGER.debug("Response {} returned null.", distribution.getDistro().getApiString());
+            } else {
+                if (response.statusCode() == 200) {
+                    String      body    = response.body();
+                    Gson        gson    = new Gson();
+                    JsonElement element = gson.fromJson(body, JsonElement.class);
+                    if (element instanceof JsonArray) {
+                        JsonArray jsonArray = element.getAsJsonArray();
+                        for (int j = 0; j < jsonArray.size(); j++) {
+                            JsonObject pkgJsonObj = jsonArray.get(j).getAsJsonObject();
+                            List<Pkg> pkgsInDistribution =
+                                distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus,
+                                                            termOfSupport);
+                            pkgsFound.addAll(pkgsInDistribution);
+                        }
+                    } else if (element instanceof JsonObject) {
+                        JsonObject pkgJsonObj = element.getAsJsonObject();
+                        List<Pkg> pkgsInDistribution =
+                            distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus,
+                                                        termOfSupport);
+                        pkgsFound.addAll(pkgsInDistribution);
+                    }
+                } else {
+                    LOGGER.debug("Response (Status Code {}) {} ", response.statusCode(), response.body());
+                }
+            }
+
+            if (latest) {
+                Optional<Pkg> pkgWithMaxVersionNumber = pkgsFound.stream().max(Comparator.comparing(Pkg::getVersionNumber));
+                if (pkgWithMaxVersionNumber.isPresent()) {
+                    VersionNumber maxNumber = pkgWithMaxVersionNumber.get().getVersionNumber();
+                    pkgsFound = pkgsFound.stream().filter(pkg -> pkg.getVersionNumber().compareTo(maxNumber) == 0).collect(Collectors.toList());
+                }
+            }
+            pkgs.addAll(pkgsFound);
+            HashSet<Pkg> unique = new HashSet<>(pkgs);
+            pkgs = new LinkedList<>(unique);
+
+            return pkgs;
+        });
+        futures.add(future);
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).thenApply(f -> futures.stream()
+                                                                                                 .map(completableFuture -> completableFuture.join())
+                                                                                                 .collect(Collectors.toList()));
+        try {
+            List<Pkg> pkgs = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                                                 .thenApply(f -> futures.stream()
+                                                                        .map(completableFuture -> completableFuture.join())
+                                                                        .flatMap(Collection::stream)
+                                                                        .collect(Collectors.toList()))
+                                                 .get();
+            return pkgs;
+        } catch (InterruptedException | CancellationException | ExecutionException e) {
+            LOGGER.debug("Error get packages for {} {} calling {}", distribution.getName(), versionNumber, query);
+            LOGGER.debug(e.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     private static boolean isVersionNumberInPkg(final VersionNumber versionNumber, final Pkg pkg) {
@@ -326,9 +425,9 @@ public class Helper {
 
     public static ArchiveType getFileEnding(final String fileName) {
         if (null == fileName || fileName.isEmpty()) { return ArchiveType.NONE; }
-        for (ArchiveType ext : ArchiveType.values()) {
-            for (String ending : ext.getFileEndings()) {
-                if (fileName.endsWith(ending)) { return ext; }
+        for (ArchiveType archiveType : ArchiveType.values()) {
+            for (String ending : archiveType.getFileEndings()) {
+                if (fileName.endsWith(ending)) { return archiveType; }
             }
         }
         return ArchiveType.NONE;
@@ -437,7 +536,8 @@ public class Helper {
     }
 
     public static String getFileNameFromText(final String text) {
-        if (getFileEnding(text) == ArchiveType.NONE) { return ""; }
+        ArchiveType archiveTypeFound = getFileEnding(text);
+        if (ArchiveType.NONE == archiveTypeFound || ArchiveType.NOT_FOUND == archiveTypeFound) { return ""; }
         int    lastSlash = text.lastIndexOf("/") + 1;
         String fileName  = text.substring(lastSlash);
         return fileName;
@@ -796,6 +896,28 @@ public class Helper {
         return pkgWithMaxVersionNumber;
     }
 
+    public static List<Pkg> getPkgsWithLatestBuild(final List<Pkg> pkgs, final ReleaseStatus releaseStatus) {
+        List<Pkg> pkgsWithLatestBuild = new ArrayList<>();
+        Distro.getDistrosWithJavaVersioning()
+              .stream()
+              .forEach(distro -> MajorVersion.getAllMajorVersions().forEach(majorVersion -> {
+                  final int mv   = majorVersion.getAsInt();
+                  List<Pkg> filteredPkgs = pkgs.stream()
+                                               .filter(pkg -> pkg.getReleaseStatus() == releaseStatus)
+                                               .filter(pkg -> pkg.getDistribution().getDistro() == distro)
+                                               .filter(pkg -> pkg.getJavaVersion().getMajorVersion().getAsInt() == mv)
+                                               .collect(Collectors.toList());
+                  SemVer maxSemVer = filteredPkgs.stream().max(Comparator.comparing(Pkg::getSemver)).map(pkg -> pkg.getSemver()).orElse(null);
+                  if (null != maxSemVer) {
+                      filteredPkgs.forEach(pkg -> pkg.setLatestBuildAvailable(false));
+                      pkgsWithLatestBuild.addAll(filteredPkgs.stream()
+                                                             .filter(pkg -> pkg.getSemver().compareTo(maxSemVer) == 0)
+                                                             .collect(Collectors.toList()));
+                  }
+              }));
+        return pkgsWithLatestBuild;
+    }
+
     public static Integer getPositiveIntFromText(final String text) {
         if (Helper.isPositiveInteger(text)) {
             return Integer.valueOf(text);
@@ -878,26 +1000,51 @@ public class Helper {
 
 
     // ******************** REST calls ****************************************
+    private static void createHttpClient() {
+        httpClient = HttpClient.newBuilder()
+                               .connectTimeout(Duration.ofSeconds(10))
+                               .priority(1)
+                               .version(Version.HTTP_2)
+                               .followRedirects(Redirect.NORMAL)
+                               .executor(Executors.newFixedThreadPool(4))
+                               .build();
+    }
+
     public static final HttpResponse<String> get(final String uri) {
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(uri)).setHeader("User-Agent", "DiscoAPI").GET().build();
+        if (null == httpClient) { createHttpClient(); }
+
+        HttpRequest request = HttpRequest.newBuilder()
+                                         .uri(URI.create(uri))
+                                         .setHeader("User-Agent", "DiscoAPI")
+                                         .timeout(Duration.ofSeconds(30))
+                                         .GET()
+                                         .build();
+
         try {
-            HttpResponse<String> response = HTTP_CLIENT.send(request, BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
             if (response.statusCode() == 200) {
                 return response;
             } else {
                 // Problem with url request
                 LOGGER.debug("Error executing get request {}", uri);
-                LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
+                LOGGER.debug("Response (Status Code {}) {} ", response.statusCode(), response.body());
                 return response;
             }
-        } catch (InterruptedException | IOException e) {
+        } catch (CompletionException | InterruptedException | IOException e) {
             LOGGER.error("Error executing get request {} : {}", uri, e.getMessage());
             return null;
         }
     }
 
     public static final CompletableFuture<HttpResponse<String>> getAsync(final String uri) {
-        final HttpRequest request = HttpRequest.newBuilder().uri(URI.create(uri)).setHeader("User-Agent", "DiscoAPI").GET().build();
-        return HTTP_CLIENT.sendAsync(request, BodyHandlers.ofString());
+        if (null == httpClient) { createHttpClient(); }
+
+        final HttpRequest request = HttpRequest.newBuilder()
+                                               .uri(URI.create(uri))
+                                               .setHeader("User-Agent", "DiscoAPI")
+                                               .timeout(Duration.ofSeconds(30))
+                                               .GET()
+                                               .build();
+        return httpClient.sendAsync(request, BodyHandlers.ofString());
     }
 }
