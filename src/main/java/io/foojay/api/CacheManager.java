@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -65,6 +66,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
+
+import static io.foojay.api.util.Constants.SENTINEL_PKG_ID;
 
 
 @Requires(notEnv = Environment.TEST) // Don't run in tests
@@ -171,6 +174,7 @@ public enum CacheManager {
             LOGGER.debug("Executor is terminated and will be reinitialized");
             executor = Executors.newSingleThreadExecutor();
             service  = new ExecutorCompletionService<>(executor);
+            pkgCacheIsUpdating.set(false);
         }
 
         long start = System.currentTimeMillis();
@@ -180,6 +184,7 @@ public enum CacheManager {
         List<Pkg> pkgs = new ArrayList<>(); // contains all packages found
         try {
             List<Callable<List<Pkg>>> callables = new ArrayList<>();
+
             // Update packages only if the updateMinuteCounter for each distro == the minUpdateIntervalInMinutes of that distro
             // Increase all counters by 1 on each update call
             Arrays.stream(Distro.values())
@@ -211,7 +216,7 @@ public enum CacheManager {
             while (!executor.isTerminated()) {
                 try {
                     pkgs.addAll(service.take().get());
-                } catch (ExecutionException | InterruptedException e) {
+                } catch (CompletionException | ExecutionException | InterruptedException e) {
                     LOGGER.error("Error adding fetched packages to cache. {}", e.getMessage());
                 }
             }
@@ -297,9 +302,6 @@ public enum CacheManager {
         updateLatestBuild(ReleaseStatus.EA);
         LOGGER.info("Latest build info updated for GA and EA releases with Java version number in package cache.");
 
-        LOGGER.info("Cache updated in {} ms, no of packages in cache {}", (System.currentTimeMillis() - start), pkgCache.size());
-        pkgCacheIsUpdating.set(false);
-
         // Check latest builds for GraalVM based distros and set latest_build_available=true
         for (int i = 19 ; i <= 40 ; i++) {
             int featureVersion = i;
@@ -330,6 +332,7 @@ public enum CacheManager {
         MongoDbManager.INSTANCE.syncLatestBuildAvailableInDatabaseWithCache(pkgCache.getPkgs());
 
         LOGGER.debug("Cache updated in {} ms, no of packages in cache {}", (System.currentTimeMillis() - start), pkgCache.size());
+        pkgCacheIsUpdating.set(false);
     }
 
     public void updateEphemeralIdCache() {
@@ -374,6 +377,21 @@ public enum CacheManager {
                                      .map(majorVersion -> new MajorVersion(majorVersion))
                                      .sorted(Comparator.comparing(MajorVersion::getVersionNumber).reversed())
                                      .collect(Collectors.toList()));
+
+        if (!maintainedMajorVersions.isEmpty()) {
+            Optional<Integer> maxMajorVersionInMaintainedMajorVersions = maintainedMajorVersions.keySet().stream().max(Comparator.comparingInt(Integer::intValue));
+            Optional<Integer> maxMajorVersionInMajorVersions           = majorVersions.stream().max(Comparator.comparing(MajorVersion::getVersionNumber)).map(majorVersion -> majorVersion.getAsInt());
+            if (maxMajorVersionInMaintainedMajorVersions.isPresent() && maxMajorVersionInMajorVersions.isPresent()) {
+                if (maxMajorVersionInMaintainedMajorVersions.get() > maxMajorVersionInMajorVersions.get()) {
+                    MajorVersion majorVersionToAdd = new MajorVersion(maxMajorVersionInMaintainedMajorVersions.get());
+                majorVersions.add(0, majorVersionToAdd);
+                LOGGER.debug("Added {} to major versions.", majorVersionToAdd);
+            }
+            } else {
+                LOGGER.debug("Error updating major versions. Please check package cache.");
+            }
+        }
+
         LOGGER.debug("Successfully updated major versions");
     }
 
@@ -471,6 +489,21 @@ public enum CacheManager {
 
         cleaning.set(false);
         LOGGER.debug("Cache cleaned up in {} ms", (System.currentTimeMillis() - start));
+    }
+
+    public void removeSentinelPkg() {
+        if (pkgCache.containsKey(SENTINEL_PKG_ID)) {
+            while(pkgCacheIsUpdating.get()) {
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                    LOGGER.debug("Waiting for updating package cache");
+                } catch(InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            pkgCache.remove(SENTINEL_PKG_ID);
+            LOGGER.debug("Sentinel pkg was removed from cache and should be available after next update of cache");
+        }
     }
 
     private void updateDistributionSpecificLatestBuild() {
@@ -626,8 +659,7 @@ public enum CacheManager {
     private void updateLatestBuild(final ReleaseStatus releaseStatus) {
         Distro.getDistrosWithJavaVersioning()
               .stream()
-              .forEach(distro -> {
-                  MajorVersion.getAllMajorVersions().forEach(majorVersion -> {
+              .forEach(distro -> MajorVersion.getAllMajorVersions().forEach(majorVersion -> {
                       final int mv   = majorVersion.getAsInt();
                       List<Pkg> pkgs = pkgCache.getPkgs()
                                                .stream()
@@ -643,8 +675,7 @@ public enum CacheManager {
                               .collect(Collectors.toList())
                               .forEach(pkg -> pkg.setLatestBuildAvailable(true));
                       }
-                  });
-              });
+              }));
     }
 
     public String getEphemeralIdForPkg(final String pkgId) {
