@@ -63,16 +63,17 @@ public class Constants {
     public static final String        MAINTAINED_PROPERTIES_URL = "https://github.com/foojay2020/maintained_major_versions/raw/main/maintained.properties";
 
     public static final String        BASE_URL                  = null == Config.INSTANCE.getFoojayApiBaseUrl() ? "https://api.foojay.io/disco" : Config.INSTANCE.getFoojayApiBaseUrl();
-    public static final String        API_VERSION               = "1.0";
+    public static final String        API_VERSION_V1             = "1.0";
+    public static final String        API_VERSION_V2             = "2.0";
     public static final String        ENDPOINT_PACKAGES         = "packages";
     public static final String        ENDPOINT_EPHEMERAL_IDS    = "ephemeral_ids";
     public static final String        SWAGGER_UI_URL            = "https://api.foojay.io/swagger-ui/";
-    public static final String        GEO_API_URL               = "https://api.ipgeolocation.io/ipgeo";
 
     public static final String        FILE_ENDING_JAR           = "jar";
     public static final String        FILE_ENDING_TXT           = "txt";
     public static final String        FILE_ENDING_SHA1          = "sha1";
     public static final String        FILE_ENDING_SHA256        = "sha256";
+    public static final String        FILE_ENDING_SYMBOLS_TAR_GZ = "symbols.tar.gz";
     
     public static final String        SQUARE_BRACKET_OPEN       = "[";
     public static final String        SQUARE_BRACKET_CLOSE      = "]";
@@ -87,11 +88,16 @@ public class Constants {
     public static final String        COMMA_NEW_LINE            = ",\n";
     public static final String        INDENT                    = "  ";
 
+    public static final String        RESULT                     = "result";
+    public static final String        MESSAGE                    = "message";
+
+    public static final String        SENTINEL_PKG_ID            = "a2a505f4d8956eb730c1ef285b23c269"; //https://cdn.azul.com/zulu/bin/zulu6.2.0.9-ca-jdk6.0.42-linux.x86_64.rpm
+
     public static final Map<String, String> PARAMETER_LOOKUP = new HashMap<>() {{
         put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
         put(Pkg.FIELD_ARCHIVE_TYPE, "apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip");
         put(Pkg.FIELD_BITNESS, "32, 64");
-        put(Pkg.FIELD_DISTRIBUTION, "adoptium, aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, liberica, liberica_native, mandrel, ojdk_build, oracle, oracle_open_jdk, redhat, sap_machine, trava, zulu");
+        put(Pkg.FIELD_DISTRIBUTION, "adoptium, aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, liberica, liberica_native, mandrel, microsoft, ojdk_build, oracle, oracle_open_jdk, redhat, sap_machine, trava, zulu");
         put(Pkg.FIELD_OPERATING_SYSTEM, "aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows");
         put(Pkg.FIELD_LIB_C_TYPE, "c_std_lib, glibc, libc, musl");
         put(Pkg.FIELD_PACKAGE_TYPE, "jdk, jre");
@@ -234,6 +240,7 @@ public class Constants {
         put(Distro.LIBERICA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
         put(Distro.LIBERICA_NATIVE, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.MANDREL, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
+        put(Distro.MICROSOFT, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
         put(Distro.OJDK_BUILD, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
         put(Distro.ORACLE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY));
         put(Distro.ORACLE_OPEN_JDK, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
