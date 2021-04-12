@@ -19,19 +19,23 @@
 
 package io.foojay.api.util;
 
+import io.foojay.api.CacheManager;
+import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
-import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.OperatingSystem;
+import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import org.junit.jupiter.api.Test;
 
 import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -58,6 +62,41 @@ public class HelperTest {
         Set<String> urlsFound = Helper.getFileUrlsFromString(text);
         for (String url : urlsFound) {
             assert urls.contains(url);
+        }
+    }
+
+    @Test
+    public void findFileNameInCorrettoBodyText() {
+        final String text = "October 2019 quarterly security patch and bug fix update.\r\n\r\n### Download Links\r\n|Platform   |Type   |Download Link  |Checksum (MD5) |Sig File   |\r\n|---    |---    |---    |---    |---    |\r\n|[Linux x64](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/generic-linux-install.html)  |JDK    | [java-1.8.0-amazon-corretto-jdk_8.232.09-1_amd64.deb](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/java-1.8.0-amazon-corretto-jdk_8.232.09-1_amd64.deb)   | `88ea4a5a1dbdf8b11437cf945552f14c`    |   |\r\n|[Linux x64](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/generic-linux-install.html)  |JDK    | [java-1.8.0-amazon-corretto-devel-1.8.0_232.b09-1.x86_64.rpm](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/java-1.8.0-amazon-corretto-devel-1.8.0_232.b09-1.x86_64.rpm)   | `180d8020d3d61aa050cfad1cf54193c9`    |   |\r\n|[Linux x64](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/generic-linux-install.html)  |JDK    |[amazon-corretto-8.232.09.1-linux-x64.tar.gz](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-linux-x64.tar.gz) | `3511152bd52c867f8b550d7c8d7764aa`  | [Download](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-linux-x64.tar.gz.sig)    |\r\n|[Linux aarch64](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/generic-linux-install.html)  |JDK    |[java-1.8.0-amazon-corretto-jdk_8.232.09-1_arm64.deb](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/java-1.8.0-amazon-corretto-jdk_8.232.09-1_arm64.deb) |`f71a7cdbaf4dd6a61afae5d9b28d78b1`  |   |\r\n|[Linux aarch64](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/generic-linux-install.html)  |JDK    |[java-1.8.0-amazon-corretto-devel-1.8.0_232.b09-1.aarch64.rpm](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/java-1.8.0-amazon-corretto-devel-1.8.0_232.b09-1.aarch64.rpm)   |`b4234fc4ca167b8ca74497188a212dd1`  |   |\r\n|[Linux aarch64](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/generic-linux-install.html)  |JDK    |[amazon-corretto-8.232.09.1-linux-aarch64.tar.gz](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-linux-aarch64.tar.gz) |`18228a7ba3ca63fc102d6e35ae5c4a13`  |[Download](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-linux-aarch64.tar.gz.sig)    |\r\n|[Windows x64](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/windows-7-install.html)    |JDK    |[amazon-corretto-8.232.09.1-windows-x64.msi](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-windows-x64.msi)   |`620ee139aac5f05ab404006b5e33378f`  |   |\r\n|[Windows x64](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/windows-7-install.html)    |JDK    |[amazon-corretto-8.232.09.1-windows-x64-jdk.zip](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-windows-x64-jdk.zip)   |`b0d375cbcfcda6d04e87888c6c6763d3`  |[Download](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-windows-x64-jdk.zip.sig) |\r\n|[Windows x64](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/windows-7-install.html)    |JRE    |[amazon-corretto-8.232.09.1-windows-x64-jre.zip](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-windows-x64-jre.zip)   |`f4b3613af15508d4e6d3f8965a1be8a3`  |[Download](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-windows-x64-jre.zip.sig) |\r\n|[Windows x86](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/windows-7-install.html)    |JDK    |[amazon-corretto-8.232.09.1-windows-x86.msi](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-windows-x86.msi)   |`f94a12381f63284bcec017f2a9ebfe3c`  |   |\r\n|[Windows x86](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/windows-7-install.html)    |JDK    |[amazon-corretto-8.232.09.1-windows-x86-jdk.zip](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-windows-x86-jdk.zip)   |`463d8c7d19bafbf9b307c19e7b516c44`  |[Download](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-windows-x86-jdk.zip.sig) |\r\n|[Windows x86](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/windows-7-install.html)    |JRE    | [amazon-corretto-8.232.09.1-windows-x86-jre.zip](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-windows-x86-jre.zip) |`6e846838ae5189b433a38be2731af735` | [Download](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-windows-x86-jre.zip.sig)   |\r\n|[macOS x64](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/macos-install.html)  |JDK    | [amazon-corretto-8.232.09.1-macosx-x64.pkg](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-macosx-x64.pkg)   |`2095075f02d71587de181cb824c2497f` |   |\r\n|[macOS x64](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/macos-install.html)  |JDK    | [amazon-corretto-8.232.09.1-macosx-x64.tar.gz](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-macosx-x64.tar.gz) | `db967586a3bd61ad190686258bedfa81`  | [Download](https://d3pxv6yz143wms.cloudfront.net/8.232.09.1/amazon-corretto-8.232.09.1-macosx-x64.tar.gz.sig) |";
+
+        List<Pair<PackageType,String>> pairs = List.of(new Pair<>(PackageType.JDK, "amazon-corretto-8.232.09.2-macosx-x64.pkg"),
+                                                       new Pair<>(PackageType.JDK, "amazon-corretto-8.232.09.2-macosx-x64.tar.gz"),
+                                                       new Pair<>(PackageType.JDK, "java-1.8.0-amazon-corretto-jdk_8.232.09-1_amd64.deb"),
+                                                       new Pair<>(PackageType.JDK, "java-1.8.0-amazon-corretto-devel-1.8.0_232.b09-1.x86_64.rpm"),
+                                                       new Pair<>(PackageType.JDK, "amazon-corretto-8.232.09.1-linux-x64.tar.gz"),
+                                                       new Pair<>(PackageType.JDK, "java-1.8.0-amazon-corretto-jdk_8.232.09-1_arm64.deb"),
+                                                       new Pair<>(PackageType.JDK, "java-1.8.0-amazon-corretto-devel-1.8.0_232.b09-1.aarch64.rpm"),
+                                                       new Pair<>(PackageType.JDK, "amazon-corretto-8.232.09.1-linux-aarch64.tar.gz"),
+                                                       new Pair<>(PackageType.JDK, "amazon-corretto-8.232.09.1-windows-x64.msi"),
+                                                       new Pair<>(PackageType.JDK, "amazon-corretto-8.232.09.1-windows-x64-jdk.zip"),
+                                                       new Pair<>(PackageType.JRE, "amazon-corretto-8.232.09.1-windows-x64-jre.zip"),
+                                                       new Pair<>(PackageType.JDK, "amazon-corretto-8.232.09.1-windows-x86.msi"),
+                                                       new Pair<>(PackageType.JDK, "amazon-corretto-8.232.09.1-windows-x86-jdk.zip"),
+                                                       new Pair<>(PackageType.JRE, "amazon-corretto-8.232.09.1-windows-x86-jre.zip"),
+                                                       new Pair<>(PackageType.JDK, "amazon-corretto-8.232.09.1-macosx-x64.pkg"),
+                                                       new Pair<>(PackageType.JDK, "amazon-corretto-8.232.09.1-macosx-x64.tar.gz"));
+
+        Set<Pair<String,String>>      pairsFound               = Helper.getPackageTypeAndFileUrlFromString(text);
+        Set<Pair<PackageType,String>> packageTypeFilenamePairs = new HashSet<>();
+
+        for (Pair<String,String> pair : pairsFound) {
+            String filename = Helper.getFileNameFromText(pair.getValue());
+            if (filename.isEmpty()) { continue; }
+            packageTypeFilenamePairs.add(new Pair<>(PackageType.fromText(pair.getKey()), filename));
+        }
+
+        for (Pair pair : packageTypeFilenamePairs) {
+            assert pairs.stream().filter(p -> p.getKey() == pair.getKey()).filter(p -> p.getValue().equals(pair.getValue())).count() == 1;
         }
     }
 
@@ -89,6 +128,21 @@ public class HelperTest {
 
         for (String fileName : fileNamesFound) {
             assert fileNames.contains(fileName);
+        }
+    }
+
+    @Test
+    public void testExtractingFilenames() {
+        try {
+            String html = Helper.getTextFromUrl("https://www.oracle.com/java/technologies/java-archive-javase10-downloads.html");
+            List<String> fileNamesFoundInUrl = new ArrayList<>(Helper.getDownloadHrefsFromString(html));
+            assert fileNamesFoundInUrl.size() == 30;
+
+            html = Helper.getTextFromUrl("https://www.oracle.com/java/technologies/javase/jdk13-archive-downloads.html");
+            fileNamesFoundInUrl = new ArrayList<>(Helper.getDownloadHrefsFromString(html));
+            assert fileNamesFoundInUrl.size() == 15;
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

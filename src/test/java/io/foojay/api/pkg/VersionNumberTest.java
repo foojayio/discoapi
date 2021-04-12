@@ -22,6 +22,12 @@ package io.foojay.api.pkg;
 import io.foojay.api.util.OutputFormat;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+
 
 public class VersionNumberTest {
     @Test
@@ -169,6 +175,7 @@ public class VersionNumberTest {
         final String versionNumber37String = "14-EA-36";                          // 14-ea preBuild 36
         final String versionNumber38String = "17-ea+8";                           // 17-ea preBuild 8
         final String versionNumber39String = "17-ea+5_linux-x64-musl_bin.tar.gz"; // 17-ea preBuild 5
+        final String versionNumber40String = "17.0.0-ea.2";                       // 17-ea prebuild 2
 
         final VersionNumber versionNumber1  = new VersionNumber(8);
         final VersionNumber versionNumber2  = new VersionNumber(8, 2);
@@ -184,19 +191,19 @@ public class VersionNumberTest {
         final VersionNumber versionNumber12 = new VersionNumber(8, 0, 262);
         final VersionNumber versionNumber13 = new VersionNumber(11);
         final VersionNumber versionNumber14 = new VersionNumber(8, 0, 272);
-        final VersionNumber versionNumber15 = new VersionNumber(8, 0, 275);
-        final VersionNumber versionNumber16 = new VersionNumber(8, 0, 272,0);
+        final VersionNumber versionNumber15 = VersionNumberBuilder.create(8).updateNumber(275).buildNumber(1).build();
+        final VersionNumber versionNumber16 = VersionNumberBuilder.create(8).updateNumber(272).buildNumber(9).build();
         final VersionNumber versionNumber17 = new VersionNumber(11, 0, 9, 1);
         final VersionNumber versionNumber18 = new VersionNumber(11, 0, 9, 12);
         final VersionNumber versionNumber19 = new VersionNumber(13, 0, 5, 1);
         final VersionNumber versionNumber20 = new VersionNumber(13, 0, 5, 1);
-        final VersionNumber versionNumber21 = new VersionNumber(7, 0, 25, 0);
+        final VersionNumber versionNumber21 = VersionNumberBuilder.create(7).updateNumber(25).buildNumber(15).build();
         final VersionNumber versionNumber22 = new VersionNumber(7, 0, 25, 0);
-        final VersionNumber versionNumber23 = new VersionNumber(8, 0, 172, 0);
-        final VersionNumber versionNumber24 = new VersionNumber(8, 0, 162, 0);
+        final VersionNumber versionNumber23 = new VersionNumber(8, 0, 172, 0,11);
+        final VersionNumber versionNumber24 = new VersionNumber(8, 0, 162, 0, 12);
         final VersionNumber versionNumber25 = new VersionNumber(11, 0, 1, 0);
         final VersionNumber versionNumber26 = new VersionNumber(11, 0, 0, 0);
-        final VersionNumber versionNumber27 = new VersionNumber(14, 0, 0, null, null, null, null, ReleaseStatus.EA, 28);
+        final VersionNumber versionNumber27 = VersionNumberBuilder.create(14).releaseStatus(ReleaseStatus.EA).preBuildNumber(28).build();
         final VersionNumber versionNumber28 = new VersionNumber(15, 0, 0);
         final VersionNumber versionNumber29 = new VersionNumber(11, 0, 9, 1, 5, 2);
         final VersionNumber versionNumber30 = new VersionNumber(11, 0, 9, 1, 5, 2);
@@ -209,6 +216,7 @@ public class VersionNumberTest {
         final VersionNumber versionNumber37 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
         final VersionNumber versionNumber38 = new VersionNumber(17, null, null, null, null, null, null, ReleaseStatus.EA, 8);
         final VersionNumber versionNumber39 = new VersionNumber(17, null, null, null, null, null, null, ReleaseStatus.EA, 5);
+        final VersionNumber versionNumber40 = new VersionNumber(17, null, null, null, null, null, null, ReleaseStatus.EA, 2);
 
         assert versionNumber1.compareTo(VersionNumber.fromText(versionNumber1String))   == 0;
         assert versionNumber2.compareTo(VersionNumber.fromText(versionNumber2String))   == 0;
@@ -249,13 +257,14 @@ public class VersionNumberTest {
         assert versionNumber37.compareTo(VersionNumber.fromText(versionNumber37String)) == 0;
         assert versionNumber38.compareTo(VersionNumber.fromText(versionNumber38String)) == 0;
         assert versionNumber39.compareTo(VersionNumber.fromText(versionNumber39String)) == 0;
+        assert versionNumber40.compareTo(VersionNumber.fromText(versionNumber40String)) == 0;
 
         assert VersionNumber.fromText(versionNumber27String).toString().equals(versionNumber27.toString());
         assert VersionNumber.fromText(versionNumber31String).toString(OutputFormat.REDUCED, true, true).equals(versionNumber31.toString(OutputFormat.REDUCED, true, true));
     }
 
     @Test
-    public void compareIncludingBuildNumberTest() {
+    public void compareIncludingBuildNumber() {
         final String versionNumber1String = "1.8.0_275.b01-x86.rpm";     // 8.0.275 build 1
         final String versionNumber2String = "8u272b09_ea.tar.gz";        // 8.0.272 build 9
         final String versionNumber3String = "1.7.0_25-b15";              // 7.0.25 build 15
@@ -307,5 +316,32 @@ public class VersionNumberTest {
         assert v5.toString(OutputFormat.REDUCED, true, false).equals("1.2");
         assert v6.toString(OutputFormat.REDUCED, true, false).equals("1");
         assert v7.toString(OutputFormat.REDUCED, true, false).equals("1.0.0.4");
+    }
+
+    @Test
+    public void sortingVersionNumbers() {
+        VersionNumber vn1 = new VersionNumber(11,0,10, null, null, null, 2, ReleaseStatus.GA, null);
+        VersionNumber vn2 = new VersionNumber(11,0,10, null, null, null, 3, ReleaseStatus.GA, null);
+        VersionNumber vn3 = new VersionNumber(11,0,10, null, null, null, 4, ReleaseStatus.GA, null);
+        VersionNumber vn4 = new VersionNumber(11,0,10, null, null, null, 1, ReleaseStatus.GA, null);
+        VersionNumber vn5 = new VersionNumber(11,0,10, null, null, null, null, ReleaseStatus.GA, null);
+
+        List<VersionNumber> versions       = new ArrayList<>(Arrays.asList(new VersionNumber[]{vn1, vn2, vn3, vn4, vn5}));
+        List<VersionNumber> sortedVersions = versions.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
+
+        SemVer sv1 = new SemVer(vn1);
+        SemVer sv2 = new SemVer(vn2);
+        SemVer sv3 = new SemVer(vn3);
+        SemVer sv4 = new SemVer(vn4);
+        SemVer sv5 = new SemVer(vn5);
+
+        List<SemVer> semvers       = new ArrayList<>(Arrays.asList(new SemVer[]{sv1, sv2, sv3, sv4, sv5}));
+        List<SemVer> sortedSemvers = semvers.stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+
+        List<VersionNumber> expected = List.of(vn5, vn3, vn2, vn1, vn4);
+        for (int i = 0 ; i < 5 ; i++) {
+            assert expected.get(i).equals(sortedVersions.get(i));
+            assert expected.get(i).equals(sortedSemvers.get(i).getVersionNumber());
+        }
     }
 }
