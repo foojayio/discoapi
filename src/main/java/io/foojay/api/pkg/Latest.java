@@ -19,6 +19,10 @@
 
 package io.foojay.api.pkg;
 
+import java.util.Arrays;
+import java.util.List;
+
+
 public enum Latest {
     OVERALL("overall", "overall"),
     PER_DISTRIBUTION("per distribution", "per_distro"),
@@ -72,4 +76,6 @@ public enum Latest {
                 return NOT_FOUND;
         }
     }
+
+    public static List<Latest> getAsList() { return Arrays.asList(values()); }
 }
