@@ -87,6 +87,9 @@ public class VersionNumber implements Comparable<VersionNumber> {
     public VersionNumber(@NotNull @Positive final Integer feature, @Positive final Integer interim, @Positive final Integer update, @Positive final Integer patch) throws IllegalArgumentException {
         this(feature, interim, update, patch, 0, 0, null, null, null);
     }
+    public VersionNumber(@NotNull @Positive final Integer feature, @Positive final Integer interim, @Positive final Integer update, @Positive final Integer patch, final Integer build) throws IllegalArgumentException {
+        this(feature, interim, update, patch, 0, 0, build, null, null);
+    }
     public VersionNumber(@NotNull @Positive final Integer feature, @Positive final Integer interim, @Positive final Integer update, @Positive final Integer patch, @Positive final Integer fifth, @Positive final Integer sixth) {
         this(feature, interim, update, patch, fifth, sixth, null, null, null);
     }
@@ -646,51 +649,65 @@ public class VersionNumber implements Comparable<VersionNumber> {
                                                     } else if (sixth.getAsInt() < otherVersionNumber.getSixth().getAsInt()) {
                                                         ret = smallerThan;
                                                     } else {
+                                                        if (build.isPresent() && otherVersionNumber.getBuild().isPresent()) {
+                                                            if (build.getAsInt() > otherVersionNumber.getBuild().getAsInt()) {
+                                                                ret = largerThan;
+                                                            } else if (build.getAsInt() < otherVersionNumber.getBuild().getAsInt()) {
+                                                                ret = smallerThan;
+                                                            } else {
                                                         ret = equal;
                                                     }
-                                                } else if (sixth.isPresent() && !otherVersionNumber.getSixth().isPresent()) {
+                                                        } else if (build.isPresent() && otherVersionNumber.getBuild().isEmpty()) {
+                                                            ret = smallerThan;
+                                                        } else if (build.isEmpty() && otherVersionNumber.getBuild().isPresent()) {
+                                                            ret = largerThan;
+                                                        } else {
+                                                            ret = equal;
+                                                        }
+                                                    }
+                                                } else if (sixth.isPresent() && otherVersionNumber.getSixth().isEmpty()) {
                                                     ret = largerThan;
-                                                } else if (!sixth.isPresent() && otherVersionNumber.getSixth().isPresent()) {
+                                                } else if (sixth.isEmpty() && otherVersionNumber.getSixth().isPresent()) {
                                                     ret = smallerThan;
                                                 } else {
                                                     ret = equal;
                                                 }
                                             }
-                                        } else if (fifth.isPresent() && !otherVersionNumber.getFifth().isPresent()) {
+                                        } else if (fifth.isPresent() && otherVersionNumber.getFifth().isEmpty()) {
                                             ret = largerThan;
-                                        } else if (!fifth.isPresent() && otherVersionNumber.getFifth().isPresent()) {
+                                        } else if (fifth.isEmpty() && otherVersionNumber.getFifth().isPresent()) {
                                             ret = smallerThan;
                                         } else {
                                             ret= equal;
                                     }
                                     }
-                                } else if (patch.isPresent() && !otherVersionNumber.getPatch().isPresent()) {
+                                } else if (patch.isPresent() && otherVersionNumber.getPatch().isEmpty()) {
                                     ret = largerThan;
-                                } else if (!patch.isPresent() && otherVersionNumber.getPatch().isPresent()) {
+                                } else if (patch.isEmpty() && otherVersionNumber.getPatch().isPresent()) {
                                     ret = smallerThan;
                                 } else {
                                     ret = equal;
                                 }
                             }
-                        } else if (update.isPresent() && !otherVersionNumber.getUpdate().isPresent()) {
+                        } else if (update.isPresent() && otherVersionNumber.getUpdate().isEmpty()) {
                             ret = largerThan;
-                        } else if (!update.isPresent() && otherVersionNumber.getUpdate().isPresent()) {
+                        } else if (update.isEmpty() && otherVersionNumber.getUpdate().isPresent()) {
                             ret = smallerThan;
                         } else {
                             ret = equal;
                         }
                     }
-                } else if (interim.isPresent() && !otherVersionNumber.getInterim().isPresent()) {
+                } else if (interim.isPresent() && otherVersionNumber.getInterim().isEmpty()) {
                     ret = largerThan;
-                } else if (!interim.isPresent() && otherVersionNumber.getInterim().isPresent()) {
+                } else if (interim.isEmpty() && otherVersionNumber.getInterim().isPresent()) {
                     ret = smallerThan;
                 } else {
                     ret = equal;
                 }
             }
-        } else if (feature.isPresent() && !otherVersionNumber.getFeature().isPresent()) {
+        } else if (feature.isPresent() && otherVersionNumber.getFeature().isEmpty()) {
             ret = largerThan;
-        } else if (!feature.isPresent() && !otherVersionNumber.getFeature().isPresent()) {
+        } else if (feature.isEmpty() && otherVersionNumber.getFeature().isPresent()) {
             ret = smallerThan;
         } else {
             ret = equal;
