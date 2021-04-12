@@ -46,11 +46,13 @@ import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.TreeSet;
+import java.util.concurrent.CompletionException;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -281,8 +283,17 @@ public class Trava implements Distribution {
             for (String packageUrl : PACKAGE_URLS) {
                 // Get all packages from github
                 String      query   = packageUrl;
-                HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(query)).setHeader("User-Agent", "DiscoAPI").GET().build();
+                HttpClient  client  = HttpClient.newBuilder()
+                                                .followRedirects(Redirect.NEVER)
+                                                .version(java.net.http.HttpClient.Version.HTTP_2)
+                                                .connectTimeout(Duration.ofSeconds(10))
+                                                .build();
+                HttpRequest request = HttpRequest.newBuilder()
+                                                 .uri(URI.create(query))
+                                                 .setHeader("User-Agent", "DiscoAPI")
+                                                 .timeout(Duration.ofSeconds(30))
+                                                 .GET()
+                                                 .build();
                 try {
                     HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
                     if (response.statusCode() == 200) {
@@ -297,7 +308,7 @@ public class Trava implements Distribution {
                         // Problem with url request
                         LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
                     }
-                } catch (InterruptedException | IOException e) {
+                } catch (CompletionException | InterruptedException | IOException e) {
                     LOGGER.error("Error fetching packages for distribution {} from {}", getName(), query);
                 }
             }
