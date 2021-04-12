@@ -32,7 +32,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.OptionalInt;
 
-import static io.foojay.api.util.Constants.API_VERSION;
+import static io.foojay.api.util.Constants.API_VERSION_V1;
 import static io.foojay.api.util.Constants.BASE_URL;
 import static io.foojay.api.util.Constants.COLON;
 import static io.foojay.api.util.Constants.COMMA;
@@ -247,7 +247,7 @@ public class Pkg {
      * @param outputFormat The compressed versions do not contain the real download link but the current api url to track downloads
      * @return a json representation of the package depending on the given outputFormat
      */
-    public final String toString(final OutputFormat outputFormat) {
+    public final String toString(final OutputFormat outputFormat, final String API_VERSION) {
         switch(outputFormat) {
             case FULL:
                 return new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
@@ -361,6 +361,6 @@ public class Pkg {
     }
 
     @Override public String toString() {
-        return toString(OutputFormat.REDUCED_COMPRESSED);
+        return toString(OutputFormat.REDUCED_COMPRESSED, API_VERSION_V1);
     }
 }
