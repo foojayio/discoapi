@@ -53,6 +53,7 @@ import static com.mongodb.client.model.Updates.combine;
 import static com.mongodb.client.model.Updates.set;
 import static io.foojay.api.pkg.Pkg.FIELD_FILENAME;
 import static io.foojay.api.pkg.Pkg.FIELD_LATEST_BUILD_AVAILABLE;
+import static io.foojay.api.util.Constants.API_VERSION_V1;
 
 
 public enum MongoDbManager {
@@ -121,7 +122,11 @@ public enum MongoDbManager {
      * @return list of all packages in the packages collection
      */
     public List<Pkg> getPkgs() {
-        if (!connected) { init(); }
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, returned empty list of packages");
+            return new ArrayList<>();
+        }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
             LOGGER.debug("Cannot return packages because FOOJAY_MONGODB_DATABASE environment variable was not set.");
             return new ArrayList<>();
@@ -149,7 +154,11 @@ public enum MongoDbManager {
      * @param pkgs
      */
     public void insertAllPkgs(final Collection<Pkg> pkgs) {
-        if (!connected) { init(); }
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, no packages inserted");
+            return;
+        }
         if (null == pkgs || pkgs.isEmpty()) {
             LOGGER.debug("Packages are null or empty.");
             return;
@@ -170,7 +179,7 @@ public enum MongoDbManager {
         final List<Document>            documents  = new ArrayList<>();
         for (Pkg pkg : pkgs) {
             try {
-                documents.add(Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED)));
+                documents.add(Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1)));
             } catch (JsonParseException e) {
                 LOGGER.error("Error parsing json when adding package {}. {}", pkg.getId(), e.getMessage());
             }
@@ -185,7 +194,11 @@ public enum MongoDbManager {
      * @return true when packages have been added successfully
      */
     public boolean addNewPkgs(final Collection<Pkg> pkgs) {
-        if (!connected) { init(); }
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, no packages added");
+            return false;
+        }
         if (null == pkgs || pkgs.isEmpty()) {
             LOGGER.debug("Packages are null or empty.");
             return false;
@@ -207,7 +220,7 @@ public enum MongoDbManager {
         ReplaceOptions replaceOptions = new ReplaceOptions().upsert(true);
         for (Pkg pkg : pkgs) {
             try {
-                Document document = Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED));
+                Document document = Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1));
                 collection.replaceOne(eq(FIELD_PACKAGE_ID, pkg.getId()), document, replaceOptions);
             } catch (JsonParseException e) {
                 LOGGER.error("Error parsing json when adding package {}. {}", pkg.getId(), e.getMessage());
@@ -223,7 +236,11 @@ public enum MongoDbManager {
      * @return true when packages have been removed successfully
      */
     public boolean removePkgs(final Collection<Pkg> pkgs) {
-        if (!connected) { init(); }
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, no packages have been removed");
+            return false;
+        }
         if (null == pkgs || pkgs.isEmpty()) {
             LOGGER.debug("Packages are null or empty.");
             return false;
@@ -261,7 +278,11 @@ public enum MongoDbManager {
      * @return true when all documents have been removed successfully
      */
     public boolean removeAllPkgs() {
-        if (!connected) { init(); }
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, no packages have been removed");
+            return false;
+        }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
             LOGGER.debug("Packages have not been removed because FOOJAY_MONGODB_DATABASE environment variable was not set.");
             return false;
@@ -288,7 +309,11 @@ public enum MongoDbManager {
      * @return a map with the packageId as key and the number of downloads as value
      */
     public Map<String, Long> getDowloads() {
-        if (!connected) { init(); }
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, return empty map of downloads");
+            return new HashMap<>();
+        }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
             LOGGER.debug("Cannot return downloads because FOOJAY_MONGODB_DATABASE environment variable was not set.");
             return new HashMap<>();
@@ -318,7 +343,11 @@ public enum MongoDbManager {
      * @param noOfDownloads
      */
     public void upsertDownloadForId(final String pkgId, final Long noOfDownloads) {
-        if (!connected) { init(); }
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, no packages updated");
+            return;
+        }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
             LOGGER.debug("Could not upsert download because FOOJAY_MONGODB_DATABASE environment variable was not set.");
             return;
@@ -338,7 +367,11 @@ public enum MongoDbManager {
     }
 
     public void updateLatestBuildAvailable(final List<Pkg> pkgs) {
-        if (!connected) { init(); }
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, no packages updated");
+            return;
+        }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
             LOGGER.debug("Could not update latest build available because FOOJAY_MONGODB_DATABASE environment variable was not set.");
             return;
@@ -358,7 +391,11 @@ public enum MongoDbManager {
     }
 
     public void syncLatestBuildAvailableInDatabaseWithCache(final Collection<Pkg> pkgs) {
-        if (!connected) { init(); }
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not conntected, database was not synced");
+            return;
+        }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
             LOGGER.debug("Could not sync cache with database because FOOJAY_MONGODB_DATABASE environment variable was not set.");
             return;
