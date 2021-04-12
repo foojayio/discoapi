@@ -49,6 +49,7 @@ import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -281,8 +282,17 @@ public class OJDKBuild implements Distribution {
             for (String packageUrl : PACKAGE_URLS) {
                 // Get all packages from github
                 String      query   = packageUrl;
-                HttpClient  client  = HttpClient.newBuilder().followRedirects(Redirect.NORMAL).version(java.net.http.HttpClient.Version.HTTP_1_1).build();
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(query)).setHeader("User-Agent", "DiscoAPI").GET().build();
+                HttpClient  client  = HttpClient.newBuilder()
+                                                .followRedirects(Redirect.NORMAL)
+                                                .version(java.net.http.HttpClient.Version.HTTP_2)
+                                                .connectTimeout(Duration.ofSeconds(10))
+                                                .build();
+                HttpRequest request = HttpRequest.newBuilder()
+                                                 .uri(URI.create(query))
+                                                 .setHeader("User-Agent", "DiscoAPI")
+                                                 .timeout(Duration.ofSeconds(30))
+                                                 .GET()
+                                                 .build();
                 try {
                     HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
                     if (response.statusCode() == 200) {
