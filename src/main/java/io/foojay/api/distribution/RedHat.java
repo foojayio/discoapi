@@ -167,8 +167,10 @@ public class RedHat implements Distribution {
     public List<Pkg> getAllPkgsFromHtml(final String html) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
-        List<String> fileNames = new ArrayList<>(Helper.getFileHrefsFromString(html));
-        for (String filename : fileNames) {
+
+        List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
+        for (String fileHref : fileHrefs) {
+            String filename = Helper.getFileNameFromText(fileHref.replaceAll("\"", ""));
             if (filename.endsWith("sources.zip") || filename.endsWith("src.zip")) { continue; }
 
             Pkg pkg = new Pkg();
