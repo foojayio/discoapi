@@ -50,11 +50,13 @@ import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.TreeSet;
+import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -292,87 +294,76 @@ public class SAPMachine implements Distribution {
             JsonArray assets = jsonObj.getAsJsonArray("assets");
             for (JsonElement element : assets) {
                 JsonObject assetJsonObj = element.getAsJsonObject();
-                String     fileName     = assetJsonObj.get("name").getAsString();
+                String     filename     = assetJsonObj.get("name").getAsString();
 
-                if (null == fileName || fileName.isEmpty() || fileName.endsWith("txt") || fileName.endsWith("symbols.tar.gz")) { continue; }
+                if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta")) { continue; }
 
-                String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
+                final String        withoutPrefix = filename.replace("sapmachine-", "");
+                final VersionNumber versionNumber = VersionNumber.fromText(withoutPrefix);
+                final MajorVersion  majorVersion  = versionNumber.getMajorVersion();
+                final PackageType   packageType   = withoutPrefix.startsWith("jdk") ? JDK : JRE;
+                final String        downloadLink  = assetJsonObj.get("browser_download_url").getAsString();
 
-                VersionNumber vNumber = VersionNumber.fromText(withoutPrefix);
-
-                String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
-
-                Pkg pkg = new Pkg();
-
-                ArchiveType ext = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
-                                                               .filter(entry -> fileName.endsWith(entry.getKey()))
+                OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
+                                                                                   .stream()
+                                                                                   .filter(entry -> withoutPrefix.contains(entry.getKey()))
                                                                .findFirst()
                                                                .map(Entry::getValue)
-                                                               .orElse(ArchiveType.NONE);
-                if (ArchiveType.NONE == ext) {
-                    LOGGER.debug("Archive Type not found in SAP Machine for filename: {}", fileName);
+                                                                                   .orElse(OperatingSystem.NOT_FOUND);
+                if (OperatingSystem.NOT_FOUND == operatingSystem) {
+                    LOGGER.debug("Operating System not found in SAP Machine for filename: {}", filename);
+                    continue;
+                }
+
+                final Architecture architecture = Constants.ARCHITECTURE_LOOKUP.entrySet()
+                                                                               .stream()
+                                                                 .filter(entry -> withoutPrefix.contains(entry.getKey()))
+                                                                 .findFirst()
+                                                                 .map(Entry::getValue)
+                                                                               .orElse(Architecture.NOT_FOUND);
+                if (Architecture.NOT_FOUND == architecture) {
+                    LOGGER.debug("Architecture not found in SAP Machine for filename: {}", filename);
+                    continue;
+                }
+
+                ArchiveType ext = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
+                                                               .filter(entry -> filename.endsWith(entry.getKey()))
+                                                                      .findFirst()
+                                                                      .map(Entry::getValue)
+                                                               .orElse(ArchiveType.NOT_FOUND);
+                if (ArchiveType.NOT_FOUND == ext) {
+                    LOGGER.debug("Archive Type not found in SAP Machine for filename: {}", filename);
                     continue;
                 } else if (ArchiveType.SRC_TAR == ext) {
                     continue;
                 }
 
-                pkg.setArchiveType(ext);
-
-                TermOfSupport supTerm = null;
-                if (!vNumber.getFeature().isEmpty()) {
-                    supTerm = Helper.getTermOfSupport(vNumber, Distro.SAP_MACHINE);
-                }
-                pkg.setTermOfSupport(supTerm);
-
-                pkg.setDistribution(Distro.SAP_MACHINE.get());
-                pkg.setFileName(fileName);
-                pkg.setDirectDownloadUri(downloadLink);
-                pkg.setVersionNumber(vNumber);
-                pkg.setJavaVersion(vNumber);
-                pkg.setDistributionVersion(vNumber);
-                pkg.setPackageType(withoutPrefix.contains(Constants.JDK_PREFIX) ? JDK : JRE);
-                pkg.setReleaseStatus(withoutPrefix.contains(Constants.EA_POSTFIX) ? EA : GA);
-
-
-                Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                                 .filter(entry -> withoutPrefix.contains(entry.getKey()))
-                                                                 .findFirst()
-                                                                 .map(Entry::getValue)
-                                                                 .orElse(Architecture.NONE);
-                if (Architecture.NONE == arch) {
-                    LOGGER.debug("Architecture not found in SAP Machine for filename: {}", fileName);
-                    continue;
-                }
-                pkg.setArchitecture(arch);
-                pkg.setBitness(arch.getBitness());
-
-                OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                                      .filter(entry -> withoutPrefix.contains(entry.getKey()))
-                                                                      .findFirst()
-                                                                      .map(Entry::getValue)
-                                                                      .orElse(OperatingSystem.NONE);
-                if (OperatingSystem.NONE == os) {
-                    switch (pkg.getArchiveType()) {
+                ArchiveType archiveType = ArchiveType.getFromFileName(filename);
+                if (OperatingSystem.MACOS == operatingSystem) {
+                    switch(archiveType) {
                         case DEB:
-                        case RPM:
-                        case TAR_GZ:
-                            os = OperatingSystem.LINUX;
-                            break;
+                        case RPM: operatingSystem = OperatingSystem.LINUX; break;
+                        case CAB:
                         case MSI:
-                        case ZIP:
-                            os = OperatingSystem.WINDOWS;
-                            break;
-                        case DMG:
-                        case PKG:
-                            os = OperatingSystem.MACOS;
-                            break;
+                        case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
                     }
                 }
-                if (OperatingSystem.NONE == os) {
-                    LOGGER.debug("Operating System not found in SAP Machine for filename: {}", fileName);
-                    continue;
-                }
-                pkg.setOperatingSystem(os);
+
+                Pkg pkg = new Pkg();
+                pkg.setDistribution(Distro.SAP_MACHINE.get());
+                pkg.setArchitecture(architecture);
+                pkg.setBitness(architecture.getBitness());
+                pkg.setVersionNumber(versionNumber);
+                pkg.setJavaVersion(versionNumber);
+                pkg.setDistributionVersion(versionNumber);
+                pkg.setDirectDownloadUri(downloadLink);
+                pkg.setFileName(filename);
+                pkg.setArchiveType(archiveType);
+                pkg.setJavaFXBundled(false);
+                pkg.setTermOfSupport(majorVersion.getTermOfSupport());
+                pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+                pkg.setPackageType(packageType);
+                pkg.setOperatingSystem(operatingSystem);
 
                 pkgs.add(pkg);
             }
@@ -384,8 +375,17 @@ public class SAPMachine implements Distribution {
 
     public List<Pkg> getAllPkgsFromJsonUrl() {
         List<Pkg>   pkgs      = new ArrayList<>();
-        HttpClient  clientSAP = HttpClient.newBuilder().followRedirects(Redirect.NEVER).version(java.net.http.HttpClient.Version.HTTP_2).build();
-        HttpRequest request   = HttpRequest.newBuilder().uri(URI.create(PACKAGE_JSON_URL)).setHeader("User-Agent", "DiscoAPI").GET().build();
+        HttpClient  clientSAP = HttpClient.newBuilder()
+                                          .followRedirects(Redirect.NEVER)
+                                          .version(java.net.http.HttpClient.Version.HTTP_2)
+                                          .connectTimeout(Duration.ofSeconds(10))
+                                          .build();
+        HttpRequest request   = HttpRequest.newBuilder()
+                                           .uri(URI.create(PACKAGE_JSON_URL))
+                                           .setHeader("User-Agent", "DiscoAPI")
+                                           .timeout(Duration.ofSeconds(30))
+                                           .GET()
+                                           .build();
         try {
             HttpResponse<String> response = clientSAP.send(request, BodyHandlers.ofString());
             if (response.statusCode() == 200) {
@@ -435,6 +435,7 @@ public class SAPMachine implements Distribution {
                                     if (imageTypeObj.has(os)) {
                                         final String downloadLink = imageTypeObj.get(os).getAsString();
                                         final String fileName = Helper.getFileNameFromText(downloadLink);
+                                        if (fileName.contains("beta")) { continue; }
                                         Pkg          pkg      = new Pkg();
                                         pkg.setDistribution(Distro.SAP_MACHINE.get());
                                         pkg.setBitness(BIT_64);
@@ -493,7 +494,7 @@ public class SAPMachine implements Distribution {
                 // Problem with url request
                 LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
             }
-        } catch (InterruptedException | IOException e) {
+        } catch (CompletionException | InterruptedException | IOException e) {
             LOGGER.error("Error fetching packages for distribution {} from {}", getName(), PACKAGE_JSON_URL);
         }
         LOGGER.debug("Successfully fetched {} packages from sap.github.io", pkgs.size());
@@ -505,7 +506,7 @@ public class SAPMachine implements Distribution {
         try {
             for (String packageUrl : PACKAGE_URLS) {
                 String html = Helper.getTextFromUrl(packageUrl);
-                pkgs.addAll(getAllPkgsFromHtml(html, packageUrl));
+                pkgs.addAll(getAllPkgsFromHtml(html));
             }
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from SAP Machine. {}", e);
@@ -513,15 +514,15 @@ public class SAPMachine implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromHtml(final String html, final String packageUrl) {
+    public List<Pkg> getAllPkgsFromHtml(final String html) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
-        List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
-        List<String> fileNames = new ArrayList<>();
-        for (String href : fileHrefs) { fileNames.add(Helper.getFileNameFromText(href)); }
 
+        List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
         for (String href : fileHrefs) {
             final String          filename        = Helper.getFileNameFromText(href);
+            if (filename.contains("beta")) { continue; }
+
             final String          withoutPrefix   = filename.replace("sapmachine-", "");
             final VersionNumber   versionNumber   = VersionNumber.fromText(withoutPrefix);
             final MajorVersion    majorVersion    = versionNumber.getMajorVersion();
@@ -532,8 +533,8 @@ public class SAPMachine implements Distribution {
                                                                                .filter(entry -> withoutPrefix.contains(entry.getKey()))
                                                                                .findFirst()
                                                                                .map(Entry::getValue)
-                                                                               .orElse(OperatingSystem.NONE);
-            if (OperatingSystem.NONE == operatingSystem) {
+                                                                               .orElse(OperatingSystem.NOT_FOUND);
+            if (OperatingSystem.NOT_FOUND == operatingSystem) {
                 LOGGER.debug("Operating System not found in SAP Machine for filename: {}", filename);
                 continue;
             }
@@ -543,8 +544,8 @@ public class SAPMachine implements Distribution {
                                                                                             .filter(entry -> withoutPrefix.contains(entry.getKey()))
                                                                                             .findFirst()
                                                                                             .map(Entry::getValue)
-                                                                                            .orElse(Architecture.NONE);
-            if (Architecture.NONE == architecture) {
+                                                                           .orElse(Architecture.NOT_FOUND);
+            if (Architecture.NOT_FOUND == architecture) {
                 LOGGER.debug("Architecture not found in SAP Machine for filename: {}", filename);
                 continue;
             }
