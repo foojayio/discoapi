@@ -16,8 +16,6 @@
 
 package io.foojay.api.distribution;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Architecture;
@@ -51,7 +49,6 @@ import java.util.stream.Collectors;
 import static io.foojay.api.pkg.PackageType.JDK;
 import static io.foojay.api.pkg.PackageType.JRE;
 import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
 public class Microsoft implements Distribution {

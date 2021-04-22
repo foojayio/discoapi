@@ -150,7 +150,7 @@ public class Corretto implements Distribution {
         supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
 
         if (jsonObj.has("message")) {
-            LOGGER.debug("Github rate limit reached when trying to get packges for Corretto {}", versionNumber);
+            LOGGER.debug("Github rate limit reached when trying to get packages for Corretto {}", versionNumber);
             return pkgs;
         }
         String       bodyText      = jsonObj.get("body").getAsString();

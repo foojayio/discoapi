@@ -27,6 +27,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.Feature;
 import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.LibCType;
 import io.foojay.api.pkg.MajorVersion;
@@ -44,6 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.StringReader;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -109,7 +111,13 @@ public class OracleOpenJDK implements Distribution {
 
     public OracleOpenJDK() {
         try {
-            this.propertiesPkgs.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PKGS_PROPERTIES)));
+            HttpResponse<String> response = Helper.get(OPEN_JDK_PKGS_PROPERTIES);
+            if (null != response) {
+                String propertiesText = response.body();
+                if (!propertiesText.isEmpty()) {
+                    this.propertiesPkgs.load(new StringReader(propertiesText));
+                }
+            }
         } catch (Exception e) {
             LOGGER.error("Error reading OpenJDK properties file from github. {}", e.getMessage());
         }
@@ -467,8 +475,13 @@ public class OracleOpenJDK implements Distribution {
 
         // Get packages from archive
         try {
-            String html = Helper.getTextFromUrl(JDK_ARCHIVE_URL);
+            HttpResponse<String> response = Helper.get(JDK_ARCHIVE_URL);
+            if (null != response) {
+                String html = response.body();
+                if (!html.isEmpty()) {
             pkgs.addAll(extractPackagesFromHtml(html));
+                }
+            }
         } catch (Exception e) {
             LOGGER.debug("Error fetching packages from Oracle OpenJDK archive url. {}", e.getMessage());
         }
@@ -478,8 +491,13 @@ public class OracleOpenJDK implements Distribution {
         for (int i = latestMajorVersion ; i > latestMajorVersion - 3 ; i--) {
             String jdkUrl = JDK_URL + i + "/";
             try {
-                String html = Helper.getTextFromUrl(jdkUrl);
+                HttpResponse<String> response = Helper.get(jdkUrl);
+                if (null != response) {
+                    String html = response.body();
+                    if (!html.isEmpty()) {
                 pkgs.addAll(extractPackagesFromHtml(html));
+                    }
+                }
             } catch (Exception e) {
                 LOGGER.debug("Error fetching packages from Oracle OpenJDK url {}. {}", jdkUrl, e.getMessage());
             }
@@ -492,7 +510,11 @@ public class OracleOpenJDK implements Distribution {
 
         // Reload openjdk properties
         try {
-            propertiesPkgs.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PKGS_PROPERTIES)));
+            final HttpResponse<String> response = Helper.get(OPEN_JDK_PKGS_PROPERTIES);
+            if (null == response) { return pkgs; }
+            final String propertiesText = response.body();
+            if (propertiesText.isEmpty()) { return pkgs; }
+            propertiesPkgs.load(new StringReader(propertiesText));
         } catch (Exception e) {
             LOGGER.error("Error reading OpenJDK properties file from github. {}", e.getMessage());
         }
@@ -525,6 +547,12 @@ public class OracleOpenJDK implements Distribution {
                 if (keyParts[noOfKeyParts - 1].equals("musl")) {
                     arch   = Architecture.fromText(keyParts[noOfKeyParts - 2]);
                     isMusl = true;
+                } else if (keyParts[noOfKeyParts - 1].equals("panama")) {
+                    arch   = Architecture.fromText(keyParts[noOfKeyParts - 2]);
+                    pkg.getFeatures().add(Feature.PANAMA);
+                } else if (keyParts[noOfKeyParts - 1].equals("loom")) {
+                    arch   = Architecture.fromText(keyParts[noOfKeyParts - 2]);
+                    pkg.getFeatures().add(Feature.LOOM);
                 } else {
                     arch = Architecture.fromText(keyParts[noOfKeyParts - 1]);
                 }

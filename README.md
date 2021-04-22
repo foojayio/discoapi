@@ -14,11 +14,14 @@ The foojay Disco API is a general purpose API to discover builds of OpenJDK from
 * Liberica
 * Liberica Native  
 * Mandrel  
-* OJDKBuild  
+* Microsoft  
+* OJDKBuild
+* OpenLogic  
 * Oracle (contains only links to download site)
 * Oracle OpenJDK
 * Red Hat (contains only links to download site)
 * SAP Machine
+* Temurin
 * Trava  
 * Zulu
   
@@ -175,7 +178,7 @@ The json response will look as follows:
 ---
 #### 5. What versions does the Zulu distribution offer?
 ```console
-curl "http://81.169.252.235:8080/disco/v1.0/distributions/zulu"
+curl "https://api.foojay.io/disco/v1.0/distributions/zulu"
 ```
 The json response will look as follows:
 ```json

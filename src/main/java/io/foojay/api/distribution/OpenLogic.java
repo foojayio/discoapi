@@ -54,11 +54,11 @@ import static io.foojay.api.pkg.ReleaseStatus.EA;
 import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
-public class RedHat implements Distribution {
-    private static final Logger                       LOGGER                 = LoggerFactory.getLogger(RedHat.class);
+public class OpenLogic implements Distribution {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OpenLogic.class);
 
-    public  static final String                       PACKAGE_ALL_URL        = "https://developers.redhat.com/products/openjdk/download";
-    private static final String                       DOWNLOAD_PREFIX        = "https://developers.redhat.com/download-manager/file/";
+    public  static final String                       PACKAGE_ALL_URL        = "https://www.openlogic.com/openjdk-downloads";
+    private static final String                       PREFIX                 = "openlogic-openjdk-";
     private static final String                       PACKAGE_URL            = "";
 
     // URL parameters
@@ -71,20 +71,20 @@ public class RedHat implements Distribution {
     private static final String                       BITNESS_PARAM          = "";
 
     // Mappings for url parameters
-    private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP     = Map.of(EA, "early_access", GA, "GA");
+    private static final Map<ReleaseStatus, String> RELEASE_STATUS_MAP = Map.of(EA, "early_access", GA, "GA");
 
-    private static final HashAlgorithm                HASH_ALGORITHM         = HashAlgorithm.NONE;
-    private static final String                       HASH_URI               = "";
-    private static final SignatureType                SIGNATURE_TYPE         = SignatureType.NONE;
-    private static final HashAlgorithm                SIGNATURE_ALGORITHM    = HashAlgorithm.NONE;
+    private static final HashAlgorithm HASH_ALGORITHM      = HashAlgorithm.NONE;
+    private static final String        HASH_URI            = "";
+    private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
+    private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI          = "";
 
 
-    public RedHat() {
+    public OpenLogic() {
 
     }
 
-    @Override public Distro getDistro() { return Distro.RED_HAT; }
+    @Override public Distro getDistro() { return Distro.OPEN_LOGIC; }
 
     @Override public String getName() { return getDistro().getUiString(); }
 
@@ -118,7 +118,7 @@ public class RedHat implements Distribution {
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
-                                             .filter(pkg -> Distro.RED_HAT.get().equals(pkg.getDistribution()))
+                                             .filter(pkg -> Distro.OPEN_LOGIC.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
                                              .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
     }
@@ -161,10 +161,10 @@ public class RedHat implements Distribution {
             if (null == response) { return pkgs; }
             final String htmlAllJDKs  = response.body();
             if (!htmlAllJDKs.isEmpty()) {
-            pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs));
+                pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs));
             }
         } catch (Exception e) {
-            LOGGER.error("Error fetching all packages from RedHat. {}", e);
+            LOGGER.error("Error fetching all packages from OpenLogic. {}", e);
         }
         return pkgs;
     }
@@ -172,23 +172,19 @@ public class RedHat implements Distribution {
     public List<Pkg> getAllPkgsFromHtml(final String html) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
-
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
         for (String fileHref : fileHrefs) {
             String filename = Helper.getFileNameFromText(fileHref.replaceAll("\"", ""));
-            if (filename.endsWith("sources.zip") || filename.endsWith("src.zip")) { continue; }
 
             Pkg pkg = new Pkg();
-            pkg.setDistribution(Distro.RED_HAT.get());
+            pkg.setDistribution(Distro.OPEN_LOGIC.get());
 
-            String withoutPrefix = filename.replace(DOWNLOAD_PREFIX, "");
+            String withoutPrefix = filename.replace(PREFIX, "");
 
-            pkg.setJavaFXBundled(withoutPrefix.startsWith("openjfx"));
-            withoutPrefix = withoutPrefix.replaceAll("((java)-.*openjdk-)|(openjfx-)", "");
+            pkg.setJavaFXBundled(false);
 
-            if (withoutPrefix.startsWith("jre-")) {
+            if (withoutPrefix.contains("jre-")) {
                 pkg.setPackageType(JRE);
-                withoutPrefix = withoutPrefix.replace("jre-", "");
             } else {
                 pkg.setPackageType(JDK);
             }
@@ -197,9 +193,9 @@ public class RedHat implements Distribution {
                                                                      .filter(entry -> filename.contains(entry.getKey()))
                                                                      .findFirst()
                                                                      .map(Entry::getValue)
-                                                                     .orElse(Architecture.NONE);
-            if (Architecture.NONE == architecture) {
-                LOGGER.debug("Architecture not found in Redhat for filename: {}", filename);
+                                                                     .orElse(Architecture.NOT_FOUND);
+            if (Architecture.NOT_FOUND == architecture) {
+                LOGGER.debug("Architecture not found in OpenLogic for filename: {}", filename);
                 continue;
             }
             pkg.setArchitecture(architecture);
@@ -209,9 +205,9 @@ public class RedHat implements Distribution {
                                                                                .filter(entry -> filename.contains(entry.getKey()))
                                                                                .findFirst()
                                                                                .map(Entry::getValue)
-                                                                               .orElse(OperatingSystem.NONE);
-            if (OperatingSystem.NONE == operatingSystem) {
-                LOGGER.debug("Operating System not found in Redhat for filename: {}", filename);
+                                                                               .orElse(OperatingSystem.NOT_FOUND);
+            if (OperatingSystem.NOT_FOUND == operatingSystem) {
+                LOGGER.debug("Operating System not found in OpenLogic for filename: {}", filename);
                 continue;
             }
             pkg.setOperatingSystem(operatingSystem);
@@ -220,14 +216,12 @@ public class RedHat implements Distribution {
                                                                    .filter(entry -> filename.contains(entry.getKey()))
                                                                    .findFirst()
                                                                    .map(Entry::getValue)
-                                                                   .orElse(ArchiveType.NONE);
-            if (ArchiveType.NONE == archiveType) {
-                LOGGER.debug("Archive Type not found in Redhat for filename: {}", filename);
+                                                                   .orElse(ArchiveType.NOT_FOUND);
+            if (ArchiveType.NOT_FOUND == archiveType) {
+                LOGGER.debug("Archive Type not found in OpenLogic for filename: {}", filename);
                 continue;
             }
             pkg.setArchiveType(archiveType);
-
-            pkg.setReleaseStatus(withoutPrefix.contains(".dev.") ? EA : GA);
 
             // No support for Feature.Interim.Update.Path but only Major.Minor.Update => setPatch(0)
             VersionNumber vNumber = VersionNumber.fromText(withoutPrefix);
@@ -236,13 +230,14 @@ public class RedHat implements Distribution {
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
             pkg.setDistributionVersion(vNumber);
+            pkg.setReleaseStatus(GA);
 
             pkg.setTermOfSupport(Helper.getTermOfSupport(versionNumber));
 
-            pkg.setDirectlyDownloadable(false);
+            pkg.setDirectlyDownloadable(true);
 
             pkg.setFileName(Helper.getFileNameFromText(filename));
-            pkg.setDownloadSiteUri("https://developers.redhat.com/products/openjdk/download");
+            pkg.setDirectDownloadUri(fileHref);
 
             pkgs.add(pkg);
         }

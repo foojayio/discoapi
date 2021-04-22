@@ -266,7 +266,7 @@ public class AOJ_OPENJ9 implements Distribution {
                                                                   .orElse(OperatingSystem.NONE);
 
             if (OperatingSystem.NONE == os) {
-                LOGGER.debug("Operating System not found in AOJ for field value: {}", binariesObj.get(FIELD_OS).getAsString());
+                LOGGER.debug("Operating System not found in AOJ OpenJ9 for field value: {}", binariesObj.get(FIELD_OS).getAsString());
                 continue;
             }
 

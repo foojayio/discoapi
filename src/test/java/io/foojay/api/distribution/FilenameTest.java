@@ -91,7 +91,7 @@ public class FilenameTest {
             pkg.setReleaseStatus(rs);
 
             OperatingSystem os;
-            String[]        fileNameParts = fileName.toString().split("_");
+            String[] fileNameParts = fileName.split("_");
             if (fileNameParts.length > 1) {
                 String[] osArchParts = fileNameParts[1].split("-");
                 os = OperatingSystem.fromText(osArchParts[0]);

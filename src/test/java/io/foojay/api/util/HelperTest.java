@@ -19,8 +19,6 @@
 
 package io.foojay.api.util;
 
-import io.foojay.api.CacheManager;
-import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
@@ -35,7 +33,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -176,7 +173,7 @@ public class HelperTest {
     @Test
     public void loadPropertiesTest() {
         try {
-            final String OPEN_JDK_PROPERTIES = "https://github.com/HanSolo/openjdkreleases/raw/main/openjdk.properties";
+            final String OPEN_JDK_PROPERTIES = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk.properties";
             Properties properties = new Properties();
             properties.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PROPERTIES)));
             List<Pkg> pkgs = Distro.ORACLE_OPEN_JDK.get().getPkgFromJson(null, new VersionNumber(16), false, OperatingSystem.NONE,

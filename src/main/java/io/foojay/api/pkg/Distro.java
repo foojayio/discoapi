@@ -21,7 +21,7 @@ package io.foojay.api.pkg;
 
 import io.foojay.api.distribution.AOJ;
 import io.foojay.api.distribution.AOJ_OPENJ9;
-import io.foojay.api.distribution.Adoptium;
+import io.foojay.api.distribution.Temurin;
 import io.foojay.api.distribution.Corretto;
 import io.foojay.api.distribution.Distribution;
 import io.foojay.api.distribution.Dragonwell;
@@ -32,6 +32,7 @@ import io.foojay.api.distribution.LibericaNative;
 import io.foojay.api.distribution.Mandrel;
 import io.foojay.api.distribution.Microsoft;
 import io.foojay.api.distribution.OJDKBuild;
+import io.foojay.api.distribution.OpenLogic;
 import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.distribution.RedHat;
@@ -40,8 +41,11 @@ import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
 import io.foojay.api.util.OutputFormat;
 
+import java.time.Instant;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static io.foojay.api.util.Constants.COLON;
@@ -58,23 +62,24 @@ import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 public enum Distro implements ApiFeature {
-    ADOPTIUM("Adoptium", "adoptium", new Adoptium(), 60),
-    AOJ("AOJ", "aoj", new AOJ(), 30),
-    AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 30),
+    AOJ("AOJ", "aoj", new AOJ(), 60),
+    AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 60),
     CORRETTO("Corretto", "corretto", new Corretto(), 720),
-    DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 720),
+    DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 1440),
     GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 720),
     GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 720),
     LIBERICA("Liberica", "liberica", new Liberica(), 60),
     LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 60),
-    MANDREL("Mandrel", "mandrel", new Mandrel(), 360),
-    MICROSOFT("Microsoft OpenJDK", "microsoft", new Microsoft(), 60),
-    OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 720),
+    MANDREL("Mandrel", "mandrel", new Mandrel(), 1440),
+    MICROSOFT("Microsoft OpenJDK", "microsoft", new Microsoft(), 720),
+    OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 1440),
+    OPEN_LOGIC("OpenLogic", "openlogic", new OpenLogic(), 1440),
     ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 360),
-    ORACLE("Oracle", "oracle", new Oracle(), 60),
+    ORACLE("Oracle", "oracle", new Oracle(), 720),
     RED_HAT("Red Hat", "redhat", new RedHat(), 720),
     SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 720),
-    TRAVA("Trava", "trava", new Trava(), 720),
+    TEMURIN("Temurin", "temurin", new Temurin(), 60),
+    TRAVA("Trava", "trava", new Trava(), 1440),
     ZULU("Zulu", "zulu", new Zulu(), 15),
     NONE("-", "", null, 0),
     NOT_FOUND("", "", null, 0);
@@ -91,6 +96,7 @@ public enum Distro implements ApiFeature {
     private        final String       apiString;
     private        final Distribution distribution;
     private        final int          minUpdateIntervalInMinutes;
+    public  final       AtomicReference<Instant> lastUpdate;
 
 
     Distro(final String uiString, final String apiString, final Distribution distribution, final int minUpdateIntervalInMinutes) {
@@ -98,6 +104,7 @@ public enum Distro implements ApiFeature {
         this.apiString                  = apiString;
         this.distribution               = distribution;
         this.minUpdateIntervalInMinutes = minUpdateIntervalInMinutes;
+        this.lastUpdate                 = new AtomicReference<>();
     }
 
 
@@ -118,10 +125,10 @@ public enum Distro implements ApiFeature {
     public static Distro fromText(final String text) {
         if (null == text) { return NOT_FOUND; }
         switch (text) {
-            case "adoptium":
-            case "Adoptium":
-            case "ADOPTIUM":
-                return ADOPTIUM;
+            case "temurin":
+            case "Temurin":
+            case "TEMURIN":
+                return TEMURIN;
             case "aoj":
             case "AOJ":
                 return AOJ;
@@ -236,6 +243,12 @@ public enum Distro implements ApiFeature {
             case "ojdkbuild":
             case "OJDKBuild":
                 return OJDK_BUILD;
+            case "openlogic":
+            case "OPENLOGIC":
+            case "OpenLogic":
+            case "open_logic":
+            case "OPEN_LOGIC":
+                return OPEN_LOGIC;
             default:
                 return NOT_FOUND;
         }
@@ -253,6 +266,14 @@ public enum Distro implements ApiFeature {
     }
 
     public static List<Distro> getAsList() { return Arrays.asList(values()); }
+
+    public static List<Distro> getAsListWithoutNoneAndNotFound() {
+        return getAsList().stream()
+                          .filter(distro -> Distro.NONE != distro)
+                          .filter(distro -> Distro.NOT_FOUND != distro)
+                          .sorted(Comparator.comparing(Distro::name).reversed())
+                          .collect(Collectors.toList());
+    }
 
     public static List<Distro> getPublicDistros() {
         return Arrays.stream(values())

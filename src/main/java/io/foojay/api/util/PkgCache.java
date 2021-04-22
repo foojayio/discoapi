@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,6 +53,8 @@ public class PkgCache<T extends String, U extends Pkg> implements Cache<T, U> {
     @Override public void remove(final T key) {
         cache.remove(key);
     }
+
+    @Override public void addAll(final Map<T,U> entries) { cache.putAll(entries); }
 
     @Override public void clear() {
         LOGGER.debug("Package cache cleared");

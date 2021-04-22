@@ -19,8 +19,6 @@
 
 package io.foojay.api.distribution;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Architecture;
@@ -36,8 +34,6 @@ import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
-import io.foojay.api.util.Constants;
-import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -57,7 +52,6 @@ import static io.foojay.api.pkg.Architecture.PPC64LE;
 import static io.foojay.api.pkg.Architecture.SPARCV9;
 import static io.foojay.api.pkg.Architecture.X64;
 import static io.foojay.api.pkg.Architecture.X86;
-import static io.foojay.api.pkg.ArchiveType.getFromFileName;
 import static io.foojay.api.pkg.OperatingSystem.AIX;
 import static io.foojay.api.pkg.OperatingSystem.LINUX;
 import static io.foojay.api.pkg.OperatingSystem.MACOS;
@@ -67,12 +61,10 @@ import static io.foojay.api.pkg.PackageType.JDK;
 import static io.foojay.api.pkg.PackageType.JRE;
 import static io.foojay.api.pkg.ReleaseStatus.EA;
 import static io.foojay.api.pkg.ReleaseStatus.GA;
-import static io.foojay.api.pkg.TermOfSupport.MTS;
-import static io.foojay.api.pkg.TermOfSupport.STS;
 
 
-public class Adoptium implements Distribution {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Adoptium.class);
+public class Temurin implements Distribution {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Temurin.class);
 
     private static final String                       PACKAGE_URL            = "https://projects.eclipse.org/projects/adoptium/downloads";
 
@@ -118,7 +110,7 @@ public class Adoptium implements Distribution {
     private static final String        SIGNATURE_URI       = "";
 
 
-    @Override public Distro getDistro() { return Distro.ADOPTIUM; }
+    @Override public Distro getDistro() { return Distro.TEMURIN; }
 
     @Override public String getName() { return getDistro().getUiString(); }
 
@@ -152,7 +144,7 @@ public class Adoptium implements Distribution {
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
-                                             .filter(pkg -> Distro.ADOPTIUM.get().equals(pkg.getDistribution()))
+                                             .filter(pkg -> Distro.TEMURIN.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
                                              .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
     }

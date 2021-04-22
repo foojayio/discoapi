@@ -22,18 +22,15 @@ package io.foojay.api;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import io.foojay.api.distribution.SAPMachine;
-import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.EphemeralIdCache;
 import io.foojay.api.util.Helper;
+import io.foojay.api.util.NamedThreadFactory;
 import io.foojay.api.util.PkgCache;
 import io.micronaut.context.annotation.Requires;
 import io.micronaut.context.env.Environment;
@@ -43,28 +40,34 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static io.foojay.api.util.Constants.SENTINEL_PKG_ID;
@@ -74,13 +77,17 @@ import static io.foojay.api.util.Constants.SENTINEL_PKG_ID;
 public enum CacheManager {
     INSTANCE;
 
-    private static final Logger                           LOGGER                     = LoggerFactory.getLogger(CacheManager.class);
-    private static       ExecutorService                  executor                   = Executors.newSingleThreadExecutor();
-    private static       CompletionService<List<Pkg>>     service                    = new ExecutorCompletionService<>(executor);
-
-    public final         PkgCache<String, Pkg>            pkgCache                   = new PkgCache<>();
-    public final         EphemeralIdCache<String, String> ephemeralIdCache           = new EphemeralIdCache<>();
-    public  final        Map<Integer, Boolean>            maintainedMajorVersions    = new ConcurrentHashMap<>(){{
+    private static final Logger                           LOGGER                        = LoggerFactory.getLogger(CacheManager.class);
+    private static final String                           CHECK_FUTURE_STATUS_KEY       = "checkFutureStatus";
+    private static final String                           UPDATE_EPHEMERAL_ID_CACHE_KEY = "updateEphemeralIdCache";
+    private static final String                           REMOVE_SENTINEL_PKG_KEY       = "removeSentinelPkg";
+    private static final String                           CLEANUP_PKG_CACHE_KEY         = "cleanupPkgCache";
+    private static final String                           UPDATE_ALL_DISTROS            = "updateAllDistros";
+    private final        ScheduledThreadPoolExecutor      scheduledExecutor             = new ScheduledThreadPoolExecutor(4);
+    private final        Map<String, ScheduledFuture<?>>  futures                       = new ConcurrentHashMap<>();
+    public final         PkgCache<String, Pkg>            pkgCache                      = new PkgCache<>();
+    public final         EphemeralIdCache<String, String> ephemeralIdCache              = new EphemeralIdCache<>();
+    public final         Map<Integer, Boolean>            maintainedMajorVersions       = new ConcurrentHashMap<>() {{
         put(1, false);
         put(2, false);
         put(3, false);
@@ -95,31 +102,47 @@ public enum CacheManager {
         put(12, false);
         put(13, true);
         put(14, false);
-        put(15, true);
+        put(15, false);
         put(16, true);
         put(17, true);
     }};
-    public               AtomicBoolean                    initialized                = new AtomicBoolean(false);
-    public               AtomicBoolean                    pkgCacheIsUpdating         = new AtomicBoolean(false);
-    public               AtomicBoolean                    ephemeralIdCacheIsUpdating = new AtomicBoolean(false);
-    public               AtomicBoolean                    cleaning                   = new AtomicBoolean(false);
-    private final        Map<Distro, Integer>             updateMinuteCounters         = new ConcurrentHashMap<>();
-    private final        Map<String, Pkg>                 deltaPkgs                  = new ConcurrentHashMap<>();
-    private final        List<MajorVersion>               majorVersions              = new LinkedList<>();
+    public               AtomicBoolean                    initialized                   = new AtomicBoolean(false);
+    public               AtomicBoolean                    loadingPkgCache               = new AtomicBoolean(false);
+    public               AtomicBoolean                    ephemeralIdCacheIsUpdating    = new AtomicBoolean(false);
+    public               AtomicBoolean                    cleaning                      = new AtomicBoolean(false);
+    public               AtomicBoolean                    updateInProgress              = new AtomicBoolean(false);
+    public               AtomicLong                       msToGetAllPkgsFromDB          = new AtomicLong(-1);
+    public               AtomicReference<Duration>        durationForLastUpdateRun      = new AtomicReference();
+    public               AtomicInteger                    distrosUpdatedInLastRun       = new AtomicInteger(-1);
+    public               AtomicInteger                    numberOfPackages              = new AtomicInteger(-1);
+    private final        List<MajorVersion>               majorVersions                 = new LinkedList<>();
+    public               AtomicReference<LocalDateTime>   lastSentinelRemoved           = new AtomicReference<>();
 
 
     CacheManager() {
-        Arrays.stream(Distro.values())
-              .filter(distro -> Distro.NONE != distro)
-              .filter(distro -> Distro.NOT_FOUND != distro)
-              .forEach(distro -> updateMinuteCounters.put(distro, 720));
+        NamedThreadFactory namedThreadFactory = new NamedThreadFactory("CacheManager");
+        scheduledExecutor.setRemoveOnCancelPolicy(true);
+        scheduledExecutor.setThreadFactory(namedThreadFactory);
+        scheduledExecutor.setKeepAliveTime(60, TimeUnit.SECONDS);
+        scheduledExecutor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+        scheduledExecutor.setMaximumPoolSize(8);
+        scheduleTasks();
     }
 
+
+    public void scheduleTasks() {
+        futures.put(CHECK_FUTURE_STATUS_KEY, scheduledExecutor.scheduleWithFixedDelay(() -> checkFutureStatus(), 60, 5, TimeUnit.MINUTES));
+        futures.put(UPDATE_EPHEMERAL_ID_CACHE_KEY, scheduledExecutor.scheduleWithFixedDelay(() -> updateEphemeralIdCache(), 10, 10, TimeUnit.MINUTES));
+        futures.put(REMOVE_SENTINEL_PKG_KEY, scheduledExecutor.scheduleWithFixedDelay(() -> removeSentinelPkg(), 120, 120, TimeUnit.MINUTES));
+        futures.put(CLEANUP_PKG_CACHE_KEY, scheduledExecutor.scheduleWithFixedDelay(() -> cleanupPkgCache(), 12420, 12420, TimeUnit.MINUTES));
+        futures.put(UPDATE_ALL_DISTROS, scheduledExecutor.scheduleWithFixedDelay(() -> updateAllDistros(), 3, 5, TimeUnit.MINUTES));
+    }
 
     public boolean isInitialized() { return initialized.get(); }
 
     public boolean preloadPkgCache() {
         try {
+            loadingPkgCache.set(true);
             final long start = System.currentTimeMillis();
 
             List<Pkg> pkgsFromMongoDb = new ArrayList<>();
@@ -150,189 +173,167 @@ public enum CacheManager {
             }
             updateEphemeralIdCache();
             initialized.set(true);
+            loadingPkgCache.set(false);
             return true;
         } catch (IOException e) {
             LOGGER.error("Error loading packages from json file. {}", e.getMessage());
+            loadingPkgCache.set(false);
             return false;
         }
     }
 
-    public void updatePkgCache() {
-        LOGGER.debug("Updating cache and release variables and store downloads");
-
-        // Pre-Load cache if it is empty
-        if (pkgCache.isEmpty()) { preloadPkgCache(); }
-
-        if (executor.isShutdown()) {
-            try {
-                executor.awaitTermination(30, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                LOGGER.error("Executor termination interrupted");
-            }
-        }
-        if (executor.isTerminated()) {
-            LOGGER.debug("Executor is terminated and will be reinitialized");
-            executor = Executors.newSingleThreadExecutor();
-            service  = new ExecutorCompletionService<>(executor);
-            pkgCacheIsUpdating.set(false);
-        }
-
-        long start = System.currentTimeMillis();
-        LOGGER.debug("Started updating package cache");
-        pkgCacheIsUpdating.set(true);
-
-        List<Pkg> pkgs = new ArrayList<>(); // contains all packages found
-        try {
-            List<Callable<List<Pkg>>> callables = new ArrayList<>();
-
-            // Update packages only if the updateMinuteCounter for each distro == the minUpdateIntervalInMinutes of that distro
-            // Increase all counters by 1 on each update call
-            Arrays.stream(Distro.values())
-                  .filter(distro -> Distro.NONE != distro)
-                  .filter(distro -> Distro.NOT_FOUND != distro)
-                  .forEach(distro -> {
-                      LOGGER.debug("Update minute counter for distro {} -> {}", distro.name(), updateMinuteCounters.get(distro));
-                      updateMinuteCounters.computeIfPresent(distro, (k, v) -> v + 1);
-            });
-
-            // Only update the distros where the counter == minUpdateIntervalInMinutes
-            Arrays.stream(Distro.values())
-                  .filter(distro -> distro != Distro.NONE)
-                  .filter(distro -> distro != Distro.NOT_FOUND)
-                  .forEach(distro -> {
-                      if (updateMinuteCounters.get(distro) >= distro.getMinUpdateIntervalInMinutes()) {
-                            callables.add(Helper.createTask(distro));
-                          LOGGER.debug("Adding package fetch task to callables for {}", distro.name());
-                          updateMinuteCounters.put(distro, 0);
-                          LOGGER.debug("Reset minute counter for distro {} -> {}", distro.name(), updateMinuteCounters.get(distro));
-                }
-            });
-
-            LOGGER.debug("Number of distros to update {}", callables.size());
-
-            for (final Callable<List<Pkg>> callable : callables) { service.submit(callable); }
-
-            executor.shutdown();
-            while (!executor.isTerminated()) {
+    public void updateAllDistros() {
+        if (updateInProgress.get()) { return; }
+        final Instant updateAllDistrosStart = Instant.now();
+        updateInProgress.set(true);
+        AtomicInteger counter = new AtomicInteger(0);
+        final ExecutorService singleThreadExecutor = Executors.newSingleThreadExecutor();
+        Distro.getAsListWithoutNoneAndNotFound().forEach(distro -> {
+            final Instant lastDownloadForDistro = MongoDbManager.INSTANCE.getLastDownloadForDistro(distro);
+            final double  delta                 = (lastDownloadForDistro.until(Instant.now(), ChronoUnit.MINUTES));
+            if (delta > distro.getMinUpdateIntervalInMinutes()) {
+                final List<Pkg>         pkgsFound = new CopyOnWriteArrayList<>();
+                final Future<List<Pkg>> future    = singleThreadExecutor.submit(Helper.createTask(distro));
                 try {
-                    pkgs.addAll(service.take().get());
+                    pkgsFound.addAll(future.get());
                 } catch (CompletionException | ExecutionException | InterruptedException e) {
-                    LOGGER.error("Error adding fetched packages to cache. {}", e.getMessage());
-                }
-            }
-        } finally {
-            executor.shutdownNow();
-        }
-
-        pkgs.forEach(pkg -> {
-            if (ArchiveType.NOT_FOUND == pkg.getArchiveType()) {
-                pkg.setArchiveType(ArchiveType.getFromFileName(pkg.getFileName()));
-            }
-            if (TermOfSupport.NOT_FOUND == pkg.getTermOfSupport()) {
-                pkg.setTermOfSupport(Helper.getTermOfSupport(pkg.getVersionNumber(), Distro.valueOf(pkg.getDistribution().getDistro().getName())));
-            }
-
-            if (!pkgCache.containsKey(pkg.getId()) && !deltaPkgs.containsKey(pkg.getId())) {
-                if (ReleaseStatus.EA == pkg.getReleaseStatus()) {
-                    pkg.setLatestBuildAvailable(true);
+                    LOGGER.error("Error adding fetched packages for {} to cache. {}", distro.name(), e.getMessage());
                 }
 
-                List<Pkg> otherPkgs = deltaPkgs.values()
-                                               .stream()
-                                               .filter(p -> p.getDistribution().equals(pkg.getDistribution()))
-                                               .filter(p -> p.getFeatureVersion().getAsInt() == pkg.getFeatureVersion().getAsInt())
-                                               .filter(p -> p.getOperatingSystem()           == pkg.getOperatingSystem())
-                                               .filter(p -> p.getArchiveType()               == pkg.getArchiveType())
-                                               .filter(p -> p.getArchitecture()              == pkg.getArchitecture())
-                                               .filter(p -> p.getPackageType()               == pkg.getPackageType())
-                                               .filter(p -> p.getReleaseStatus()             == pkg.getReleaseStatus())
-                                               .collect(Collectors.toList());
-
-                if (!otherPkgs.isEmpty()) {
-                    otherPkgs.forEach(p -> {
-                        if (p.getVersionNumber().compareTo(pkg.getVersionNumber()) < 0) {
-                            p.setLatestBuildAvailable(false);
-                        } else {
-                            pkg.setLatestBuildAvailable(false);
+                // Find delta between found and existing packages
+                final Map<String, Pkg> deltaPkgs = new ConcurrentHashMap<>();
+                pkgsFound.forEach(pkg -> {
+                    if (!pkgCache.containsKey(pkg.getId()) && !deltaPkgs.containsKey(pkg.getId())) {
+                        if (ReleaseStatus.EA == pkg.getReleaseStatus()) {
+                            pkg.setLatestBuildAvailable(true);
                         }
-                    });
-                }
-                deltaPkgs.put(pkg.getId(), pkg);
-            } else {
-                // Default value for latest_build_available is false.
-                // Therefore we need to set the latest_build_available for all pks found to the value from the cache
-                pkg.setLatestBuildAvailable(pkgCache.get(pkg.getId()).isLatestBuildAvailable());
-            }
-        });
 
-        // Check for each pkg in deltaPkgs if new version or new build and Update packages in pkgCache
-        List<Pkg> pkgsToUpdate = new ArrayList<>();
-        deltaPkgs.entrySet().forEach(entry -> {
-            List<Pkg> differentBuilds = Helper.getAllBuildsOfPackage(entry.getValue());
-            if (differentBuilds.isEmpty()) {
-                // New version
-                Optional<Pkg> pkgWithMaxVersionOptional = Helper.getPkgWithMaxVersionForGivenPackage(entry.getValue());
-                if (pkgWithMaxVersionOptional.isPresent()) {
-                    Pkg pkgWithMaxVersion = pkgWithMaxVersionOptional.get();
-                    if (pkgWithMaxVersion.isLatestBuildAvailable() && pkgWithMaxVersion.getReleaseStatus() == entry.getValue().getReleaseStatus()) {
-                        pkgsToUpdate.add(pkgWithMaxVersion);
+                        List<Pkg> otherPkgs = deltaPkgs.values()
+                                                       .stream()
+                                                       .filter(p -> p.getDistribution().equals(pkg.getDistribution()))
+                                                       .filter(p -> p.getFeatureVersion().getAsInt() == pkg.getFeatureVersion().getAsInt())
+                                                       .filter(p -> p.getOperatingSystem() == pkg.getOperatingSystem())
+                                                       .filter(p -> p.getArchiveType() == pkg.getArchiveType())
+                                                       .filter(p -> p.getArchitecture() == pkg.getArchitecture())
+                                                       .filter(p -> p.getPackageType() == pkg.getPackageType())
+                                                       .filter(p -> p.getReleaseStatus() == pkg.getReleaseStatus())
+                                                       .collect(Collectors.toList());
+
+                        if (!otherPkgs.isEmpty()) {
+                            otherPkgs.forEach(p -> {
+                                if (p.getVersionNumber().compareTo(pkg.getVersionNumber()) < 0) {
+                                    p.setLatestBuildAvailable(false);
+                                } else {
+                                    pkg.setLatestBuildAvailable(false);
+                                }
+                            });
+                        }
+                        deltaPkgs.put(pkg.getId(), pkg);
+                    } else {
+                        // Default value for latest_build_available is false.
+                        // Therefore we need to set the latest_build_available for all pks found to the value from the cache
+                        pkg.setLatestBuildAvailable(pkgCache.get(pkg.getId()).isLatestBuildAvailable());
                     }
-                }
-            } else {
-                // New build of existing package
-                pkgsToUpdate.addAll(differentBuilds.stream()
-                                                   .filter(pkg -> pkg.getReleaseStatus() == entry.getValue().getReleaseStatus())
-                                                   .filter(pkg -> pkg.isLatestBuildAvailable())
-                                                   .collect(Collectors.toList()));
+                });
+
+                // Check for each pkg in deltaPkgs if new version or new build and Update packages in pkgCache
+                List<Pkg> pkgsToUpdate = new ArrayList<>();
+                deltaPkgs.entrySet().forEach(entry -> {
+                    List<Pkg> differentBuilds = Helper.getAllBuildsOfPackage(entry.getValue());
+                    if (differentBuilds.isEmpty()) {
+                        // New version
+                        Optional<Pkg> pkgWithMaxVersionOptional = Helper.getPkgWithMaxVersionForGivenPackage(entry.getValue());
+                        if (pkgWithMaxVersionOptional.isPresent()) {
+                            Pkg pkgWithMaxVersion = pkgWithMaxVersionOptional.get();
+                            if (pkgWithMaxVersion.isLatestBuildAvailable() && pkgWithMaxVersion.getReleaseStatus() == entry.getValue().getReleaseStatus()) {
+                                pkgsToUpdate.add(pkgWithMaxVersion);
             }
-        });
-        pkgsToUpdate.forEach(pkg -> pkg.setLatestBuildAvailable(false));
+        }
+                    } else {
+                        // New build of existing package
+                        pkgsToUpdate.addAll(differentBuilds.stream()
+                                                           .filter(pkg -> pkg.getReleaseStatus() == entry.getValue().getReleaseStatus())
+                                                           .filter(pkg -> pkg.isLatestBuildAvailable())
+                                                           .collect(Collectors.toList()));
+        }
+                });
+                pkgsToUpdate.forEach(pkg -> pkg.setLatestBuildAvailable(false));
 
-        // Finally add all new packages to pkgCache
-        pkgs.forEach(pkg -> pkgCache.add(pkg.getId(), pkg));
+                // Finally add all new packages to pkgCache
+                pkgsFound.forEach(pkg -> pkgCache.add(pkg.getId(), pkg));
 
-        // Add the delta to mongodb
-        if (!deltaPkgs.isEmpty()) {
-            // Insert new packages into database
-            boolean successfullyAddedToMongoDb = MongoDbManager.INSTANCE.addNewPkgs(deltaPkgs.values());
-            if (successfullyAddedToMongoDb) { deltaPkgs.clear(); }
+                // Add the delta to mongodb
+                if (!deltaPkgs.isEmpty()) {
+                    // Insert new packages into database
+                    boolean successfullyAddedToMongoDb = MongoDbManager.INSTANCE.addNewPkgs(deltaPkgs.values());
+                    LOGGER.debug(successfullyAddedToMongoDb ? "Successfuly added new packages from " + distro.name() + " to mongodb" : "Failed adding new packages from " + distro.name() + " to mongodb");
+                    deltaPkgs.clear();
+                }
+                if (Distro.getDistributionsBasedOnOpenJDK().contains(distro)) {
+                    updateLatestBuild(ReleaseStatus.GA);
+                    updateLatestBuild(ReleaseStatus.EA);
+                    LOGGER.info("Latest build info updated for GA and EA releases with Java version number in package cache.");
+                }
+
+                // Check latest builds for GraalVM based distros and set latest_build_available=true
+                if (Distro.getDistributionsBasedOnGraalVm().contains(distro)) {
+                    for (int i = 19; i <= 40; i++) {
+                        int featureVersion = i;
+                        Distro.getDistributions()
+                              .stream()
+                              .filter(distribution -> distribution.getDistro() == Distro.GRAALVM_CE8 || distribution.getDistro() == Distro.GRAALVM_CE11 ||
+                                                      distribution.getDistro() == Distro.LIBERICA_NATIVE || distribution.getDistro() == Distro.MANDREL)
+                              .forEach(distribution -> {
+                                  Optional<Pkg> pkgWithMaxVersion = pkgsFound.stream()
+                                                                        .filter(pkg -> pkg.getDistribution().getDistro() == distribution.getDistro())
+                                                                        .filter(pkg -> featureVersion == pkg.getJavaVersion().getFeature().getAsInt())
+                                                                        .filter(pkg -> ReleaseStatus.GA == pkg.getReleaseStatus())
+                                                                        .max(Comparator.comparing(Pkg::getJavaVersion));
+                                  if (pkgWithMaxVersion.isPresent()) {
+                                      SemVer maxVersion = pkgWithMaxVersion.get().getSemver();
+                                      pkgsFound.stream()
+                                          .filter(pkg -> pkg.getDistribution().getDistro() == distribution.getDistro())
+                                          .filter(pkg -> maxVersion.compareTo(pkg.getSemver()) == 0)
+                                          .forEach(pkg -> pkg.setLatestBuildAvailable(true));
+                                  }
+            });
+                    }
+                    LOGGER.debug("\"Latest build info updated for GraalVM based distros in package cache.");
+                }
+
+                // Synchronize latestBuildAvailable in mongodb database with cache
+                MongoDbManager.INSTANCE.syncLatestBuildAvailableInDatabaseWithCache(pkgCache.getPkgs());
+
+                MongoDbManager.INSTANCE.setLastDownloadForDistro(distro);
+
+                distro.lastUpdate.set(Instant.now());
+                counter.incrementAndGet();
+                }
+            });
+
+        singleThreadExecutor.shutdown();
+        try {
+            if (!singleThreadExecutor.awaitTermination(1000, TimeUnit.MILLISECONDS)) {
+                singleThreadExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            singleThreadExecutor.shutdownNow();
         }
 
-        updateLatestBuild(ReleaseStatus.GA);
-        updateLatestBuild(ReleaseStatus.EA);
-        LOGGER.info("Latest build info updated for GA and EA releases with Java version number in package cache.");
+        LOGGER.debug("Synchronizing local cache from mongodb");
+        final long startGettingAllPkgsFromMongoDb = System.currentTimeMillis();
+        List<Pkg> pkgsFromMongoDb = MongoDbManager.INSTANCE.getPkgs();
+        msToGetAllPkgsFromDB.set(System.currentTimeMillis() - startGettingAllPkgsFromMongoDb);
+        numberOfPackages.set(pkgsFromMongoDb.size());
+        
+        Map<String, Pkg> pkgsToAdd = pkgsFromMongoDb.stream()
+                                                    .filter(pkg -> !pkgCache.containsKey(pkg.getId()))
+                                                    .collect(Collectors.toMap(Pkg::getId, pkg -> pkg));
+        pkgCache.addAll(pkgsToAdd);
 
-        // Check latest builds for GraalVM based distros and set latest_build_available=true
-        for (int i = 19 ; i <= 40 ; i++) {
-            int featureVersion = i;
-            Distro.getDistributions()
-                  .stream()
-                  .filter(distribution -> distribution.getDistro() == Distro.GRAALVM_CE8 ||
-                                          distribution.getDistro() == Distro.GRAALVM_CE11 ||
-                                          distribution.getDistro() == Distro.LIBERICA_NATIVE ||
-                                          distribution.getDistro() == Distro.MANDREL)
-                  .forEach(distribution -> {
-                      Optional<Pkg> pkgWithMaxVersion = pkgs.stream()
-                                                            .filter(pkg -> pkg.getDistribution().getDistro() == distribution.getDistro())
-                                                            .filter(pkg -> featureVersion   == pkg.getJavaVersion().getFeature().getAsInt())
-                                                            .filter(pkg -> ReleaseStatus.GA == pkg.getReleaseStatus())
-                                                            .max(Comparator.comparing(Pkg::getJavaVersion));
-                      if (pkgWithMaxVersion.isPresent()) {
-                          SemVer maxVersion = pkgWithMaxVersion.get().getSemver();
-                          pkgs.stream()
-                              .filter(pkg  -> pkg.getDistribution().getDistro() == distribution.getDistro())
-                              .filter(pkg  -> maxVersion.compareTo(pkg.getSemver()) == 0)
-                              .forEach(pkg -> pkg.setLatestBuildAvailable(true));
-                      }
-                  });
-        }
-        LOGGER.debug("\"Latest build info updated for GraalVM based distros in package cache.");
-
-        // Synchronize latestBuildAvailable in mongodb database with cache
-        MongoDbManager.INSTANCE.syncLatestBuildAvailableInDatabaseWithCache(pkgCache.getPkgs());
-
-        LOGGER.debug("Cache updated in {} ms, no of packages in cache {}", (System.currentTimeMillis() - start), pkgCache.size());
-        pkgCacheIsUpdating.set(false);
+        distrosUpdatedInLastRun.set(counter.get());
+        durationForLastUpdateRun.set(Duration.between(updateAllDistrosStart, Instant.now()));
+        updateInProgress.set(false);
     }
 
     public void updateEphemeralIdCache() {
@@ -355,16 +356,6 @@ public enum CacheManager {
     public void updateMajorVersions() {
         LOGGER.debug("Updating major versions");
         // Update all available major versions (exclude GraalVM based pkgs because they have different version numbers)
-        /*
-        while(CacheManager.INSTANCE.pkgCacheIsUpdating.get()) {
-            try {
-                TimeUnit.SECONDS.sleep(1);
-                LOGGER.debug("Waiting for updating package cache");
-            } catch(InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        */
         majorVersions.clear();
         majorVersions.addAll(pkgCache.getPkgs()
                                      .stream()
@@ -399,7 +390,11 @@ public enum CacheManager {
         LOGGER.debug("Updating maintained major versions");
         final Properties maintainedProperties = new Properties();
         try {
-            maintainedProperties.load(new StringReader(Helper.getTextFromUrl(Constants.MAINTAINED_PROPERTIES_URL)));
+            HttpResponse<String> response = Helper.get(Constants.MAINTAINED_PROPERTIES_URL);
+            if (null == response) { return; }
+            String maintainedPropertiesText = response.body();
+            if (null == maintainedPropertiesText) { return; }
+            maintainedProperties.load(new StringReader(maintainedPropertiesText));
             maintainedProperties.entrySet().forEach(entry -> {
                 Integer majorVersion = Integer.valueOf(entry.getKey().toString().replaceAll("jdk-", ""));
                 Boolean maintained   = Boolean.valueOf(entry.getValue().toString().toLowerCase());
@@ -414,7 +409,7 @@ public enum CacheManager {
     public void cleanupPkgCache() {
         LOGGER.debug("Cleanup cache and update database (every 3h27m)");
 
-        if (cleaning.get() || pkgCacheIsUpdating.get()) { return; }
+        if (cleaning.get()) { return; }
         final long start = System.currentTimeMillis();
         LOGGER.debug("Started cleaning up the cache");
         cleaning.set(true);
@@ -493,167 +488,10 @@ public enum CacheManager {
 
     public void removeSentinelPkg() {
         if (pkgCache.containsKey(SENTINEL_PKG_ID)) {
-            while(pkgCacheIsUpdating.get()) {
-                try {
-                    TimeUnit.SECONDS.sleep(1);
-                    LOGGER.debug("Waiting for updating package cache");
-                } catch(InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
             pkgCache.remove(SENTINEL_PKG_ID);
             LOGGER.debug("Sentinel pkg was removed from cache and should be available after next update of cache");
+            lastSentinelRemoved.set(LocalDateTime.now());
         }
-    }
-
-    private void updateDistributionSpecificLatestBuild() {
-        final int maxMajorVersionAvailable = getMajorVersions().get(0).getAsInt();
-
-        // Update packages with latest builds in cache
-        List<Pkg> maxVersions = new LinkedList<>();
-        Distro.getDistributions().forEach(distribution -> {
-            for (int i = 6 ; i <= maxMajorVersionAvailable ; i++) {
-                VersionNumber versionNumber = new VersionNumber(i);
-
-                final VersionNumber maxNumber;
-                int featureVersion = versionNumber.getFeature().getAsInt();
-                Optional<Pkg> pkgWithMaxVersionNumber = CacheManager.INSTANCE.pkgCache.getPkgs()
-                                                                                      .stream()
-                                                                                      .filter(pkg -> pkg.getDistribution().equals(distribution))
-                                                                                      .filter(pkg -> featureVersion   == pkg.getVersionNumber().getFeature().getAsInt())
-                                                                                      .max(Comparator.comparing(Pkg::getJavaVersion));
-                if (pkgWithMaxVersionNumber.isPresent()) {
-                    maxNumber = pkgWithMaxVersionNumber.get().getVersionNumber();
-                maxVersions.addAll(CacheManager.INSTANCE.pkgCache.getPkgs()
-                                                                 .stream()
-                                                                 .filter(pkg -> pkg.getDistribution().equals(distribution))
-                                                                 .filter(pkg -> pkg.getVersionNumber().compareTo(maxNumber) == 0)
-                                                                 .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getVersionNumber).reversed()))
-                                                                 .collect(Collectors.toList()));
-            }
-            }
-        });
-
-        List<Pkg>          latestBuilds   = new LinkedList<>();
-        LinkedHashSet<Pkg> multipleBuilds = new LinkedHashSet<>();
-        maxVersions.forEach(pkg -> {
-            List<Pkg> allBuildsOfPkg = Helper.getAllBuildsOfPackage(pkg);
-            if (allBuildsOfPkg.isEmpty()) {
-                latestBuilds.add(pkg);
-            } else {
-                multipleBuilds.addAll(allBuildsOfPkg);
-            }
-        });
-
-        // Check multiple builds per distro for latest build and set latest_build_available=true
-        for (int i = 6 ; i <= maxMajorVersionAvailable ; i++) {
-            int featureVersion = i;
-            // Corretto
-            Optional<Pkg> pkgWithMaxBuildNumberCorretto = multipleBuilds.stream()
-                                                                        .filter(p -> p.getDistributionName().equals(Distro.CORRETTO.getName()))
-                                                                        .filter(pkg -> featureVersion   == pkg.getVersionNumber().getFeature().getAsInt())
-                                                                        .max(Comparator.comparing(Pkg::getDistributionVersion));
-            if (pkgWithMaxBuildNumberCorretto.isPresent()) {
-                VersionNumber maxBuildNumber = pkgWithMaxBuildNumberCorretto.get().getDistributionVersion();
-                pkgCache.getPkgs()
-                        .stream()
-                        .filter(p -> p.getDistributionName().equals(Distro.CORRETTO.getName()))
-                        .filter(pkg -> pkg.getDistributionVersion().compareTo(maxBuildNumber) == 0)
-                        .forEach(pkg -> pkg.setLatestBuildAvailable(true));
-            }
-
-            // SAP Machine
-            Optional<Pkg> pkgWithMaxVersionNumberSapMachine = multipleBuilds.stream()
-                                                                            .filter(p -> p.getDistributionName().equals(Distro.SAP_MACHINE.getName()))
-                                                                            .filter(pkg -> featureVersion   == pkg.getVersionNumber().getFeature().getAsInt())
-                                                                            .max(Comparator.comparing(Pkg::getJavaVersion));
-            if (pkgWithMaxVersionNumberSapMachine.isPresent()) {
-                VersionNumber maxVersionNumber = pkgWithMaxVersionNumberSapMachine.get().getVersionNumber();
-                List<Pkg> maxVersionsSapMachine = pkgCache.getPkgs()
-                                                          .stream()
-                                                          .filter(p -> p.getDistributionName().equals(Distro.SAP_MACHINE.getName()))
-                                                          .filter(pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) == 0)
-                                                          .collect(Collectors.toList());
-
-                Matcher           eaMatcher = SAPMachine.SAP_MACHINE_EA_PATTERN.matcher("");
-                Map<Pkg, Integer> map       = new HashMap<>();
-                maxVersionsSapMachine.forEach(pkg -> {
-                    eaMatcher.reset(pkg.getFileName());
-                    if (eaMatcher.find()) {
-                        if (eaMatcher.groupCount() >= 2) {
-                            if (Helper.isPositiveInteger(eaMatcher.group(2))) {
-                                map.put(pkg, Integer.valueOf(eaMatcher.group(2)));
-                            }
-                        }
-                    }
-                });
-                if (!map.isEmpty()) {
-                    Integer maxBuild = map.entrySet()
-                                          .stream()
-                                          .max(Comparator.comparingInt(entry -> entry.getValue()))
-                                          .get()
-                                          .getValue();
-                    map.entrySet()
-                       .stream()
-                       .filter(entry -> entry.getValue() == maxBuild)
-                       .map(entry -> entry.getKey())
-                       .forEach(pkg -> pkg.setLatestBuildAvailable(true));
-                }
-            }
-
-            // Zulu
-            Optional<Pkg> pkgWithMaxBuildNumberZulu = multipleBuilds.stream()
-                                                                    .filter(p -> p.getDistributionName().equals(Distro.ZULU.getName()))
-                                                                    .filter(pkg -> featureVersion == pkg.getVersionNumber().getFeature().getAsInt())
-                                                                    .max(Comparator.comparing(Pkg::getDistributionVersion));
-            if (pkgWithMaxBuildNumberZulu.isPresent()) {
-                VersionNumber maxBuildNumber = pkgWithMaxBuildNumberZulu.get().getDistributionVersion();
-
-                pkgCache.getPkgs()
-                        .stream()
-                        .filter(p -> p.getDistributionName().equals(Distro.ZULU.getName()))
-                        .filter(pkg -> pkg.getDistributionVersion().compareTo(maxBuildNumber) == 0)
-                        .forEach(pkg -> pkg.setLatestBuildAvailable(true));
-            }
-        }
-
-        // Check latest builds per distro and set latest_build_available=true
-        for (int i = 6 ; i <= maxMajorVersionAvailable ; i++) {
-            int featureVersion = i;
-            Distro.getDistributions().forEach(distribution -> {
-                // Set all latest general availability builds to latest_build_available=true
-                Optional<Pkg> pkgWithMaxVersionGA = latestBuilds.stream()
-                                                                .filter(pkg -> pkg.getDistributionName().equals(distribution.getDistro().getName()))
-                                                                .filter(pkg -> featureVersion   == pkg.getVersionNumber().getFeature().getAsInt())
-                                                                .filter(pkg -> ReleaseStatus.GA == pkg.getReleaseStatus())
-                                                                .max(Comparator.comparing(Pkg::getJavaVersion));
-                if (pkgWithMaxVersionGA.isPresent()) {
-                    SemVer maxGaVersion = pkgWithMaxVersionGA.get().getSemver();
-                    latestBuilds.stream()
-                                .filter(pkg  -> pkg.getDistributionName().equals(distribution.getDistro().getName()))
-                                .filter(pkg  -> maxGaVersion.compareTo(pkg.getSemver()) == 0)
-                                .forEach(pkg -> pkg.setLatestBuildAvailable(true));
-                }
-
-
-                // Set all latest early access builds to latest_build_available=true
-                Optional<Pkg> pkgWithMaxVersionEA = latestBuilds.stream()
-                                                                .filter(pkg -> pkg.getDistributionName().equals(distribution.getDistro().getName()))
-                                                                .filter(pkg -> featureVersion   == pkg.getVersionNumber().getFeature().getAsInt())
-                                                                .filter(pkg -> ReleaseStatus.EA == pkg.getReleaseStatus())
-                                                                .max(Comparator.comparing(Pkg::getJavaVersion));
-                if (pkgWithMaxVersionEA.isPresent()) {
-                    SemVer maxEaVersion = pkgWithMaxVersionEA.get().getSemver();
-                    latestBuilds.stream()
-                                .filter(pkg  -> pkg.getDistributionName().equals(distribution.getDistro().getName()))
-                                .filter(pkg  -> maxEaVersion.equalTo(pkg.getSemver()))
-                                .forEach(pkg -> pkg.setLatestBuildAvailable(true));
-                }
-            });
-
-        }
-
-        LOGGER.debug("Updated latest build available for all packages.");
     }
 
     private void updateLatestBuild(final ReleaseStatus releaseStatus) {
@@ -687,5 +525,24 @@ public enum CacheManager {
             updateMajorVersions();
         }
         return majorVersions;
+    }
+
+    public void checkFutureStatus() {
+        // Check for futures that have been canceled or that are done and re-schedule them
+        final LocalDateTime now = LocalDateTime.now();
+        futures.entrySet().stream().forEach(entry -> {
+            final String key = entry.getKey();
+            if (entry.getValue().isCancelled() || entry.getValue().isDone()) {
+                if (key.equals(UPDATE_EPHEMERAL_ID_CACHE_KEY)) {
+                    futures.put(UPDATE_EPHEMERAL_ID_CACHE_KEY, scheduledExecutor.scheduleWithFixedDelay(() -> updateEphemeralIdCache(), 10, 10, TimeUnit.MINUTES));
+                } else if (key.equals(REMOVE_SENTINEL_PKG_KEY)) {
+                    futures.put(REMOVE_SENTINEL_PKG_KEY, scheduledExecutor.scheduleWithFixedDelay(() -> removeSentinelPkg(), 5, 120, TimeUnit.MINUTES));
+                } else if (key.equals(CLEANUP_PKG_CACHE_KEY)) {
+                    futures.put(CLEANUP_PKG_CACHE_KEY, scheduledExecutor.scheduleWithFixedDelay(() -> cleanupPkgCache(), 10, 12420, TimeUnit.MINUTES));
+                } else if (key.equals(UPDATE_ALL_DISTROS)) {
+                    futures.put(UPDATE_ALL_DISTROS, scheduledExecutor.scheduleWithFixedDelay(() -> updateAllDistros(), 1, 5, TimeUnit.MINUTES));
+                    }
+            }
+        });
     }
 }

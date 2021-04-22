@@ -158,6 +158,11 @@ public class OJDKBuild implements Distribution {
             supTerm = Helper.getTermOfSupport(versionNumber, Distro.OJDK_BUILD);
         }
 
+        if (jsonObj.has("message")) {
+            LOGGER.debug("Github rate limit reached when trying to get packages for OJDK Build {}", versionNumber);
+            return pkgs;
+        }
+
         JsonArray assets = jsonObj.getAsJsonArray("assets");
         for (JsonElement element : assets) {
             JsonObject assetJsonObj = element.getAsJsonObject();
@@ -285,12 +290,12 @@ public class OJDKBuild implements Distribution {
                 HttpClient  client  = HttpClient.newBuilder()
                                                 .followRedirects(Redirect.NORMAL)
                                                 .version(java.net.http.HttpClient.Version.HTTP_2)
-                                                .connectTimeout(Duration.ofSeconds(10))
+                                                .connectTimeout(Duration.ofSeconds(20))
                                                 .build();
                 HttpRequest request = HttpRequest.newBuilder()
                                                  .uri(URI.create(query))
                                                  .setHeader("User-Agent", "DiscoAPI")
-                                                 .timeout(Duration.ofSeconds(30))
+                                                 .timeout(Duration.ofSeconds(60))
                                                  .GET()
                                                  .build();
                 try {

@@ -30,6 +30,7 @@ import io.foojay.api.distribution.Distribution;
 import io.foojay.api.distribution.LibericaNative;
 import io.foojay.api.distribution.Microsoft;
 import io.foojay.api.distribution.OJDKBuild;
+import io.foojay.api.distribution.OpenLogic;
 import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.distribution.RedHat;
@@ -51,6 +52,7 @@ import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -58,6 +60,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
@@ -77,9 +80,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -89,7 +94,6 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -117,6 +121,7 @@ public class Helper {
     public  static final Matcher    HREF_FILE_MATCHER                      = HREF_FILE_PATTERN.matcher("");
     public  static final Matcher    HREF_DOWNLOAD_MATCHER                  = HREF_DOWNLOAD_PATTERN.matcher("");
     private static       HttpClient httpClient;
+    private static       HttpClient httpClientAsync;
 
 
     public static Callable<List<Pkg>> createTask(final Distro distro) {
@@ -125,7 +130,26 @@ public class Helper {
 
     public static List<Pkg> getPkgsOfDistro(final Distro distro) {
         final List<Pkg> pkgs = new LinkedList<>();
-        switch(distro) {
+        try {
+            switch (distro) {
+                case ZULU:
+                    Zulu zulu = (Zulu) distro.get();
+                    // Get packages from API
+                    for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
+                        pkgs.addAll(getPkgsAsync(zulu, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
+                    }
+
+                    // Get packages from CDN
+                    List<Pkg> cdnPkgs   = ((Zulu) Distro.ZULU.get()).getAllPackagesFromCDN();
+                    List<Pkg> pkgsToAdd = new LinkedList<>();
+                    List<String> pkgsFilenames = pkgs.stream().map(pkg -> pkg.getFileName()).collect(Collectors.toList());
+                    for (Pkg cdnPkg : cdnPkgs) {
+                        if (!pkgsFilenames.contains(cdnPkg.getFileName())) {
+                            pkgsToAdd.add(cdnPkg);
+                        }
+                    }
+                    pkgs.addAll(pkgsToAdd);
+                    break;
             case ORACLE:
                 Oracle oracle = (Oracle) distro.get();
                 pkgs.addAll(oracle.getAllPkgs());
@@ -216,19 +240,23 @@ public class Helper {
                 AOJ AOJ = (AOJ) distro.get();
                 for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
                     VersionNumber versionNumber = majorVersion.getVersionNumber();
-                    pkgs.addAll(getPkgsAsync(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.GA, TermOfSupport.NONE));
-                    pkgs.addAll(getPkgsAsync(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.EA, TermOfSupport.NONE));
+                        pkgs.addAll(getPkgsAsync(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                                            ReleaseStatus.GA, TermOfSupport.NONE));
+                        pkgs.addAll(getPkgsAsync(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                                            ReleaseStatus.EA, TermOfSupport.NONE));
                 }
                 break;
             case AOJ_OPENJ9:
                 AOJ_OPENJ9 AOJ_OPENJ9 = (AOJ_OPENJ9) distro.get();
                 for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
                     VersionNumber versionNumber = majorVersion.getVersionNumber();
-                    pkgs.addAll(getPkgsAsync(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.GA, TermOfSupport.NONE));
-                    pkgs.addAll(getPkgsAsync(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.EA, TermOfSupport.NONE));
+                        pkgs.addAll(getPkgsAsync(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                                            ReleaseStatus.GA, TermOfSupport.NONE));
+                        pkgs.addAll(getPkgsAsync(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                                            ReleaseStatus.EA, TermOfSupport.NONE));
                 }
                 break;
-            case ADOPTIUM:
+                case TEMURIN:
                 break;
             case MICROSOFT:
                 Microsoft microsoft = (Microsoft) distro.get();
@@ -238,32 +266,21 @@ public class Helper {
                 LibericaNative libericaNative = (LibericaNative) distro.get();
                 pkgs.addAll(libericaNative.getAllPkgs());
                 break;
-            case ZULU:
-                Zulu zulu = (Zulu) distro.get();
-                // Get packages from API
-                for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                    pkgs.addAll(getPkgsAsync(zulu, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
-                }
-
-                // Get packages from CDN
-                List<Pkg>    cdnPkgs       = ((Zulu) Distro.ZULU.get()).getAllPackagesFromCDN();
-                List<Pkg>    pkgsToAdd     = new LinkedList<>();
-                List<String> pkgsFilenames = pkgs.stream().map(pkg -> pkg.getFileName()).collect(Collectors.toList());
-                for (Pkg cdnPkg : cdnPkgs) {
-                    if (!pkgsFilenames.contains(cdnPkg.getFileName())) {
-                        pkgsToAdd.add(cdnPkg);
-                    }
-                }
-                pkgs.addAll(pkgsToAdd);
+                case OPEN_LOGIC:
+                    OpenLogic openLogic = (OpenLogic) distro.get();
+                    pkgs.addAll(openLogic.getAllPkgs());
                 break;
             default:
                 Distribution distribution = distro.get();
                 for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                    pkgs.addAll(getPkgsAsync(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
+                        pkgs.addAll(getPkgsAsync(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE,
+                                            PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
                 }
                 break;
         }
-
+        } catch (Exception e) {
+            LOGGER.debug("There was a problem fetching packages for {}. {}", distro, e.getMessage());
+        }
         List<Pkg> unique = pkgs.stream().collect(collectingAndThen(toCollection(() -> new TreeSet<>(Comparator.comparing(Pkg::getId))), LinkedList::new));
         return new LinkedList<>(unique);
     }
@@ -273,6 +290,8 @@ public class Helper {
                                      final Boolean fx, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         String query = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
         if (query.isEmpty()) { return List.of(); }
+
+        try {
         List<Pkg>   pkgs    = new LinkedList<>();
             List<Pkg> pkgsFound = new ArrayList<>();
             if (distribution.equals(Distro.ORACLE_OPEN_JDK.get())) {
@@ -292,8 +311,8 @@ public class Helper {
                         for (int i = 0; i < jsonArray.size(); i++) {
                             JsonObject pkgJsonObj         = jsonArray.get(i).getAsJsonObject();
                             List<Pkg> pkgsInDistribution =
-                                distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus,
-                                                            termOfSupport);
+                                    distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx,
+                                                                releaseStatus, termOfSupport);
                         pkgsFound.addAll(pkgsInDistribution);
                         }
                     } else if (element instanceof JsonObject) {
@@ -323,12 +342,17 @@ public class Helper {
             pkgs = new LinkedList<>(unique);
 
         return pkgs;
+        } catch (Exception e) {
+            LOGGER.debug("Error get packages for {} {} calling {}. {}", distribution.getName(), versionNumber, query, e.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     private static List<Pkg> getPkgsAsync(final Distribution distribution, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                           final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                                           final Boolean fx, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         String query = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
+        try {
         Collection<CompletableFuture<List<Pkg>>> futures = Collections.synchronizedList(new ArrayList<>());
         CompletableFuture<List<Pkg>> future = Helper.getAsync(query).thenApply(response -> {
             List<Pkg> pkgs      = new LinkedList<>();
@@ -344,16 +368,12 @@ public class Helper {
                         JsonArray jsonArray = element.getAsJsonArray();
                         for (int j = 0; j < jsonArray.size(); j++) {
                             JsonObject pkgJsonObj = jsonArray.get(j).getAsJsonObject();
-                            List<Pkg> pkgsInDistribution =
-                                distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus,
-                                                            termOfSupport);
+                                List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
                             pkgsFound.addAll(pkgsInDistribution);
                         }
                     } else if (element instanceof JsonObject) {
                         JsonObject pkgJsonObj = element.getAsJsonObject();
-                        List<Pkg> pkgsInDistribution =
-                            distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus,
-                                                        termOfSupport);
+                            List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
                         pkgsFound.addAll(pkgsInDistribution);
                     }
                 } else {
@@ -379,7 +399,7 @@ public class Helper {
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).thenApply(f -> futures.stream()
                                                                                                  .map(completableFuture -> completableFuture.join())
                                                                                                  .collect(Collectors.toList()));
-        try {
+
             List<Pkg> pkgs = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
                                                  .thenApply(f -> futures.stream()
                                                                         .map(completableFuture -> completableFuture.join())
@@ -388,8 +408,7 @@ public class Helper {
                                                  .get();
             return pkgs;
         } catch (InterruptedException | CancellationException | ExecutionException e) {
-            LOGGER.debug("Error get packages for {} {} calling {}", distribution.getName(), versionNumber, query);
-            LOGGER.debug(e.getMessage());
+            LOGGER.debug("Error get packages async for {} {} calling {}. {}", distribution.getName(), versionNumber, query, e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -618,10 +637,20 @@ public class Helper {
         }
     }
 
-    public static String getTextFromUrl(final String url) throws Exception {
-        try (var stream = URI.create(url).toURL().openStream()) {
+    public static String getTextFromUrl(final String uri) throws Exception {
+        try (var stream = URI.create(uri).toURL().openStream()) {
             return new String(stream.readAllBytes(), UTF_8);
+        } catch(Exception e) {
+            LOGGER.debug("Error reading text from uri {}", uri);
+            return "";
         }
+    }
+
+    public static Map<String, Object> loadYaml(final String uri) throws Exception {
+        Yaml yaml = new Yaml();
+        HttpResponse<String> response = get(uri);
+        if (null == response) { return new HashMap<>(); }
+        return yaml.load(new StringReader(response.body()));
     }
 
     public static int getLeadingNumbers(final String text) {
@@ -1000,24 +1029,23 @@ public class Helper {
 
 
     // ******************** REST calls ****************************************
-    private static void createHttpClient() {
-        httpClient = HttpClient.newBuilder()
-                               .connectTimeout(Duration.ofSeconds(10))
-                               .priority(1)
+    private static HttpClient createHttpClient() {
+        return HttpClient.newBuilder()
+                               .connectTimeout(Duration.ofSeconds(20))
                                .version(Version.HTTP_2)
                                .followRedirects(Redirect.NORMAL)
-                               .executor(Executors.newFixedThreadPool(4))
+                               //.executor(Executors.newFixedThreadPool(4))
                                .build();
     }
 
     public static final HttpResponse<String> get(final String uri) {
-        if (null == httpClient) { createHttpClient(); }
+        if (null == httpClient) { httpClient = createHttpClient(); }
 
         HttpRequest request = HttpRequest.newBuilder()
+                                         .GET()
                                          .uri(URI.create(uri))
                                          .setHeader("User-Agent", "DiscoAPI")
-                                         .timeout(Duration.ofSeconds(30))
-                                         .GET()
+                                         .timeout(Duration.ofSeconds(60))
                                          .build();
 
         try {
@@ -1037,14 +1065,14 @@ public class Helper {
     }
 
     public static final CompletableFuture<HttpResponse<String>> getAsync(final String uri) {
-        if (null == httpClient) { createHttpClient(); }
+        if (null == httpClientAsync) { httpClientAsync = createHttpClient(); }
 
         final HttpRequest request = HttpRequest.newBuilder()
+                                               .GET()
                                                .uri(URI.create(uri))
                                                .setHeader("User-Agent", "DiscoAPI")
-                                               .timeout(Duration.ofSeconds(30))
-                                               .GET()
+                                               .timeout(Duration.ofSeconds(60))
                                                .build();
-        return httpClient.sendAsync(request, BodyHandlers.ofString());
+        return httpClientAsync.sendAsync(request, BodyHandlers.ofString());
     }
 }

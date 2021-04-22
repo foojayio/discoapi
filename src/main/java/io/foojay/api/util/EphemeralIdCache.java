@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -53,6 +54,8 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
     @Override public void remove(final T bundleInfoId) {
         ephemeralIdCache.remove(bundleInfoId);
     }
+
+    @Override public void addAll(final Map<T,U> entries) { ephemeralIdCache.putAll(entries); }
 
     @Override public void clear() {
         LOGGER.debug("EphemeralID cache cleared");

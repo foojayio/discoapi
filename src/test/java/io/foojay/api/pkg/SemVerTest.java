@@ -21,14 +21,11 @@ package io.foojay.api.pkg;
 
 import io.foojay.api.util.Comparison;
 import io.foojay.api.util.OutputFormat;
-import io.foojay.api.util.Pair;
-import io.foojay.api.util.Error;
 import io.foojay.api.util.SemVerParser;
 import io.foojay.api.util.SemVerParsingResult;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 

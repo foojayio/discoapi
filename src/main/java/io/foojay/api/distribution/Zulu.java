@@ -41,6 +41,7 @@ import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -91,6 +92,7 @@ public class Zulu implements Distribution {
     private static final Pattern                      FEATURE_PREFIX_PATTERN     = Pattern.compile("^((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?");
     private static final Matcher                      FEATURE_PREFIX_MATCHER     = FEATURE_PREFIX_PATTERN.matcher("");
     private static final String                       PACKAGE_URL                = "https://api.azul.com/zulu/download/community/v1.0/bundles/";
+    private static final String                       CDN_URL                    = "https://cdn.azul.com/zulu/bin/";
 
     // URL parameters
     private static final String                       JDK_VERSION_PARAM          = "jdk_version";
@@ -379,7 +381,11 @@ public class Zulu implements Distribution {
     public List<Pkg> getAllPackagesFromCDN() {
         List<Pkg> pkgs = new ArrayList<>();
         try {
-            final String       html                        = Helper.getTextFromUrl("https://cdn.azul.com/zulu/bin/");
+            final HttpResponse<String> response = Helper.get(CDN_URL);
+            if (null == response) { return pkgs; }
+            final String html = response.body();
+            if (html.isEmpty()) { return pkgs; }
+
             final Pattern      filenamePrefixVersion       = Pattern.compile("(zulu|zre|zulu-repo|zulurepo)((-|_)?)(\\d+)\\.(\\d+)(\\.|\\+)(\\d+)(\\.|_?)(\\d+)?(-|_)([0-9]+-)?((ca|ea)(-))?(hl-)?(fx-)?(cp[0-9]+-)?(jdk|jre)?");
             final Pattern      filenamePrefixDistroVersion = Pattern.compile("(zulu|zre|zulu-repo|zulurepo)");
             final List<String> fileHrefs                   = new ArrayList<>(Helper.getFileHrefsFromString(html));
@@ -390,7 +396,7 @@ public class Zulu implements Distribution {
                 String          reducedToVersionFilename       = filename.startsWith("zulu1.") ? filename.replaceAll(filenamePrefixDistroVersion.pattern(), "") : filename.replaceAll(filenamePrefixVersion.pattern(), "");
                 VersionNumber   versionNumber                  = VersionNumber.fromText(reducedToVersionFilename);
                 TermOfSupport   termOfSupport                  = Helper.getTermOfSupport(versionNumber);
-                String          downloadLink                   = "https://cdn.azul.com/zulu/bin/" + filename;
+                String          downloadLink                   = CDN_URL + filename;
 
                 String          reducedToDistroVersionFilename = filename.startsWith("zulu1.") ? filename.replaceAll(filenamePrefixVersion.pattern(), "") : filename.replaceAll(filenamePrefixDistroVersion.pattern(), "");
                 VersionNumber   distroVersionNumber            = VersionNumber.fromText(reducedToDistroVersionFilename);

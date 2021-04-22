@@ -13,27 +13,26 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.util;
 
-import java.util.Map;
+import javax.validation.constraints.NotNull;
+import java.util.concurrent.ThreadFactory;
 
 
-public interface Cache<T extends Object, U extends Object> {
-    void add(T key, U value);
+public class NamedThreadFactory implements ThreadFactory {
+    private final String name;
 
-    U get(T key);
 
-    void remove(T key);
+    public NamedThreadFactory(final String name) {
+        this.name = name;
+    }
 
-    void addAll(Map<T,U> entries);
 
-    void clear();
-
-    long size();
-
-    boolean isEmpty();
+    @Override public Thread newThread(@NotNull final Runnable r) {
+        return new Thread(r, name);
+    }
 }

@@ -39,6 +39,7 @@ import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -160,8 +161,12 @@ public class Oracle implements Distribution {
         List<Pkg> pkgs = new ArrayList<>();
         try {
             for (String packageUrl : PACKAGE_URLS) {
-                String html = Helper.getTextFromUrl(packageUrl);
+                final HttpResponse<String> response = Helper.get(packageUrl);
+                if (null == response) { return pkgs; }
+                final String html = response.body();
+                if (!html.isEmpty()) {
                 pkgs.addAll(getAllPkgsFromHtml(html, packageUrl));
+            }
             }
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Oracle. {}", e);

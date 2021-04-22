@@ -153,6 +153,11 @@ public class Trava implements Distribution {
             supTerm = Helper.getTermOfSupport(versionNumber, Distro.TRAVA);
         }
 
+        if (jsonObj.has("message")) {
+            LOGGER.debug("Github rate limit reached when trying to get packages for Trava {}", versionNumber);
+            return pkgs;
+        }
+
         JsonArray assets = jsonObj.getAsJsonArray("assets");
         for (JsonElement element : assets) {
             JsonObject assetJsonObj = element.getAsJsonObject();
@@ -286,12 +291,12 @@ public class Trava implements Distribution {
                 HttpClient  client  = HttpClient.newBuilder()
                                                 .followRedirects(Redirect.NEVER)
                                                 .version(java.net.http.HttpClient.Version.HTTP_2)
-                                                .connectTimeout(Duration.ofSeconds(10))
+                                                .connectTimeout(Duration.ofSeconds(20))
                                                 .build();
                 HttpRequest request = HttpRequest.newBuilder()
                                                  .uri(URI.create(query))
                                                  .setHeader("User-Agent", "DiscoAPI")
-                                                 .timeout(Duration.ofSeconds(30))
+                                                 .timeout(Duration.ofSeconds(60))
                                                  .GET()
                                                  .build();
                 try {

@@ -13,8 +13,8 @@
   ~     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   ~     GNU General Public License for more details.
   ~
-  ~ You should have received a copy of the GNU General Public License
-  ~ along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+  ~     You should have received a copy of the GNU General Public License
+  ~     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
   -->
 
 <configuration>
@@ -23,9 +23,13 @@
         <withJansi>true</withJansi>
         <!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
         <encoder>
-            <pattern>%cyan(%d {dd.MM.yyyy HH:mm:ss}) %gray([%thread]) %highlight(%-5level) %magenta(%logger{36}.%M %L) - %msg%n</pattern>
+            <pattern>%cyan(%d{dd.MM.yyyy HH:mm:ss}) %gray([%thread]) %highlight(%-5level) %magenta(%logger{36}.%M %L) - %msg%n</pattern>
         </encoder>
     </appender>
+
+    <logger name="io.micronaut.http.server" level="INFO"/>
+    <logger name="io.micronaut.context" level="INFO" />
+    <logger name="io.micronaut.management.health" level="INFO" />
 
     <root level="debug">
         <appender-ref ref="STDOUT" />

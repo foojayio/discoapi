@@ -20,6 +20,7 @@
 package io.foojay.api.pkg;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.distribution.Distribution;
@@ -28,9 +29,12 @@ import io.foojay.api.util.Helper;
 import io.foojay.api.util.OutputFormat;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.OptionalInt;
+import java.util.stream.Collectors;
 
 import static io.foojay.api.util.Constants.API_VERSION_V1;
 import static io.foojay.api.util.Constants.BASE_URL;
@@ -45,6 +49,8 @@ import static io.foojay.api.util.Constants.INDENTED_QUOTES;
 import static io.foojay.api.util.Constants.NEW_LINE;
 import static io.foojay.api.util.Constants.QUOTES;
 import static io.foojay.api.util.Constants.SLASH;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 public class Pkg {
@@ -70,6 +76,7 @@ public class Pkg {
     public  static final String            FIELD_EPHEMERAL_ID           = "ephemeral_id";
     public  static final String            FIELD_LINKS                  = "links";
     public  static final String            FIELD_DOWNLOAD               = "pkg_info_uri";
+    public  static final String            FIELD_FEATURE                = "feature";
     private              Distribution      distribution;
     private              VersionNumber     versionNumber;
     private              VersionNumber     javaVersion;
@@ -90,14 +97,15 @@ public class Pkg {
     private              String            filename;
     private              String            directDownloadUri;
     private              String            downloadSiteUri;
+    private              List<Feature>     features;
 
 
     public Pkg() {
-        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, false, true, "", "", "");
+        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, false, true, "", "", "", new ArrayList<>());
     }
     public Pkg(final Distribution distribution, final VersionNumber versionNumber, final Architecture architecture, final Bitness bitness, final OperatingSystem operatingSystem, final PackageType packageType,
                final ReleaseStatus releaseStatus, final ArchiveType archiveType, final TermOfSupport termOfSupport, final boolean javafxBundled, final boolean directlyDownloadable, final String filename,
-               final String directDownloadUri, final String downloadSiteUri) {
+               final String directDownloadUri, final String downloadSiteUri, final List<Feature> features) {
         this.distribution         = distribution;
         this.versionNumber        = versionNumber;
         this.javaVersion          = new VersionNumber();
@@ -117,6 +125,7 @@ public class Pkg {
         this.filename             = filename;
         this.directDownloadUri    = directDownloadUri;
         this.downloadSiteUri      = downloadSiteUri;
+        this.features             = features;
         this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
     }
     public Pkg(final String jsonText) {
@@ -145,6 +154,21 @@ public class Pkg {
         this.directDownloadUri    = json.get(FIELD_DIRECT_DOWNLOAD_URI).getAsString();
         this.downloadSiteUri      = json.get(FIELD_DOWNLOAD_SITE_URI).getAsString();
         this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
+
+        if (json.has(FIELD_FEATURE)) {
+            features = new ArrayList<>();
+            JsonArray featureArray = json.getAsJsonArray(FIELD_FEATURE);
+            for (int i = 0 ; i < featureArray.size() ; i++) {
+                String  featureString = featureArray.get(i).getAsString();
+                Feature feat          = Feature.fromText(featureString);
+                if (Feature.NOT_FOUND == feat || Feature.NONE == feat) {
+                    continue;
+                }
+                features.add(feat);
+            }
+        } else {
+            features = new ArrayList<>();
+        }
 
         if (ArchiveType.NOT_FOUND     == this.archiveType)     { this.archiveType     = ArchiveType.getFromFileName(this.filename); }
         if (TermOfSupport.NOT_FOUND   == this.termOfSupport)   { this.termOfSupport   = Helper.getTermOfSupport(this.versionNumber, distro); }
@@ -238,6 +262,10 @@ public class Pkg {
     public String getDownloadSiteUri() { return downloadSiteUri; }
     public void setDownloadSiteUri(final String downloadSiteUri) { this.downloadSiteUri = downloadSiteUri; }
 
+    public List<Feature> getFeatures() { return features; }
+    public void setFeatures(final List<Feature> features) { this.features = features; }
+
+
     public String getId() {
         return directlyDownloadable ? Helper.getMD5(directDownloadUri.getBytes(StandardCharsets.UTF_8)) : Helper.getMD5(String.join("", directDownloadUri, filename).getBytes(StandardCharsets.UTF_8));
     }
@@ -268,7 +296,8 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();
             case REDUCED:
@@ -292,7 +321,8 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                                           .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES)
-                                          .append(INDENT).append(CURLY_BRACKET_CLOSE)
+                                          .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();
             case FULL_COMPRESSED:
@@ -314,7 +344,8 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
                                           .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA)
-                                          .append(QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES)
+                                          .append(QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();
             case REDUCED_COMPRESSED:
@@ -338,8 +369,8 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                          .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES)
-                                          .append(CURLY_BRACKET_CLOSE)
+                                          .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(CURLY_BRACKET_CLOSE).append(COMMA)
+                                          .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();
         }

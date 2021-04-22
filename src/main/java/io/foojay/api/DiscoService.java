@@ -22,6 +22,7 @@ package io.foojay.api;
 import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
+import io.foojay.api.pkg.Feature;
 import io.foojay.api.pkg.LibCType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.PackageType;
@@ -59,7 +60,7 @@ public enum DiscoService {
 
     public List<Pkg> getPkgsFromCache(final VersionNumber fromVersionNumber, final VersionNumber toVersionNumber, final List<Distribution> distributions, final List<Architecture> architectures, final List<ArchiveType> archiveTypes,
                                       final PackageType packageType, final List<OperatingSystem> operatingSystems, final List<LibCType> libCTypes, final List<ReleaseStatus> releaseStatus, final List<TermOfSupport> termsOfSupport,
-                                      final Bitness bitness, final Boolean javafxBundled, final Boolean directlyDownloadable, final List<Scope> scopes) {
+                                      final Bitness bitness, final Boolean javafxBundled, final Boolean directlyDownloadable, final List<Feature> features, final List<Scope> scopes) {
         final VersionNumber minVersionNumber = null == fromVersionNumber ? new VersionNumber(6)                                : fromVersionNumber;
         final VersionNumber maxVersionNumber = null == toVersionNumber   ? new VersionNumber(MajorVersion.getLatest(true).getAsInt()) : toVersionNumber;
 
@@ -77,6 +78,7 @@ public enum DiscoService {
                                                             .filter(pkg -> Bitness.NONE     == bitness              ? pkg.getBitness()             != bitness      : pkg.getBitness()             == bitness)
                                                             .filter(pkg -> null             == javafxBundled        ? pkg.isJavaFXBundled()        != null         : pkg.isJavaFXBundled()        == javafxBundled)
                                                             .filter(pkg -> null             == directlyDownloadable ? pkg.isDirectlyDownloadable() != null         : pkg.isDirectlyDownloadable() == directlyDownloadable)
+                                                            .filter(pkg -> features.isEmpty()                       ? pkg.getFeatures()            != null         : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                             .filter(pkg -> pkg.getVersionNumber().compareTo(minVersionNumber) >= 0)
                                                             .filter(pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) <= 0)
                                                             .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getVersionNumber).reversed()))
@@ -86,7 +88,7 @@ public enum DiscoService {
 
     public List<Pkg> getPkgsFromCache(final VersionNumber versionNumber, final Comparison comparison, final List<Distribution> distributions, final List<Architecture> architectures, final List<ArchiveType> archiveTypes,
                                       final PackageType packageType, final List<OperatingSystem> operatingSystems, final List<LibCType> libCTypes, final List<ReleaseStatus> releaseStatus, final List<TermOfSupport> termsOfSupport,
-                                      final Bitness bitness, final Boolean javafxBundled, final Boolean directlyDownloadable, final Latest latest, final List<Scope> scopes) {
+                                      final Bitness bitness, final Boolean javafxBundled, final Boolean directlyDownloadable, final Latest latest, final List<Feature> features, final List<Scope> scopes) {
         List<Pkg> pkgsFound;
         if (Comparison.EQUAL == comparison) {
             switch(latest) {
@@ -111,6 +113,7 @@ public enum DiscoService {
                                                                                               .filter(pkg -> Bitness.NONE       == bitness              ? pkg.getBitness()             != bitness       : pkg.getBitness()             == bitness)
                                                                                               .filter(pkg -> null               == javafxBundled        ? pkg.isJavaFXBundled()        != null          : pkg.isJavaFXBundled()        == javafxBundled)
                                                                                               .filter(pkg -> null               == directlyDownloadable ? pkg.isDirectlyDownloadable() != null          : pkg.isDirectlyDownloadable() == directlyDownloadable)
+                                                                                              .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                                                               .max(Comparator.comparing(Pkg::getVersionNumber));
                         if (pkgWithMaxVersionNumber.isPresent()) {
                             maxNumber = pkgWithMaxVersionNumber.get().getVersionNumber();
@@ -133,6 +136,7 @@ public enum DiscoService {
                                                                                               .filter(pkg -> Bitness.NONE       == bitness              ? pkg.getBitness()             != bitness       : pkg.getBitness()             == bitness)
                                                                                               .filter(pkg -> null               == javafxBundled        ? pkg.isJavaFXBundled()        != null          : pkg.isJavaFXBundled()        == javafxBundled)
                                                                                               .filter(pkg -> null               == directlyDownloadable ? pkg.isDirectlyDownloadable() != null          : pkg.isDirectlyDownloadable() == directlyDownloadable)
+                                                                                              .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                                                               .filter(pkg -> featureVersion     == pkg.getVersionNumber().getFeature().getAsInt())
                                                                                               .max(Comparator.comparing(Pkg::getVersionNumber));
                         if (pkgWithMaxVersionNumber.isPresent()) {
@@ -155,6 +159,7 @@ public enum DiscoService {
                                                               .filter(pkg -> Bitness.NONE       == bitness              ? pkg.getBitness()             != bitness       : pkg.getBitness()             == bitness)
                                                               .filter(pkg -> null               == javafxBundled        ? pkg.isJavaFXBundled()        != null          : pkg.isJavaFXBundled()        == javafxBundled)
                                                               .filter(pkg -> null               == directlyDownloadable ? pkg.isDirectlyDownloadable() != null          : pkg.isDirectlyDownloadable() == directlyDownloadable)
+                                                              .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                               .filter(pkg -> pkg.getVersionNumber().compareTo(maxNumber) == 0)
                                                               .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getVersionNumber).reversed()))
                                                               .collect(Collectors.toList());
@@ -195,6 +200,7 @@ public enum DiscoService {
                                                                                                      .filter(pkg -> Bitness.NONE       == bitness              ? pkg.getBitness()             != bitness       : pkg.getBitness()             == bitness)
                                                                                                      .filter(pkg -> null               == javafxBundled        ? pkg.isJavaFXBundled()        != null          : pkg.isJavaFXBundled()        == javafxBundled)
                                                                                                      .filter(pkg -> null               == directlyDownloadable ? pkg.isDirectlyDownloadable() != null          : pkg.isDirectlyDownloadable() == directlyDownloadable)
+                                                                                                     .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                                                                      .filter(pkg -> pkg.getVersionNumber().equals(maxVersionPerDistribution.get(distro)))
                                                                                                      .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getVersionNumber).reversed()))
                                                                                                      .collect(Collectors.toList())));
@@ -215,6 +221,7 @@ public enum DiscoService {
                                                               .filter(pkg -> Bitness.NONE       == bitness              ? pkg.getBitness()             != bitness       : pkg.getBitness()             == bitness)
                                                               .filter(pkg -> null               == javafxBundled        ? pkg.isJavaFXBundled()        != null          : pkg.isJavaFXBundled()        == javafxBundled)
                                                               .filter(pkg -> null               == directlyDownloadable ? pkg.isDirectlyDownloadable() != null          : pkg.isDirectlyDownloadable() == directlyDownloadable)
+                                                              .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                               .filter(pkg -> pkg.getVersionNumber().getFeature().getAsInt() == versionNumber.getFeature().getAsInt())
                                                               .filter(pkg -> pkg.isLatestBuildAvailable())
                                                               .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getVersionNumber).reversed()))
@@ -238,6 +245,7 @@ public enum DiscoService {
                                                               .filter(pkg -> Bitness.NONE       == bitness              ? pkg.getBitness()             != bitness       : pkg.getBitness()             == bitness)
                                                               .filter(pkg -> null               == javafxBundled        ? pkg.isJavaFXBundled()        != null          : pkg.isJavaFXBundled()        == javafxBundled)
                                                               .filter(pkg -> null               == directlyDownloadable ? pkg.isDirectlyDownloadable() != null          : pkg.isDirectlyDownloadable() == directlyDownloadable)
+                                                              .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                               .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getVersionNumber).reversed()))
                                                               .collect(Collectors.toList());
 
@@ -334,6 +342,7 @@ public enum DiscoService {
                                                       .filter(pkg -> Bitness.NONE     == bitness              ? pkg.getBitness()             != bitness       : pkg.getBitness()             == bitness)
                                                       .filter(pkg -> null             == javafxBundled        ? pkg.isJavaFXBundled()        != null          : pkg.isJavaFXBundled()        == javafxBundled)
                                                       .filter(pkg -> null             == directlyDownloadable ? pkg.isDirectlyDownloadable() != null          : pkg.isDirectlyDownloadable() == directlyDownloadable)
+                                                      .filter(pkg -> features.isEmpty()                       ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                       .filter(greaterCheck)
                                                       .filter(smallerCheck)
                                                       .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getVersionNumber).reversed()))

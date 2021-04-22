@@ -150,6 +150,11 @@ public class Dragonwell implements Distribution {
         TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
         supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
 
+        if (jsonObj.has("message")) {
+            LOGGER.debug("Github rate limit reached when trying to get packages for Dragonwell {}", versionNumber);
+            return pkgs;
+        }
+
         String name = jsonObj.get("name").getAsString().strip();
         ReleaseStatus rs = Constants.RELEASE_STATUS_LOOKUP.entrySet().stream()
                                                           .filter(entry -> name.endsWith(entry.getKey()))

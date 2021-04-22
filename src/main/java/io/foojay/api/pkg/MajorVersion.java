@@ -29,6 +29,17 @@ import java.util.List;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import static io.foojay.api.util.Constants.COLON;
+import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
+import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.CURLY_BRACKET_OPEN;
+import static io.foojay.api.util.Constants.INDENT;
+import static io.foojay.api.util.Constants.INDENTED_QUOTES;
+import static io.foojay.api.util.Constants.NEW_LINE;
+import static io.foojay.api.util.Constants.QUOTES;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
+
 
 /**
  * Maintainance information is taken from: https://www.oracle.com/java/technologies/java-se-support-roadmap.html
@@ -211,21 +222,21 @@ public class MajorVersion {
 
     public String toString(final boolean includingEarlyAccess) {
         final List<SemVer> versions = includingEarlyAccess ? getVersionsIncludingEarlyAccess() : getVersions();
-        final StringBuilder majorVersionMsgBuilder = new StringBuilder().append("{\n")
-                                                                        .append("  \"").append(FIELD_MAJOR_VERSION).append("\"").append(":").append(majorVersion).append(",\n")
-                                                                        .append("  \"").append(FIELD_TERM_OF_SUPPORT).append("\"").append(":").append("\"").append(termOfSupport.name()).append("\"").append(",\n")
-                                                                        .append("  \"").append(FIELD_MAINTAINED).append("\"").append(":").append(isMaintained()).append(",\n")
-                                                                        .append("  \"").append(FIELD_VERSIONS).append("\"").append(": [").append(versions.isEmpty() ? "" : "\n");
-        versions.forEach(versionNumber -> majorVersionMsgBuilder.append("    \"").append(versionNumber).append("\"").append(",\n"));
+        final StringBuilder majorVersionMsgBuilder = new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                                                                        .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(majorVersion).append(COMMA_NEW_LINE)
+                                                                        .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.name()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                                        .append(INDENTED_QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA_NEW_LINE)
+                                                                        .append(INDENTED_QUOTES).append(FIELD_VERSIONS).append(QUOTES).append(COLON).append(" ").append(SQUARE_BRACKET_OPEN).append(versions.isEmpty() ? "" : NEW_LINE);
+        versions.forEach(versionNumber -> majorVersionMsgBuilder.append(INDENT).append(INDENTED_QUOTES).append(versionNumber).append(QUOTES).append(COMMA_NEW_LINE));
         if (!versions.isEmpty()) {
             majorVersionMsgBuilder.setLength(majorVersionMsgBuilder.length() - 2);
-            majorVersionMsgBuilder.append("\n")
-                                  .append("  ]\n");
+            majorVersionMsgBuilder.append(NEW_LINE)
+                                  .append(INDENT).append(SQUARE_BRACKET_CLOSE).append(NEW_LINE);
         } else {
-            majorVersionMsgBuilder.append("]\n");
+            majorVersionMsgBuilder.append(SQUARE_BRACKET_CLOSE).append(NEW_LINE);
         }
 
-        return majorVersionMsgBuilder.append("}")
+        return majorVersionMsgBuilder.append(CURLY_BRACKET_CLOSE)
                                      .toString();
     }
 
