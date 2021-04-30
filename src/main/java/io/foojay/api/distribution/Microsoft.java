@@ -37,10 +37,13 @@ import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.StringReader;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,6 +60,7 @@ public class Microsoft implements Distribution {
     private static final Pattern       FILENAME_PREFIX_PATTERN = Pattern.compile("microsoft-");
     private static final Matcher       FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
     private static final String        PACKAGE_URL             = "https://www.microsoft.com/openjdk";
+    public  static final String        PKGS_PROPERTIES         = "https://github.com/foojay2020/openjdk_releases/raw/main/microsoft.properties";
 
     // URL parameters
     private static final String        ARCHITECTURE_PARAM      = "";
@@ -138,12 +142,29 @@ public class Microsoft implements Distribution {
 
         // Temporary solution as long as no GA builds of Microsoft Build of OpenJDK are available
         final List<String> downloadLinks = new ArrayList<>();
-        downloadLinks.add("https://aka.ms/download-jdk/microsoft-jdk-11.0.10.9-linux-x64.tar.gz");
-        downloadLinks.add("https://aka.ms/download-jdk/microsoft-jdk-11.0.10.9-macos-x64.tar.gz");
-        downloadLinks.add("https://aka.ms/download-jdk/microsoft-jdk-11.0.10.9-macos-x64.pkg");
-        downloadLinks.add("https://aka.ms/download-jdk/microsoft-jdk-11.0.10.9-windows-x64.zip");
-        downloadLinks.add("https://aka.ms/download-jdk/microsoft-jdk-11.0.10.9-windows-x64.msi");
-        downloadLinks.add("https://aka.ms/download-jdk/microsoft-jdk-16.36-windows-aarch64.zip");
+
+        // Load jdk properties
+        try {
+            final Properties           propertiesPkgs = new Properties();
+            final HttpResponse<String> response       = Helper.get(PKGS_PROPERTIES);
+            if (null == response) {
+                LOGGER.debug("No jdk properties found for {}", getName());
+                return pkgs;
+            }
+            final String propertiesText = response.body();
+            if (propertiesText.isEmpty()) {
+                LOGGER.debug("jdk properties are empty for {}", getName());
+                return pkgs;
+            }
+            propertiesPkgs.load(new StringReader(propertiesText));
+
+            propertiesPkgs.forEach((key, value) -> {
+                String downloadLink = value.toString();
+                downloadLinks.add(downloadLink);
+            });
+        } catch (Exception e) {
+            LOGGER.error("Error reading jdk properties file from github for {}. {}", getName(), e.getMessage());
+        }
 
         for (String downloadLink : downloadLinks) {
             final String          filename        = downloadLink.replace("https://aka.ms/download-jdk/", "");
@@ -151,6 +172,8 @@ public class Microsoft implements Distribution {
 
             final String          withoutPrefix   = filename.replace("microsoft-", "");
             final VersionNumber   versionNumber   = VersionNumber.fromText(withoutPrefix);
+            versionNumber.setPatch(0);
+            versionNumber.setFifth(0);
             final MajorVersion    majorVersion    = versionNumber.getMajorVersion();
             final PackageType     packageType     = withoutPrefix.startsWith("jdk") ? JDK : JRE;
 
@@ -161,7 +184,7 @@ public class Microsoft implements Distribution {
                                                                                .map(Entry::getValue)
                                                                                .orElse(OperatingSystem.NOT_FOUND);
             if (OperatingSystem.NOT_FOUND == operatingSystem) {
-                LOGGER.debug("Operating System not found in Microsoft for filename: {}", filename);
+                LOGGER.debug("Operating System not found in {} for filename: {}", getName(), filename);
                 continue;
             }
 
@@ -172,7 +195,7 @@ public class Microsoft implements Distribution {
                                                                            .map(Entry::getValue)
                                                                            .orElse(Architecture.NOT_FOUND);
             if (Architecture.NOT_FOUND == architecture) {
-                LOGGER.debug("Architecture not found in Microsoft for filename: {}", filename);
+                LOGGER.debug("Architecture not found in {} for filename: {}", getName(), filename);
                 continue;
             }
 
@@ -240,7 +263,7 @@ public class Microsoft implements Distribution {
                                                                                .map(Entry::getValue)
                                                                                .orElse(OperatingSystem.NOT_FOUND);
             if (OperatingSystem.NOT_FOUND == operatingSystem) {
-                LOGGER.debug("Operating System not found in Microsoft for filename: {}", filename);
+                LOGGER.debug("Operating System not found in {} for filename: {}", getName(), filename);
                 continue;
             }
 
@@ -251,7 +274,7 @@ public class Microsoft implements Distribution {
                                                                            .map(Entry::getValue)
                                                                            .orElse(Architecture.NOT_FOUND);
             if (Architecture.NOT_FOUND == architecture) {
-                LOGGER.debug("Architecture not found in Microsoft for filename: {}", filename);
+                LOGGER.debug("Architecture not found in {} for filename: {}", getName(), filename);
                 continue;
             }
 

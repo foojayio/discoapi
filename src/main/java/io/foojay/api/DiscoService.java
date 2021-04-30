@@ -234,7 +234,7 @@ public enum DiscoService {
                                                               .parallelStream()
                                                               .filter(pkg -> distributions.isEmpty()                    ? pkg.getDistribution()        != null          : distributions.contains(pkg.getDistribution()))
                                                               .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scopes.stream().collect(toSet())::contains))
-                                                              .filter(pkg -> null != versionNumber ? pkg.getVersionNumber().compareTo(versionNumber) == 0 : null != pkg.getVersionNumber())
+                                                              .filter(pkg -> null != versionNumber ? versionNumber.getBuild().isPresent() ? pkg.getVersionNumber().compareTo(versionNumber) == 0 : pkg.getVersionNumber().equals(versionNumber) : null != pkg.getVersionNumber())
                                                               .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
                                                               .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
                                                               .filter(pkg -> operatingSystems.isEmpty()                 ? pkg.getOperatingSystem()     != null          : operatingSystems.contains(pkg.getOperatingSystem()))

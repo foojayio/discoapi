@@ -72,7 +72,7 @@ public class Trava implements Distribution {
     private static final String       GITHUB_USER      = "TravaOpenJDK";
     private static final String       PACKAGE_URL      = "https://github.com/TravaOpenJDK/";
     public  static final List<String> PACKAGE_URLS     = List.of("https://api.github.com/repos/" + GITHUB_USER + "/trava-jdk-8-dcevm/releases?per_page=100",
-                                                                 "https://api.github.com/repos/" + GITHUB_USER + "/trava-jdk-11-dcevm/releases?per_page=100");
+                                                                 "https://api.github.com/repos/" + GITHUB_USER + "/trava-jdk-11-dcevm-newgen/releases?per_page=100");
 
 
     // URL parameters

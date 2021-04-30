@@ -39,12 +39,14 @@ import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.StringReader;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -55,18 +57,8 @@ import static io.foojay.api.pkg.ReleaseStatus.GA;
 public class Oracle implements Distribution {
     private static final Logger                       LOGGER                  = LoggerFactory.getLogger(Oracle.class);
 
-    public  static final List<String>                 PACKAGE_URLS            = List.of("https://www.oracle.com/java/technologies/javase-jdk15-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/javase/jdk14-archive-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/javase/jdk13-archive-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/javase/jdk12-archive-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/javase-jdk11-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/java-archive-javase10-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/javase/javase9-archive-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/javase-jre8-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/javase/javase7-archive-downloads.html",
-                                                                                        "https://www.oracle.com/java/technologies/javase-java-archive-javase6-downloads.html");
     private static final String                       PACKAGE_URL             = "";
+    public  static final String                       PKGS_PROPERTIES         = "https://github.com/foojay2020/openjdk_releases/raw/main/oracle.properties";
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM      = "";
@@ -159,17 +151,43 @@ public class Oracle implements Distribution {
 
     public List<Pkg> getAllPkgs() {
         List<Pkg> pkgs = new ArrayList<>();
+
+        List<String> pkgUrls = new ArrayList<>();
+
+        // Load jdk properties
         try {
-            for (String packageUrl : PACKAGE_URLS) {
+            final Properties           propertiesPkgs = new Properties();
+            final HttpResponse<String> response       = Helper.get(PKGS_PROPERTIES);
+            if (null == response) {
+                LOGGER.debug("No jdk properties found for {}", getName());
+                return pkgs;
+            }
+            final String propertiesText = response.body();
+            if (propertiesText.isEmpty()) {
+                LOGGER.debug("jdk properties are empty for {}", getName());
+                return pkgs;
+            }
+            propertiesPkgs.load(new StringReader(propertiesText));
+
+            propertiesPkgs.forEach((key, value) -> {
+                String pkgUrl = value.toString();
+                pkgUrls.add(pkgUrl);
+            });
+        } catch (Exception e) {
+            LOGGER.error("Error reading jdk properties file from github for {}. {}", getName(), e.getMessage());
+        }
+
+        try {
+            for (String packageUrl : pkgUrls) {
                 final HttpResponse<String> response = Helper.get(packageUrl);
                 if (null == response) { return pkgs; }
                 final String html = response.body();
                 if (!html.isEmpty()) {
-                pkgs.addAll(getAllPkgsFromHtml(html, packageUrl));
-            }
+                    pkgs.addAll(getAllPkgsFromHtml(html, packageUrl));
+                }
             }
         } catch (Exception e) {
-            LOGGER.error("Error fetching all packages from Oracle. {}", e);
+            LOGGER.error("Error fetching all packages of {}. {}", getName(), e);
         }
         return pkgs;
     }
@@ -266,15 +284,15 @@ public class Oracle implements Distribution {
                 }
             }
             if (ArchiveType.NONE == archiveType) {
-                LOGGER.debug("Archive Type not found in Oracle for filename: {}", filename);
+                LOGGER.debug("Archive Type not found in {} for filename: {}", getName(), filename);
                 continue;
             }
             if (Architecture.NONE == architecture) {
-                LOGGER.debug("Architecture not found in Oracle for filename: {}", filename);
+                LOGGER.debug("Architecture not found in {} for filename: {}", getName(), filename);
                 continue;
             }
             if (OperatingSystem.NONE == operatingSystem) {
-                LOGGER.debug("Operating System not found in Oracle for filename: {}", filename);
+                LOGGER.debug("Operating System not found in {} for filename: {}", getName(), filename);
                 continue;
             }
 

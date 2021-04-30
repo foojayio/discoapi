@@ -26,6 +26,8 @@ import java.util.List;
 public enum Feature implements ApiFeature {
     LOOM("Loom", "loom"),
     PANAMA("Panama", "panama"),
+    LANAI("Lanai", "lanai"),
+    VALHALLA("Valhalla", "valhalla"),
     NONE("-", ""),
     NOT_FOUND("", "");
 
@@ -60,6 +62,14 @@ public enum Feature implements ApiFeature {
             case "PANAMA":
             case "Panama":
                 return PANAMA;
+            case "lanai":
+            case "LANAI":
+            case "Lanai":
+                return LANAI;
+            case "valhalla":
+            case "VALHALLA":
+            case "Valhalla":
+                return VALHALLA;
             default:
                 return NOT_FOUND;
         }

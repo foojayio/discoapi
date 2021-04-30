@@ -98,9 +98,8 @@ public class OracleOpenJDK implements Distribution {
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP         = Map.of(EA, "early_access", GA, "GA");
 
     private static final String                       OPEN_JDK_ARCHIVE_URL       = "https://jdk.java.net/archive/";
-    public  static final String                       OPEN_JDK_PKGS_PROPERTIES   = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk.properties";
+    public  static final String                       PKGS_PROPERTIES            = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk.properties";
     private        final Properties                   propertiesPkgs             = new Properties();
-    private        final Properties                   propertiesHashes           = new Properties();
 
     private static final HashAlgorithm                HASH_ALGORITHM             = HashAlgorithm.NONE;
     private static final String                       HASH_URI                   = "";
@@ -111,7 +110,7 @@ public class OracleOpenJDK implements Distribution {
 
     public OracleOpenJDK() {
         try {
-            HttpResponse<String> response = Helper.get(OPEN_JDK_PKGS_PROPERTIES);
+            HttpResponse<String> response = Helper.get(PKGS_PROPERTIES);
             if (null != response) {
                 String propertiesText = response.body();
                 if (!propertiesText.isEmpty()) {
@@ -119,7 +118,7 @@ public class OracleOpenJDK implements Distribution {
                 }
             }
         } catch (Exception e) {
-            LOGGER.error("Error reading OpenJDK properties file from github. {}", e.getMessage());
+            LOGGER.error("Error reading {} properties file from github. {}", getName(), e.getMessage());
         }
     }
 
@@ -320,7 +319,7 @@ public class OracleOpenJDK implements Distribution {
                                                                  .map(Entry::getValue)
                                                                  .orElse(Architecture.NONE);
                 if (Architecture.NONE == arch) {
-                    LOGGER.debug("Architecture not found in Oracle OpenJDK for filename: {}", fileName);
+                    LOGGER.debug("Architecture not found in {} for filename: {}", getName(), fileName);
                     continue;
                 }
 
@@ -350,7 +349,7 @@ public class OracleOpenJDK implements Distribution {
                     }
                 }
                 if (OperatingSystem.NONE == os) {
-                    LOGGER.debug("Operating System not found in Oracle OpenJDK for filename: {}", fileName);
+                    LOGGER.debug("Operating System not found in {} for filename: {}", getName(), fileName);
                     continue;
                 }
                 pkg.setOperatingSystem(os);
@@ -417,7 +416,7 @@ public class OracleOpenJDK implements Distribution {
                                                                        .map(Entry::getValue)
                                                                        .orElse(PackageType.NONE);
                 if (PackageType.NONE == packageType) {
-                    LOGGER.debug("Package Type not found in Oracle OpenJDK for filename: {}", fileName);
+                    LOGGER.debug("Package Type not found in {} for filename: {}", getName(), fileName);
                     continue;
                 }
                 pkg.setPackageType(packageType);
@@ -428,7 +427,7 @@ public class OracleOpenJDK implements Distribution {
                                                                  .map(Entry::getValue)
                                                                  .orElse(Architecture.NONE);
                 if (Architecture.NONE == arch) {
-                    LOGGER.debug("Architecture not found in Oracle OpenJDK for filename: {}", fileName);
+                    LOGGER.debug("Architecture not found in {} for filename: {}", getName(), fileName);
                     continue;
                 }
 
@@ -458,7 +457,7 @@ public class OracleOpenJDK implements Distribution {
                     }
                 }
                 if (OperatingSystem.NONE == os) {
-                    LOGGER.debug("Operating System not found in Oracle OpenJDK for filename: {}", fileName);
+                    LOGGER.debug("Operating System not found in {} for filename: {}", getName(), fileName);
                     continue;
                 }
                 pkg.setOperatingSystem(os);
@@ -479,11 +478,11 @@ public class OracleOpenJDK implements Distribution {
             if (null != response) {
                 String html = response.body();
                 if (!html.isEmpty()) {
-            pkgs.addAll(extractPackagesFromHtml(html));
+                    pkgs.addAll(extractPackagesFromHtml(html));
                 }
             }
         } catch (Exception e) {
-            LOGGER.debug("Error fetching packages from Oracle OpenJDK archive url. {}", e.getMessage());
+            LOGGER.debug("Error fetching packages from {} archive url. {}", getName(), e.getMessage());
         }
 
         // Get packages from latest 3 versions
@@ -495,11 +494,11 @@ public class OracleOpenJDK implements Distribution {
                 if (null != response) {
                     String html = response.body();
                     if (!html.isEmpty()) {
-                pkgs.addAll(extractPackagesFromHtml(html));
+                        pkgs.addAll(extractPackagesFromHtml(html));
                     }
                 }
             } catch (Exception e) {
-                LOGGER.debug("Error fetching packages from Oracle OpenJDK url {}. {}", jdkUrl, e.getMessage());
+                LOGGER.debug("Error fetching packages from {} url {}. {}", getName(), jdkUrl, e.getMessage());
             }
         }
         return pkgs;
@@ -510,13 +509,19 @@ public class OracleOpenJDK implements Distribution {
 
         // Reload openjdk properties
         try {
-            final HttpResponse<String> response = Helper.get(OPEN_JDK_PKGS_PROPERTIES);
-            if (null == response) { return pkgs; }
+            final HttpResponse<String> response = Helper.get(PKGS_PROPERTIES);
+            if (null == response) {
+                LOGGER.debug("No jdk properties found for {}", getName());
+                return pkgs;
+            }
             final String propertiesText = response.body();
-            if (propertiesText.isEmpty()) { return pkgs; }
+            if (propertiesText.isEmpty()) {
+                LOGGER.debug("jdk properties are empty for {}", getName());
+                return pkgs;
+            }
             propertiesPkgs.load(new StringReader(propertiesText));
         } catch (Exception e) {
-            LOGGER.error("Error reading OpenJDK properties file from github. {}", e.getMessage());
+            LOGGER.error("Error reading jdk properties file for {} from github. {}", getName(), e.getMessage());
         }
 
         propertiesPkgs.forEach((key, value) -> {
@@ -535,7 +540,7 @@ public class OracleOpenJDK implements Distribution {
                                                               .map(Entry::getValue)
                                                               .orElse(ReleaseStatus.NONE);
             if (ReleaseStatus.NONE == rs) {
-                LOGGER.debug("Releas Status not found in Oracle OpenJDK for downloadLink: {}", downloadLink);
+                LOGGER.debug("Release Status not found in {} for downloadLink: {}", getName(), downloadLink);
             } else {
                 pkg.setDistribution(Distro.ORACLE_OPEN_JDK.get());
                 pkg.setFileName(fileName);
@@ -547,14 +552,24 @@ public class OracleOpenJDK implements Distribution {
                 if (keyParts[noOfKeyParts - 1].equals("musl")) {
                     arch   = Architecture.fromText(keyParts[noOfKeyParts - 2]);
                     isMusl = true;
-                } else if (keyParts[noOfKeyParts - 1].equals("panama")) {
+                } else if (keyParts[noOfKeyParts - 1].equals(Feature.PANAMA.getApiString())) {
                     arch   = Architecture.fromText(keyParts[noOfKeyParts - 2]);
                     pkg.getFeatures().add(Feature.PANAMA);
-                } else if (keyParts[noOfKeyParts - 1].equals("loom")) {
+                } else if (keyParts[noOfKeyParts - 1].equals(Feature.LOOM.getApiString())) {
                     arch   = Architecture.fromText(keyParts[noOfKeyParts - 2]);
                     pkg.getFeatures().add(Feature.LOOM);
+                } else if (keyParts[noOfKeyParts - 1].equals(Feature.LANAI.getApiString())) {
+                    arch   = Architecture.fromText(keyParts[noOfKeyParts - 2]);
+                    pkg.getFeatures().add(Feature.LANAI);
+                } else if (keyParts[noOfKeyParts - 1].equals(Feature.VALHALLA.getApiString())) {
+                    arch   = Architecture.fromText(keyParts[noOfKeyParts - 2]);
+                    pkg.getFeatures().add(Feature.VALHALLA);
                 } else {
-                    arch = Architecture.fromText(keyParts[noOfKeyParts - 1]);
+                    if (keyParts.length == 4) {
+                        arch = Architecture.fromText(keyParts[noOfKeyParts - 2]);
+                    } else {
+                        arch = Architecture.fromText(keyParts[noOfKeyParts - 1]);
+                    }
                 }
                 pkg.setArchitecture(arch);
                 pkg.setBitness(arch.getBitness());
@@ -576,7 +591,7 @@ public class OracleOpenJDK implements Distribution {
                                                                       .findFirst()
                                                                       .map(Entry::getValue)
                                                                       .orElse(OperatingSystem.NONE);
-                    pkg.setOperatingSystem(os);
+                pkg.setOperatingSystem(os);
                     switch (os) {
                         case WINDOWS:
                             pkg.setLibCType(LibCType.C_STD_LIB);
@@ -645,7 +660,7 @@ public class OracleOpenJDK implements Distribution {
                                                           .map(Entry::getValue)
                                                           .orElse(ReleaseStatus.NONE);
         if (ReleaseStatus.NONE == rs) {
-            LOGGER.debug("Release Status not found in Oracle OpenJDK for downloadLink: {}", downloadLink);
+            LOGGER.debug("Release Status not found in {} for downloadLink: {}", getName(), downloadLink);
             return null;
         }
 

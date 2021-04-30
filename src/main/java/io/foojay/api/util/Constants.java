@@ -45,6 +45,12 @@ public class Constants {
     public static final String        PACKAGES_COLLECTION       = "packages";
     public static final String        DOWNLOADS_COLLECTION      = "downloads";
     public static final String        DISTRO_UPDATES_COLLECTION = "distroupdates";
+    public static final String            SHEDLOCK_COLLECTION        = "shedLock";
+    public static final String            STATE_COLLECTION           = "state";
+    public static final String            SENTINEL_COLLECTION        = "sentinel";
+
+    public static final long              UPDATE_TIMEOUT_IN_MINUTES  = 20;
+    public static final long              PRELOAD_TIMEOUT_IN_MINUTES = 15;
 
     public static final String        CACHE_DATA_FILE           = "disco.json";
     public static final String        CACHE_DELTA_FILE          = "delta.json";
@@ -109,7 +115,7 @@ public class Constants {
         put(Pkg.FIELD_PACKAGE_TYPE, "jdk, jre");
         put(Pkg.FIELD_RELEASE_STATUS, "ea, ga");
         put(Pkg.FIELD_TERM_OF_SUPPORT, "sts, mts, lts");
-        put(Pkg.FIELD_FEATURE, "panama, loom");
+        put(Pkg.FIELD_FEATURE, "panama, loom, lanai, valhalla");
     }};
 
     public static final LinkedHashMap<String, ArchiveType> ARCHIVE_TYPE_LOOKUP = new LinkedHashMap<>() {{

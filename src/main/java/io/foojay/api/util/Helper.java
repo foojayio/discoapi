@@ -24,6 +24,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
+import io.foojay.api.MongoDbManager;
 import io.foojay.api.distribution.AOJ;
 import io.foojay.api.distribution.AOJ_OPENJ9;
 import io.foojay.api.distribution.Distribution;
@@ -1025,6 +1026,36 @@ public class Helper {
                                               .findFirst()
                                               .map(Entry::getValue)
                                               .orElse(ReleaseStatus.NOT_FOUND);
+    }
+
+    public static final boolean preloadCache() {
+        long start = System.currentTimeMillis();
+
+        try {
+            final InputStream inputStream = CacheManager.class.getResourceAsStream(Constants.CACHE_DATA_FILE);
+            if (null == inputStream) {
+                LOGGER.error("{} not found in resources.", Constants.CACHE_DATA_FILE);
+                return false;
+            }
+
+            String jsonText = Helper.readFromInputStream(inputStream);
+            LOGGER.debug("Successfully read {} from resources.", Constants.CACHE_DATA_FILE);
+
+            final Gson      gson      = new Gson();
+            final JsonArray jsonArray = gson.fromJson(jsonText, JsonArray.class);
+            List<Pkg>       pkgs      = new ArrayList<>();
+            for (int i = 0; i < jsonArray.size(); i++) {
+                JsonObject pkgJsonObj = jsonArray.get(i).getAsJsonObject();
+                Pkg        pkg        = new Pkg(pkgJsonObj.toString());
+                pkgs.add(pkg);
+                CacheManager.INSTANCE.pkgCache.add(pkg.getId(), pkg);
+            }
+            LOGGER.debug("Successfully preloaded cache with {} packages from json file in {} ms", CacheManager.INSTANCE.pkgCache.size(), (System.currentTimeMillis() - start));
+            return true;
+        } catch (IOException e) {
+
+        }
+        return false;
     }
 
 

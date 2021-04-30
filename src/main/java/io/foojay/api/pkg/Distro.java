@@ -41,6 +41,7 @@ import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
 import io.foojay.api.util.OutputFormat;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -96,7 +97,8 @@ public enum Distro implements ApiFeature {
     private        final String       apiString;
     private        final Distribution distribution;
     private        final int          minUpdateIntervalInMinutes;
-    public  final       AtomicReference<Instant> lastUpdate;
+    public         final AtomicReference<Instant> lastUpdate;
+    public         final AtomicReference<Duration> lastUpdateDuration;
 
 
     Distro(final String uiString, final String apiString, final Distribution distribution, final int minUpdateIntervalInMinutes) {
@@ -105,6 +107,7 @@ public enum Distro implements ApiFeature {
         this.distribution               = distribution;
         this.minUpdateIntervalInMinutes = minUpdateIntervalInMinutes;
         this.lastUpdate                 = new AtomicReference<>();
+        this.lastUpdateDuration         = new AtomicReference<>(Duration.ofSeconds(0));
     }
 
 

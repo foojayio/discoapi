@@ -36,12 +36,16 @@ import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Config;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.OutputFormat;
+import io.foojay.api.util.State;
+import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.json.JsonParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -68,8 +72,12 @@ public enum MongoDbManager {
 
     private static final String        FIELD_PACKAGE_ID = "id";
     private static final String        FIELD_DOWNLOADS  = "downloads";
+    private static final String        FIELD_ID         = "id";
     private static final String        FIELD_DISTRO     = "distro";
     private static final String        FIELD_TIMESTAMP  = "timestamp";
+    private static final String        FIELD_STATE      = "state";
+    private static final String        FIELD_TYPE       = "type";
+    private static final String        FIELD_REMOVED_AT = "removedat";
 
     private              MongoClient   mongoClient;
     private              boolean       connected;
@@ -124,6 +132,127 @@ public enum MongoDbManager {
         init();
     }
 
+    public MongoDatabase getDatabase() {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected");
+            return null;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return null;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        return database;
+    }
+
+    public State getState() {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, returned idle state");
+            return State.IDLE;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Cannot return state because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return State.IDLE;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.STATE_COLLECTION) {
+            LOGGER.error("Constants.STATE_COLLECTION not set.");
+            return State.IDLE;
+        };
+        if (!collectionExists(database, Constants.STATE_COLLECTION)) { database.createCollection(Constants.STATE_COLLECTION); }
+
+        final Instant                   now        = Instant.now();
+        final MongoCollection<Document> collection = database.getCollection(Constants.STATE_COLLECTION);
+        Document document = collection.find(eq(FIELD_TYPE, FIELD_STATE)).first();
+        if (null == document) {
+            collection.updateOne(eq(FIELD_TYPE, FIELD_STATE), combine(set(FIELD_TYPE, FIELD_STATE), set(FIELD_STATE, State.IDLE.name()), set(FIELD_TIMESTAMP, now.getEpochSecond())), new UpdateOptions().upsert(true));
+            return State.IDLE;
+        } else {
+            final State   state     = State.valueOf(document.getString(FIELD_STATE));
+            final Instant timestamp = Instant.ofEpochSecond(document.getLong(FIELD_TIMESTAMP));
+            final long    minutes   = Duration.between(timestamp, Instant.now()).toMinutes();
+            switch(state) {
+                case UPDATING:
+                    if (minutes > Constants.UPDATE_TIMEOUT_IN_MINUTES) {
+                        collection.updateOne(eq(FIELD_TYPE, FIELD_STATE), combine(set(FIELD_TYPE, FIELD_STATE), set(FIELD_STATE, State.IDLE.name()), set(FIELD_TIMESTAMP, now.getEpochSecond())), new UpdateOptions().upsert(true));
+                        return State.IDLE;
+                    } else {
+                        return state;
+                    }
+                case PRELOADING:
+                    if (minutes > Constants.UPDATE_TIMEOUT_IN_MINUTES) {
+                        collection.updateOne(eq(FIELD_TYPE, FIELD_STATE), combine(set(FIELD_TYPE, FIELD_STATE), set(FIELD_STATE, State.IDLE.name()), set(FIELD_TIMESTAMP, now.getEpochSecond())), new UpdateOptions().upsert(true));
+                        return State.IDLE;
+                    } else {
+                        return state;
+                    }
+                case IDLE:
+                default  : return state;
+            }
+        }
+    }
+    public String getStateJson() {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, returned idle state");
+            return null;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Cannot return state because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return null;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.STATE_COLLECTION) {
+            LOGGER.error("Constants.STATE_COLLECTION not set.");
+            return null;
+        };
+
+        if (!collectionExists(database, Constants.STATE_COLLECTION)) {
+            database.createCollection(Constants.STATE_COLLECTION);
+        }
+
+        final MongoCollection<Document> collection = database.getCollection(Constants.STATE_COLLECTION);
+        Document document = collection.find(eq(FIELD_TYPE, FIELD_STATE)).first();
+        if (null == document) {
+            return null;
+        } else {
+            return document.toJson();
+        }
+    }
+    public void setState(final State state) {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, state not set");
+            return;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Cannot set state because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.STATE_COLLECTION) {
+            LOGGER.error("Constants.STATE_COLLECTION not set.");
+            return;
+        };
+        if (!collectionExists(database, Constants.STATE_COLLECTION)) { database.createCollection(Constants.STATE_COLLECTION); }
+        database.getCollection(Constants.STATE_COLLECTION)
+                .updateOne(eq(FIELD_TYPE, FIELD_STATE), combine(set(FIELD_TYPE, FIELD_STATE), set(FIELD_STATE, state.name()), set(FIELD_TIMESTAMP, Instant.now().getEpochSecond())), new UpdateOptions().upsert(true));
+    }
+
     /**
      * Returns list of all packages in the packages collection
      * @return list of all packages in the packages collection
@@ -146,6 +275,8 @@ public enum MongoDbManager {
             LOGGER.error("Constants.BUNDLES_COLLECTION not set.");
             return new ArrayList<>();
         };
+        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
+
         final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         final List<Pkg>                 result     = new ArrayList<>();
         collection.find().forEach(document -> {
@@ -174,6 +305,8 @@ public enum MongoDbManager {
             LOGGER.error("Constants.BUNDLES_COLLECTION not set.");
             return new ArrayList<>();
         };
+        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
+
         final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         final List<Pkg>                 result     = new ArrayList<>();
         collection.find(eq(FIELD_DISTRIBUTION, distro.getApiString()))
@@ -211,11 +344,14 @@ public enum MongoDbManager {
             LOGGER.error("Constants.BUNDLES_COLLECTION not set.");
             return;
         };
+        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
+
         final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         final List<Document>            documents  = new ArrayList<>();
         for (Pkg pkg : pkgs) {
             try {
-                documents.add(Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1)));
+                long count = collection.countDocuments(new BsonDocument(FIELD_PACKAGE_ID, new BsonString(pkg.getId())));
+                if (count == 0) { documents.add(Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1))); }
             } catch (JsonParseException e) {
                 LOGGER.error("Error parsing json when adding package {}. {}", pkg.getId(), e.getMessage());
             }
@@ -251,6 +387,7 @@ public enum MongoDbManager {
             LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
             return false;
         };
+        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
 
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         ReplaceOptions replaceOptions = new ReplaceOptions().upsert(true);
@@ -293,6 +430,7 @@ public enum MongoDbManager {
             LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
             return false;
         };
+        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
 
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         for (Pkg pkg : pkgs) {
@@ -314,6 +452,7 @@ public enum MongoDbManager {
      * @return true when all documents have been removed successfully
      */
     public boolean removeAllPkgs() {
+        setState(State.CLEANUP);
         connect();
         if (!connected) {
             LOGGER.debug("MongoDB not connected, no packages have been removed");
@@ -331,10 +470,12 @@ public enum MongoDbManager {
             LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
             return false;
         };
+        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
 
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         collection.deleteMany(new Document());
 
+        setState(State.IDLE);
         LOGGER.debug("Successfully deleted all packages from mongodb.");
         return true;
     }
@@ -362,6 +503,7 @@ public enum MongoDbManager {
             LOGGER.error("Constants.DOWNLOADS_COLLECTION not set.");
             return new HashMap<>();
         };
+        if (!collectionExists(database, Constants.DOWNLOADS_COLLECTION)) { database.createCollection(Constants.DOWNLOADS_COLLECTION); }
 
         final Map<String, Long>  downloads        = new ConcurrentHashMap<>();
         final Consumer<Document> downloadConsumer = document -> downloads.put(document.getString(FIELD_PACKAGE_ID), document.getLong(FIELD_DOWNLOADS));
@@ -396,6 +538,8 @@ public enum MongoDbManager {
             LOGGER.error("Constants.DOWNLOADS_COLLECTION not set.");
             return;
         }
+        if (!collectionExists(database, Constants.DOWNLOADS_COLLECTION)) { database.createCollection(Constants.DOWNLOADS_COLLECTION); }
+
         database.getCollection(Constants.DOWNLOADS_COLLECTION)
                 .updateOne(eq(FIELD_PACKAGE_ID, pkgId), combine(set(FIELD_PACKAGE_ID, pkgId), set(FIELD_DOWNLOADS, noOfDownloads)), new UpdateOptions().upsert(true));
 
@@ -420,6 +564,8 @@ public enum MongoDbManager {
             LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
             return;
         }
+        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
+
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         pkgs.forEach(pkg -> collection.updateOne(eq(FIELD_PACKAGE_ID, pkg.getId()), set(FIELD_LATEST_BUILD_AVAILABLE, false)));
 
@@ -444,6 +590,8 @@ public enum MongoDbManager {
             LOGGER.error("Constants.DISTRO_UPDATES_COLLECTION not set.");
             return Instant.ofEpochSecond(0);
         };
+        if (!collectionExists(database, Constants.DISTRO_UPDATES_COLLECTION)) { database.createCollection(Constants.DISTRO_UPDATES_COLLECTION); }
+
         final MongoCollection<Document> collection = database.getCollection(Constants.DISTRO_UPDATES_COLLECTION);
 
         if (!collectionExists(database, Constants.DISTRO_UPDATES_COLLECTION)) {
@@ -475,6 +623,7 @@ public enum MongoDbManager {
             LOGGER.error("Constants.DISTRO_UPDATES_COLLECTION not set.");
             return;
         }
+        if (!collectionExists(database, Constants.DISTRO_UPDATES_COLLECTION)) { database.createCollection(Constants.DISTRO_UPDATES_COLLECTION); }
 
         database.getCollection(Constants.DISTRO_UPDATES_COLLECTION)
                 .updateOne(eq(FIELD_DISTRO, distro.getApiString()), combine(set(FIELD_TIMESTAMP, Instant.now().getEpochSecond())), new UpdateOptions().upsert(true));
@@ -484,11 +633,11 @@ public enum MongoDbManager {
     public boolean removeLastDownloads() {
         connect();
         if (!connected) {
-            LOGGER.debug("MongoDB not connected, no packages have been removed");
+            LOGGER.debug("MongoDB not connected, last update entries have not been removed");
             return false;
         }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
-            LOGGER.debug("Packages have not been removed because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            LOGGER.debug("Last update entries have not been removed because FOOJAY_MONGODB_DATABASE environment variable was not set.");
             return false;
         }
         if (null == database) {
@@ -499,11 +648,130 @@ public enum MongoDbManager {
             LOGGER.error("Constants.DISTRO_UPDATES_COLLECTION not set.");
             return false;
         };
+        if (!collectionExists(database, Constants.DISTRO_UPDATES_COLLECTION)) { database.createCollection(Constants.DISTRO_UPDATES_COLLECTION); }
 
         MongoCollection<Document> collection = database.getCollection(Constants.DISTRO_UPDATES_COLLECTION);
         collection.deleteMany(new Document());
 
         LOGGER.debug("Successfully deleted all last update entries from mongodb.");
+        return true;
+    }
+
+    public boolean removeSentinelPackage() {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, sentinel not removed.");
+            return false;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Cannot remove sentinel because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return false;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set, sentinel not removed.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.PACKAGES_COLLECTION) {
+            LOGGER.error("Constants.PACKAGES_COLLECTION not set, sentinel not removed.");
+            return false;
+        };
+        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
+
+        final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
+        final Document                  sentinel   = collection.find(eq(FIELD_ID, Constants.SENTINEL_PKG_ID)).first();
+        if (null == sentinel) {
+            LOGGER.debug("Sentinel not removed from mongodb because it was not found.");
+            return false;
+        }
+
+        collection.deleteOne(eq(FIELD_ID, Constants.SENTINEL_PKG_ID));
+        LOGGER.debug("Sentinel successfully removed from mongodb.");
+        CacheManager.INSTANCE.pkgCache.remove(Constants.SENTINEL_PKG_ID);
+        LOGGER.debug("Sentinel successfully removed from pkgCache.");
+
+        if (!collectionExists(database, Constants.SENTINEL_COLLECTION)) { database.createCollection(Constants.SENTINEL_COLLECTION); }
+        database.getCollection(Constants.SENTINEL_COLLECTION)
+                .updateOne(eq(FIELD_ID, Constants.SENTINEL_PKG_ID), set(FIELD_REMOVED_AT, Instant.now().getEpochSecond()), new UpdateOptions().upsert(true));
+
+        return true;
+    }
+    public boolean isSentinelAvailable() {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, cannot get sentinel");
+            return false;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Cannot get sentinel because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return false;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set, cannot get sentinel.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.PACKAGES_COLLECTION) {
+            LOGGER.error("Constants.PACKAGES_COLLECTION not set, cannot get sentinel.");
+            return false;
+        };
+        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
+
+        final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
+        final Document                  sentinel   = collection.find(eq(FIELD_ID, Constants.SENTINEL_PKG_ID)).first();
+        return null != sentinel;
+    }
+    public Instant getSentinelLastRemovedAt() {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected.");
+            return Instant.ofEpochSecond(0);
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return Instant.ofEpochSecond(0);
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.SENTINEL_COLLECTION) {
+            LOGGER.error("Constants.SENTINEL_COLLECTION not set.");
+            return Instant.ofEpochSecond(0);
+        };
+        if (!collectionExists(database, Constants.SENTINEL_COLLECTION)) { database.createCollection(Constants.SENTINEL_COLLECTION); }
+
+        final MongoCollection<Document> collection = database.getCollection(Constants.SENTINEL_COLLECTION);
+        final Document                  document   = collection.find(eq(FIELD_ID, Constants.SENTINEL_PKG_ID)).first();
+        if (null == document) {
+            return Instant.ofEpochSecond(0);
+        } else {
+            return Instant.ofEpochSecond(document.getLong(FIELD_REMOVED_AT));
+        }
+    }
+
+    public boolean removeLocks() {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, no locks have been removed");
+            return false;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Locks have not been removed because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return false;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.SHEDLOCK_COLLECTION) {
+            LOGGER.error("Constants.SHEDLOCK_COLLECTION not set.");
+            return false;
+        };
+        if (!collectionExists(database, Constants.SHEDLOCK_COLLECTION)) { database.createCollection(Constants.SHEDLOCK_COLLECTION); }
+
+        MongoCollection<Document> collection = database.getCollection(Constants.SHEDLOCK_COLLECTION);
+        collection.deleteMany(new Document());
+
+        LOGGER.debug("Successfully deleted all locks from mongodb.");
         return true;
     }
 
@@ -525,6 +793,8 @@ public enum MongoDbManager {
             LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
             return;
         }
+        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
+
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         pkgs.forEach(pkg -> collection.updateOne(eq(FIELD_PACKAGE_ID, pkg.getId()), set(FIELD_LATEST_BUILD_AVAILABLE, pkg.isLatestBuildAvailable())));
 

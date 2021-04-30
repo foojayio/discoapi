@@ -39,12 +39,14 @@ import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.StringReader;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -57,9 +59,9 @@ import static io.foojay.api.pkg.ReleaseStatus.GA;
 public class OpenLogic implements Distribution {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenLogic.class);
 
-    public  static final String                       PACKAGE_ALL_URL        = "https://www.openlogic.com/openjdk-downloads";
     private static final String                       PREFIX                 = "openlogic-openjdk-";
     private static final String                       PACKAGE_URL            = "";
+    public  static final String                       PKGS_PROPERTIES        = "https://github.com/foojay2020/openjdk_releases/raw/main/openlogic.properties";
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM     = "";
@@ -156,15 +158,43 @@ public class OpenLogic implements Distribution {
 
     public List<Pkg> getAllPkgs() {
         List<Pkg> pkgs = new ArrayList<>();
+
+        List<String> pkgUrls = new ArrayList<>();
+
+        // Load jdk properties
         try {
-            final HttpResponse<String> response = Helper.get(PACKAGE_ALL_URL);
+            final Properties           propertiesPkgs = new Properties();
+            final HttpResponse<String> response       = Helper.get(PKGS_PROPERTIES);
+            if (null == response) {
+                LOGGER.debug("No jdk properties found for {}", getName());
+                return pkgs;
+            }
+            final String propertiesText = response.body();
+            if (propertiesText.isEmpty()) {
+                LOGGER.debug("jdk properties are empty for {}", getName());
+                return pkgs;
+            }
+            propertiesPkgs.load(new StringReader(propertiesText));
+
+            propertiesPkgs.forEach((key, value) -> {
+                String pkgUrl = value.toString();
+                pkgUrls.add(pkgUrl);
+            });
+        } catch (Exception e) {
+            LOGGER.error("Error reading jdk properties file from github for {}. {}", getName(), e.getMessage());
+        }
+
+        for (String pkgUrl : pkgUrls) {
+        try {
+                final HttpResponse<String> response = Helper.get(pkgUrl);
             if (null == response) { return pkgs; }
             final String htmlAllJDKs  = response.body();
             if (!htmlAllJDKs.isEmpty()) {
                 pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs));
             }
         } catch (Exception e) {
-            LOGGER.error("Error fetching all packages from OpenLogic. {}", e);
+                LOGGER.error("Error fetching all packages from {}. {}", getName(), e);
+            }
         }
         return pkgs;
     }
