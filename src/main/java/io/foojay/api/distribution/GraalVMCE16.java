@@ -19,6 +19,8 @@
 
 package io.foojay.api.distribution;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Architecture;
@@ -36,33 +38,34 @@ import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
-import io.foojay.api.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static io.foojay.api.pkg.ArchiveType.SRC_TAR;
+import static io.foojay.api.pkg.ArchiveType.getFromFileName;
+import static io.foojay.api.pkg.OperatingSystem.LINUX;
+import static io.foojay.api.pkg.OperatingSystem.MACOS;
+import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
 import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.PackageType.JRE;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
 import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
-public class Corretto implements Distribution {
-    private static final Logger                       LOGGER                  = LoggerFactory.getLogger(Corretto.class);
+public class GraalVMCE16 implements Distribution {
+    private static final Logger                       LOGGER                  = LoggerFactory.getLogger(GraalVMCE16.class);
 
-    private static final Pattern                      FILENAME_PREFIX_PATTERN = Pattern.compile("(java-(\\d+)?\\.?(\\d+)?\\.?(\\d+)?\\.?-)|(amazon-corretto-)(jdk_|devel-)?");
-    private static final Matcher                      FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
-    private static final String                       PACKAGE_URL             = "https://api.github.com/repos/corretto/";// jdk8: corretto-8, jdk11: corretto-11, jdk15,jdk16: corretto-jdk
+    private static final String                       GITHUB_USER             = "graalvm";
+    private static final String                       PACKAGE_URL             = "https://api.github.com/repos/" + GITHUB_USER + "/graalvm-ce-builds/releases";
+    private static final Pattern                      FILENAME_PATTERN        = Pattern.compile("^(graalvm-ce-java16)(.*)(\\.tar\\.gz|\\.zip)$");
+    private static final Matcher                      FILENAME_MATCHER        = FILENAME_PATTERN.matcher("");
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM      = "";
@@ -77,10 +80,10 @@ public class Corretto implements Distribution {
     private static final String                       HASH_URI                = "";
     private static final SignatureType                SIGNATURE_TYPE          = SignatureType.NONE;
     private static final HashAlgorithm                SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
-    private static final String                       SIGNATURE_URI           = "";//https://corretto.aws/downloads/resources/11.0.6.10.1/B04F24E3.pub";
+    private static final String                       SIGNATURE_URI           = "";
 
 
-    @Override public Distro getDistro() { return Distro.CORRETTO; }
+    @Override public Distro getDistro() { return Distro.GRAALVM_CE16; }
 
     @Override public String getName() { return getDistro().getUiString(); }
 
@@ -114,7 +117,7 @@ public class Corretto implements Distribution {
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
-                                             .filter(pkg -> Distro.CORRETTO.get().equals(pkg.getDistribution()))
+                                             .filter(pkg -> Distro.GRAALVM_CE16.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
                                              .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
     }
@@ -124,22 +127,9 @@ public class Corretto implements Distribution {
                                                    final boolean latest, final OperatingSystem operatingSystem,
                                                    final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                                                    final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
-        StringBuilder queryBuilder = new StringBuilder();
-        queryBuilder.append(PACKAGE_URL);
-        int featureVersion = versionNumber.getFeature().getAsInt();
-        if (featureVersion == 8 || featureVersion == 11) {
-            queryBuilder.append("corretto-").append(featureVersion).append("/releases").append("?per_page=100");
-        } else if (featureVersion == 15 || featureVersion == 16) {
-                queryBuilder.append("corretto-jdk").append("/releases").append("?per_page=100");
-        } else if (featureVersion == 17) {
-            //queryBuilder.append("corretto-").append(featureVersion).append("/releases").append("?per_page=100");
-        } else if (featureVersion == 18 || featureVersion == 19) {
-            //queryBuilder.append("corretto-jdk").append("/releases").append("?per_page=100");
-        }
 
-        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder.toString());
-
-        return queryBuilder.toString();
+        LOGGER.debug("Query string for {}: {}", this.getName(), PACKAGE_URL);
+        return PACKAGE_URL;
     }
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
@@ -150,131 +140,104 @@ public class Corretto implements Distribution {
         TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
         supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
 
-        if (jsonObj.has("message")) {
-            LOGGER.debug("Github rate limit reached when trying to get packages for Corretto {}", versionNumber);
-            return pkgs;
+        VersionNumber vNumber = null;
+        String tag = jsonObj.get("tag_name").getAsString();
+        if (tag.contains("vm-")) {
+            tag = tag.substring(tag.lastIndexOf("vm-")).replace("vm-", "");
+            vNumber = VersionNumber.fromText(tag);
         }
-        String       bodyText      = jsonObj.get("body").getAsString();
 
-        Set<Pair<String,String>> pairsFound = Helper.getPackageTypeAndFileUrlFromString(bodyText);
-        Map<String,String>       signatureUrisFound = Helper.getCorrettoSignatureUris(bodyText);
+        boolean prerelease = false;
+        if (jsonObj.has("prerelease")) {
+            prerelease = jsonObj.get("prerelease").getAsBoolean();
+        }
+        if (prerelease) { return pkgs; }
 
-        for (Pair<String, String> pair : pairsFound) {
-            final PackageType pkgType = PackageType.fromText(pair.getKey());
-            final String      url     = pair.getValue();
+        JsonArray assets = jsonObj.getAsJsonArray("assets");
+        for (JsonElement element : assets) {
+            JsonObject assetJsonObj = element.getAsJsonObject();
+            String     filename     = assetJsonObj.get("name").getAsString();
+            if (filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_JAR) ||
+                filename.endsWith(Constants.FILE_ENDING_SHA1) || filename.endsWith(Constants.FILE_ENDING_SHA256)) { continue; }
+
+            FILENAME_MATCHER.reset(filename);
+            if (!FILENAME_MATCHER.matches()) { continue; }
+
+            String   strippedFilename = filename.replaceFirst("graalvm-ce-java16-", "").replaceAll("(\\.tar\\.gz|\\.zip)", "");
+            String[] filenameParts    = strippedFilename.split("-");
+
+            String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
             Pkg pkg = new Pkg();
 
-            String filename = Helper.getFileNameFromText(url);
-
-            String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
-
-            pkg.setDistribution(Distro.CORRETTO.get());
+            pkg.setDistribution(Distro.GRAALVM_CE16.get());
             pkg.setFileName(filename);
-            pkg.setDirectDownloadUri(url);
-            if (signatureUrisFound.containsKey(filename)) {
-                pkg.setSignatureUri(signatureUrisFound.get(filename));
-            }
+            pkg.setDirectDownloadUri(downloadLink);
 
-            ArchiveType ext = ArchiveType.getFromFileName(filename);
-            if (ArchiveType.NONE != archiveType && ext != archiveType) { continue; }
+            ArchiveType ext = getFromFileName(filename);
+            if (SRC_TAR == ext || (ArchiveType.NONE != archiveType && ext != archiveType)) { continue; }
             pkg.setArchiveType(ext);
 
-            // Corretto Version: 11.0.XX.YY.Z, 15.0.XX.YY.Z
-            // XX -> OpenJDK 11 update number
-            // YY -> OpenJDK 11 build number
-            // Z  -> Corretto specific revision number
-
-            // Corretto Version: 8.XXX.YY.Z
-            // XXX -> OpenJDK 8 update number
-            // YY  -> OpenJDK 8 build number
-            // Z   -> Corretto specific revision number
-
-            VersionNumber correttoNumber = VersionNumber.fromText(withoutPrefix);
-            VersionNumber vNumber;
-            if (correttoNumber.getFeature().getAsInt() > 8) {
-                vNumber = new VersionNumber(correttoNumber.getFeature().getAsInt(), 0, correttoNumber.getUpdate().getAsInt(), 0);
-                vNumber.setBuild(correttoNumber.getPatch().getAsInt());
-            } else {
-                vNumber = new VersionNumber(correttoNumber.getFeature().getAsInt(), 0, correttoNumber.getInterim().getAsInt(), 0);
-                vNumber.setBuild(correttoNumber.getUpdate().getAsInt());
-                pkg.setJavaFXBundled(true);
-            }
-
-            if (latest) {
-                if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { continue; }
-            } /*else {
-                if (!versionNumber.equals(vNumber)) { continue; }
-            }*/
-            pkg.setVersionNumber(vNumber);
-            pkg.setJavaVersion(vNumber);
-
-            pkg.setDistributionVersion(correttoNumber);
-
-            pkg.setTermOfSupport(supTerm);
-
-            switch (packageType) {
-                case JDK:
-                    if (withoutPrefix.contains(Constants.JRE_POSTFIX)) { continue; }
-                    pkg.setPackageType(JDK);
-                    break;
-                case JRE:
-                    if (!withoutPrefix.contains(Constants.JRE_POSTFIX)) { continue; }
-                    pkg.setPackageType(JRE);
-                    break;
-                case NONE:
-                    pkg.setPackageType(pkgType);
-                    break;
-            }
-
-
-            if (releaseStatus == ReleaseStatus.NONE || releaseStatus == GA) {
-                pkg.setReleaseStatus(GA);
-            } else if (releaseStatus == EA) {
-                continue;
-            }
-
             Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                             .filter(entry -> withoutPrefix.contains(entry.getKey()))
+                                                             .filter(entry -> strippedFilename.contains(entry.getKey()))
                                                              .findFirst()
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
             if (Architecture.NONE == arch) {
-                LOGGER.debug("Architecture not found in Corretto for filename: {}", filename);
+                LOGGER.debug("Architecture not found in GraalVM CE16 for filename: {}", filename);
                 continue;
             }
 
             pkg.setArchitecture(arch);
             pkg.setBitness(arch.getBitness());
 
+            if (null == vNumber && filenameParts.length > 2) {
+                vNumber = VersionNumber.fromText(filenameParts[2]);
+            }
+            if (latest) {
+                if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { continue; }
+            } else {
+                //if (versionNumber.compareTo(vNumber) != 0) { continue; }
+            }
+            pkg.setVersionNumber(vNumber);
+            pkg.setJavaVersion(vNumber);
+            pkg.setDistributionVersion(vNumber);
+
+            pkg.setTermOfSupport(supTerm);
+
+            pkg.setPackageType(JDK);
+
+            pkg.setReleaseStatus(GA);
 
             OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                                  .filter(entry -> withoutPrefix.contains(entry.getKey()))
+                                                                  .filter(entry -> strippedFilename.contains(entry.getKey()))
                                                                   .findFirst()
                                                                   .map(Entry::getValue)
                                                                   .orElse(OperatingSystem.NONE);
+
             if (OperatingSystem.NONE == os) {
                 switch (pkg.getArchiveType()) {
                     case DEB:
                     case RPM:
                     case TAR_GZ:
-                        os = OperatingSystem.LINUX;
+                        os = LINUX;
                         break;
                     case MSI:
                     case ZIP:
-                        os = OperatingSystem.WINDOWS;
+                        os = WINDOWS;
                         break;
                     case DMG:
                     case PKG:
-                        os = OperatingSystem.MACOS;
+                        os = MACOS;
                         break;
                 }
             }
             if (OperatingSystem.NONE == os) {
-                LOGGER.debug("Operating System not found in Corretto for filename: {}", filename);
+                LOGGER.debug("Operating System not found in GraalVM CE16 for filename: {}", filename);
                 continue;
             }
             pkg.setOperatingSystem(os);
+
             pkgs.add(pkg);
         }
 

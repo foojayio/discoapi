@@ -24,9 +24,11 @@ import java.util.List;
 
 
 public enum Latest {
+    ALL_OF_VERSION("all of version", "all_of_version"),
     OVERALL("overall", "overall"),
     PER_DISTRIBUTION("per distribution", "per_distro"),
     PER_VERSION("per version", "per_version"),
+    AVAILABLE("available", "available"),
     NONE("-", ""),
     NOT_FOUND("", "");;
 
@@ -72,6 +74,13 @@ public enum Latest {
             case "PER-VERSION":
             case "PERVERSION":
                 return PER_VERSION;
+            case "available":
+            case "AVAILABLE":
+            case "Available":
+                return AVAILABLE;
+            case "all_of_version":
+            case "ALL_OF_VERSION":
+                return ALL_OF_VERSION;
             default:
                 return NOT_FOUND;
         }

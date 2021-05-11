@@ -24,7 +24,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
-import io.foojay.api.MongoDbManager;
 import io.foojay.api.distribution.AOJ;
 import io.foojay.api.distribution.AOJ_OPENJ9;
 import io.foojay.api.distribution.Distribution;
@@ -62,7 +61,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpClient.Version;
@@ -94,6 +95,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
@@ -102,6 +105,19 @@ import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
+import static io.foojay.api.util.Constants.API_VERSION_V2;
+import static io.foojay.api.util.Constants.COLON;
+import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
+import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.CURLY_BRACKET_OPEN;
+import static io.foojay.api.util.Constants.INDENT;
+import static io.foojay.api.util.Constants.INDENTED_QUOTES;
+import static io.foojay.api.util.Constants.MESSAGE;
+import static io.foojay.api.util.Constants.NEW_LINE;
+import static io.foojay.api.util.Constants.QUOTES;
+import static io.foojay.api.util.Constants.RESULT;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toCollection;
@@ -111,12 +127,14 @@ public class Helper {
     private static final Logger     LOGGER                                 = LoggerFactory.getLogger(Helper.class);
     public  static final Pattern    FILE_URL_PATTERN                       = Pattern.compile("(JDK|JRE)(\\s+\\|\\s?\\[[a-zA-Z0-9\\-\\._]+\\]\\()(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz(?!\\.sig)|\\.deb|\\.rpm|\\.cab|\\.7z))");
     public  static final Pattern    FILE_URL_MD5_PATTERN                   = Pattern.compile("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\\)\\h+\\|\\h+`([0-9a-z]{32})`");
+    public  static final Pattern    CORRETTO_SIG_URI_PATTERN               = Pattern.compile("((\\[Download\\])\\(?(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip\\.sig|\\.tar\\.gz\\.sig)))\\)");
     public  static final Pattern    DRAGONWELL_11_FILE_NAME_SHA256_PATTERN = Pattern.compile("(OpenJDK[0-9]+U[a-z0-9_\\-\\.]+)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)(\\s+\\(Experimental ONLY\\))?\\h+\\|\\h+([0-9a-z]{64})");
     public  static final Pattern    DRAGONWELL_8_FILE_NAME_SHA256_PATTERN  = Pattern.compile("(\\()?(Alibaba_Dragonwell[0-9\\.A-Za-z_\\-]+)(\\)=\\s+)?|([\\\\r\\\\n]+)?([a-z0-9]{64})");
     public  static final Pattern    HREF_FILE_PATTERN                      = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
     public  static final Pattern    HREF_DOWNLOAD_PATTERN                  = Pattern.compile("(\\>)(\\s|\\h?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(\\<)");
     public  static final Matcher    FILE_URL_MATCHER                       = FILE_URL_PATTERN.matcher("");
     public  static final Matcher    FILE_URL_MD5_MATCHER                   = FILE_URL_MD5_PATTERN.matcher("");
+    public  static final Matcher    CORRETTO_SIG_URI_MATCHER               = CORRETTO_SIG_URI_PATTERN.matcher("");
     public  static final Matcher    DRAGONWELL_11_FILE_NAME_SHA256_MATCHER = DRAGONWELL_11_FILE_NAME_SHA256_PATTERN.matcher("");
     public  static final Matcher    DRAGONWELL_8_FILE_NAME_SHA256_MATCHER  = DRAGONWELL_8_FILE_NAME_SHA256_PATTERN.matcher("");
     public  static final Matcher    HREF_FILE_MATCHER                      = HREF_FILE_PATTERN.matcher("");
@@ -535,6 +553,17 @@ public class Helper {
             }
         }
         return pairsFound;
+    }
+
+    public static Map<String,String> getCorrettoSignatureUris(final String text) {
+        Map signatureUrisFound = new HashMap<>();
+        CORRETTO_SIG_URI_MATCHER.reset(text);
+        while(CORRETTO_SIG_URI_MATCHER.find()) {
+            String sigUri   = CORRETTO_SIG_URI_MATCHER.group(3);
+            String filename = (sigUri.substring(sigUri.lastIndexOf("/") + 1)).replaceAll("\\.sig|\\.SIG", "");
+            signatureUrisFound.put(filename, sigUri);
+        }
+        return signatureUrisFound;
     }
 
     public static Set<String> getFileHrefsFromString(final String text) {
@@ -1028,36 +1057,86 @@ public class Helper {
                                               .orElse(ReleaseStatus.NOT_FOUND);
     }
 
-    public static final boolean preloadCache() {
-        long start = System.currentTimeMillis();
-
+    public static final boolean isUriValid(final String uri, final boolean followRedirects, final boolean headRequest) {
+        HttpURLConnection huc;
         try {
-            final InputStream inputStream = CacheManager.class.getResourceAsStream(Constants.CACHE_DATA_FILE);
-            if (null == inputStream) {
-                LOGGER.error("{} not found in resources.", Constants.CACHE_DATA_FILE);
+            URL url = new URL(uri);
+            if (followRedirects) { HttpURLConnection.setFollowRedirects(false); }
+            huc = (HttpURLConnection) url.openConnection();
+            if (headRequest) { huc.setRequestMethod("HEAD"); }
+        } catch (IOException e) {
+            return false;
+        }
+        if (null == huc) {
+            return false;
+        } else {
+            try {
+                return 200 == huc.getResponseCode();
+            } catch (IOException e) {
                 return false;
             }
-
-            String jsonText = Helper.readFromInputStream(inputStream);
-            LOGGER.debug("Successfully read {} from resources.", Constants.CACHE_DATA_FILE);
-
-            final Gson      gson      = new Gson();
-            final JsonArray jsonArray = gson.fromJson(jsonText, JsonArray.class);
-            List<Pkg>       pkgs      = new ArrayList<>();
-            for (int i = 0; i < jsonArray.size(); i++) {
-                JsonObject pkgJsonObj = jsonArray.get(i).getAsJsonObject();
-                Pkg        pkg        = new Pkg(pkgJsonObj.toString());
-                pkgs.add(pkg);
-                CacheManager.INSTANCE.pkgCache.add(pkg.getId(), pkg);
-            }
-            LOGGER.debug("Successfully preloaded cache with {} packages from json file in {} ms", CacheManager.INSTANCE.pkgCache.size(), (System.currentTimeMillis() - start));
-            return true;
-        } catch (IOException e) {
-
         }
-        return false;
     }
 
+    public static final String getAllPackagesV2Msg(final Boolean downloadable, final Boolean include_ea) {
+        final List<Distro> publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
+        final boolean gaOnly = null == include_ea || !include_ea;
+        final StringBuilder msgBuilder = new StringBuilder();
+        msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                  .append(INDENTED_QUOTES).append(RESULT).append(QUOTES).append(COLON).append(NEW_LINE)
+                  .append(INDENT).append(CacheManager.INSTANCE.pkgCache.getPkgs()
+                                                                       .parallelStream()
+                                                                       .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
+                                                                       .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
+                                                                       .sorted(Comparator.comparing(Pkg::getDistributionName).reversed())
+                                                                       .map(pkg -> pkg.toString(OutputFormat.REDUCED_COMPRESSED, API_VERSION_V2))
+                                                                       .collect(Collectors.joining(COMMA_NEW_LINE, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(COMMA_NEW_LINE)
+                  .append(INDENTED_QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES).append(NEW_LINE)
+                  .append(CURLY_BRACKET_CLOSE);
+        return msgBuilder.toString();
+    }
+
+    public static final Collection<Pkg> updateLatestBuildAvailable(final Collection<Pkg> pkgsToModify) {
+        // Copy list of pkgs
+        List<Pkg> pkgs = new ArrayList<>(pkgsToModify);
+
+        // Set latestBuildAvailable=false in all pkgs
+        pkgs.forEach(pkg -> pkg.setLatestBuildAvailable(false));
+
+        // Find latest builds available
+        Collection<Pkg> pkgsFound = pkgs.parallelStream()
+                                        .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
+                                        .collect(Collectors.toList());
+        final Set<Pkg>  filteredPkgsFound = new CopyOnWriteArraySet<>();
+        final List<Pkg> pkgsToCheck       = new CopyOnWriteArrayList<>(pkgsFound);
+        final Set<Pkg>  diffPkgs          = new CopyOnWriteArraySet<>();
+        pkgsFound.forEach(pkg -> {
+            List<Pkg> pkgsWithDifferentUpdate = pkgsToCheck.parallelStream()
+                                                           .filter(pkg1 -> pkg.equalsExceptUpdate(pkg1))
+                                                           .collect(Collectors.toList());
+            diffPkgs.addAll(pkgsWithDifferentUpdate);
+
+            final Pkg pkgWithMaxVersion = pkgsWithDifferentUpdate.parallelStream()
+                                                                 .max(Comparator.comparing(Pkg::getVersionNumber))
+                                                                 .orElse(null);
+            if (null != pkgWithMaxVersion) {
+                List<Pkg> pkgsWithSmallerVersions = filteredPkgsFound.parallelStream()
+                                                                     .filter(pkg2 -> pkg2.equalsExceptUpdate(pkgWithMaxVersion))
+                                                                     .filter(pkg2 -> pkg2.getSemver().compareTo(pkgWithMaxVersion.getSemver()) < 0)
+                                                                     .collect(Collectors.toList());
+                if (!pkgsWithSmallerVersions.isEmpty()) { filteredPkgsFound.removeAll(pkgsWithSmallerVersions); }
+                filteredPkgsFound.add(pkgWithMaxVersion);
+            }
+        });
+
+        pkgsToCheck.removeAll(diffPkgs);
+        filteredPkgsFound.addAll(pkgsToCheck);
+
+        // Set latestBuildAvailable=true for pkgs found
+        pkgs.parallelStream().filter(pkg -> filteredPkgsFound.contains(pkg)).forEach(pkg -> pkg.setLatestBuildAvailable(true));
+
+        return pkgs;
+    }
 
     // ******************** REST calls ****************************************
     private static HttpClient createHttpClient() {

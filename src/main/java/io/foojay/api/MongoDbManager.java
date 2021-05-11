@@ -63,6 +63,7 @@ import static io.foojay.api.pkg.Pkg.FIELD_DISTRIBUTION;
 import static io.foojay.api.pkg.Pkg.FIELD_FILENAME;
 import static io.foojay.api.pkg.Pkg.FIELD_LATEST_BUILD_AVAILABLE;
 import static io.foojay.api.util.Constants.API_VERSION_V1;
+import static io.foojay.api.util.Constants.SENTINEL_PKG_ID;
 
 
 public enum MongoDbManager {
@@ -188,7 +189,21 @@ public enum MongoDbManager {
                         return state;
                     }
                 case PRELOADING:
-                    if (minutes > Constants.UPDATE_TIMEOUT_IN_MINUTES) {
+                    if (minutes > Constants.PRELOAD_TIMEOUT_IN_MINUTES) {
+                        collection.updateOne(eq(FIELD_TYPE, FIELD_STATE), combine(set(FIELD_TYPE, FIELD_STATE), set(FIELD_STATE, State.IDLE.name()), set(FIELD_TIMESTAMP, now.getEpochSecond())), new UpdateOptions().upsert(true));
+                        return State.IDLE;
+                    } else {
+                        return state;
+                    }
+                case UPLOADING:
+                    if (minutes > Constants.UPLOAD_TIMEOUT_IN_MINUTES) {
+                        collection.updateOne(eq(FIELD_TYPE, FIELD_STATE), combine(set(FIELD_TYPE, FIELD_STATE), set(FIELD_STATE, State.IDLE.name()), set(FIELD_TIMESTAMP, now.getEpochSecond())), new UpdateOptions().upsert(true));
+                        return State.IDLE;
+                    } else {
+                        return state;
+                    }
+                case SYNCRONIZING:
+                    if (minutes > Constants.SYNCHRONIZING_TIMEOUT_IN_MINUTES) {
                         collection.updateOne(eq(FIELD_TYPE, FIELD_STATE), combine(set(FIELD_TYPE, FIELD_STATE), set(FIELD_STATE, State.IDLE.name()), set(FIELD_TIMESTAMP, now.getEpochSecond())), new UpdateOptions().upsert(true));
                         return State.IDLE;
                     } else {
@@ -452,7 +467,6 @@ public enum MongoDbManager {
      * @return true when all documents have been removed successfully
      */
     public boolean removeAllPkgs() {
-        setState(State.CLEANUP);
         connect();
         if (!connected) {
             LOGGER.debug("MongoDB not connected, no packages have been removed");
@@ -475,7 +489,6 @@ public enum MongoDbManager {
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         collection.deleteMany(new Document());
 
-        setState(State.IDLE);
         LOGGER.debug("Successfully deleted all packages from mongodb.");
         return true;
     }
@@ -717,7 +730,14 @@ public enum MongoDbManager {
 
         final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         final Document                  sentinel   = collection.find(eq(FIELD_ID, Constants.SENTINEL_PKG_ID)).first();
+
+        if (null == sentinel && CacheManager.INSTANCE.pkgCache.containsKey(SENTINEL_PKG_ID)) {
+            Document document = Document.parse(CacheManager.INSTANCE.pkgCache.get(SENTINEL_PKG_ID).toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1));
+            collection.replaceOne(eq(FIELD_PACKAGE_ID, SENTINEL_PKG_ID), document, new ReplaceOptions().upsert(true));
+            return true;
+        } else {
         return null != sentinel;
+    }
     }
     public Instant getSentinelLastRemovedAt() {
         connect();

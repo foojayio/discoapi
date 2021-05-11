@@ -25,6 +25,7 @@ import io.foojay.api.distribution.Temurin;
 import io.foojay.api.distribution.Corretto;
 import io.foojay.api.distribution.Distribution;
 import io.foojay.api.distribution.Dragonwell;
+import io.foojay.api.distribution.GraalVMCE16;
 import io.foojay.api.distribution.GraalVMCE11;
 import io.foojay.api.distribution.GraalVMCE8;
 import io.foojay.api.distribution.Liberica;
@@ -69,8 +70,9 @@ public enum Distro implements ApiFeature {
     DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 1440),
     GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 720),
     GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 720),
+    GRAALVM_CE16("Graal VM CE 16", "graalvm_ce16", new GraalVMCE16(), 725),
     LIBERICA("Liberica", "liberica", new Liberica(), 60),
-    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 60),
+    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 720),
     MANDREL("Mandrel", "mandrel", new Mandrel(), 1440),
     MICROSOFT("Microsoft OpenJDK", "microsoft", new Microsoft(), 720),
     OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 1440),
@@ -128,10 +130,10 @@ public enum Distro implements ApiFeature {
     public static Distro fromText(final String text) {
         if (null == text) { return NOT_FOUND; }
         switch (text) {
-            case "temurin":
-            case "Temurin":
-            case "TEMURIN":
-                return TEMURIN;
+            case "zulu":
+            case "ZULU":
+            case "Zulu":
+                return ZULU;
             case "aoj":
             case "AOJ":
                 return AOJ;
@@ -150,6 +152,24 @@ public enum Distro implements ApiFeature {
             case "DRAGONWELL":
             case "Dragonwell":
                 return DRAGONWELL;
+            case "graalvm_ce8":
+            case "graalvmce8":
+            case "GraalVM CE 8":
+            case "GraalVMCE8":
+            case "GraalVM_CE8":
+                return GRAALVM_CE8;
+            case "graalvm_ce11":
+            case "graalvmce11":
+            case "GraalVM CE 11":
+            case "GraalVMCE11":
+            case "GraalVM_CE11":
+                return GRAALVM_CE11;
+            case "graalvm_ce16":
+            case "graalvmce16":
+            case "GraalVM CE 16":
+            case "GraalVMCE16":
+            case "GraalVM_CE16":
+                return GRAALVM_CE16;
             case "liberica":
             case "LIBERICA":
             case "Liberica":
@@ -171,39 +191,26 @@ public enum Distro implements ApiFeature {
             case "MICROSOFT":
             case "Microsoft Build of OpenJDK":
                 return MICROSOFT;
-            case "graalvm_ce8":
-            case "graalvmce8":
-            case "GraalVM CE 8":
-            case "GraalVMCE8":
-            case "GraalVM_CE8":
-                return GRAALVM_CE8;
-            case "graalvm_ce11":
-            case "graalvmce11":
-            case "GraalVM CE 11":
-            case "GraalVMCE11":
-            case "GraalVM_CE11":
-                return GRAALVM_CE11;
-            case "sap_machine":
-            case "sapmachine":
-            case "SAPMACHINE":
-            case "SAP_MACHINE":
-            case "SAPMachine":
-            case "SAP Machine":
-            case "sap-machine":
-            case "SAP-Machine":
-            case "SAP-MACHINE":
-                return SAP_MACHINE;
-            case "trava":
-            case "TRAVA":
-            case "trava_openjdk":
-            case "TRAVA_OPENJDK":
-            case "trava openjdk":
-            case "TRAVA OPENJDK":
-                return TRAVA;
-            case "zulu":
-            case "ZULU":
-            case "Zulu":
-                return ZULU;
+            case "ojdk_build":
+            case "OJDK_BUILD":
+            case "OJDK Build":
+            case "ojdk build":
+            case "ojdkbuild":
+            case "OJDKBuild":
+                return OJDK_BUILD;
+            case "openlogic":
+            case "OPENLOGIC":
+            case "OpenLogic":
+            case "open_logic":
+            case "OPEN_LOGIC":
+            case "Open Logic":
+            case "OPEN LOGIC":
+            case "open logic":
+                return OPEN_LOGIC;
+            case "oracle":
+            case "Oracle":
+            case "ORACLE":
+                return ORACLE;
             case "oracle_open_jdk":
             case "ORACLE_OPEN_JDK":
             case "oracle_openjdk":
@@ -225,10 +232,6 @@ public enum Distro implements ApiFeature {
             case "oracle-open-jdk":
             case "ORACLE-OPEN-JDK":
                 return ORACLE_OPEN_JDK;
-            case "oracle":
-            case "Oracle":
-            case "ORACLE":
-                return ORACLE;
             case "RedHat":
             case "redhat":
             case "REDHAT":
@@ -241,17 +244,28 @@ public enum Distro implements ApiFeature {
             case "Red-Hat":
             case "RED-HAT":
                 return RED_HAT;
-            case "ojdk_build":
-            case "OJDK_BUILD":
-            case "ojdkbuild":
-            case "OJDKBuild":
-                return OJDK_BUILD;
-            case "openlogic":
-            case "OPENLOGIC":
-            case "OpenLogic":
-            case "open_logic":
-            case "OPEN_LOGIC":
-                return OPEN_LOGIC;
+            case "sap_machine":
+            case "sapmachine":
+            case "SAPMACHINE":
+            case "SAP_MACHINE":
+            case "SAPMachine":
+            case "SAP Machine":
+            case "sap-machine":
+            case "SAP-Machine":
+            case "SAP-MACHINE":
+                return SAP_MACHINE;
+            case "temurin":
+            case "Temurin":
+            case "TEMURIN":
+                return TEMURIN;
+            case "trava":
+            case "TRAVA":
+            case "Trava":
+            case "trava_openjdk":
+            case "TRAVA_OPENJDK":
+            case "trava openjdk":
+            case "TRAVA OPENJDK":
+                return TRAVA;
             default:
                 return NOT_FOUND;
         }
@@ -298,6 +312,7 @@ public enum Distro implements ApiFeature {
         return Arrays.stream(values())
                      .filter(distro -> Distro.NONE         != distro)
                      .filter(distro -> Distro.NOT_FOUND    != distro)
+                     .filter(distro -> Distro.GRAALVM_CE16 == distro)
                      .filter(distro -> Distro.GRAALVM_CE11 != distro)
                      .filter(distro -> Distro.GRAALVM_CE8  != distro)
                      .filter(distro -> Distro.MANDREL != distro)
@@ -308,6 +323,7 @@ public enum Distro implements ApiFeature {
         return Arrays.stream(values())
                      .filter(distro -> Distro.NONE != distro)
                      .filter(distro -> Distro.NOT_FOUND != distro)
+                     .filter(distro -> Distro.GRAALVM_CE16 != distro)
                      .filter(distro -> Distro.GRAALVM_CE11 != distro)
                      .filter(distro -> Distro.GRAALVM_CE8 != distro)
                      .filter(distro -> Distro.MANDREL != distro)
@@ -317,8 +333,9 @@ public enum Distro implements ApiFeature {
 
     public static List<Distro> getDistributionsBasedOnGraalVm() {
         return Arrays.stream(values())
-                     .filter(distro -> Distro.NONE == distro)
-                     .filter(distro -> Distro.NOT_FOUND == distro)
+                     .filter(distro -> Distro.NONE != distro)
+                     .filter(distro -> Distro.NOT_FOUND != distro)
+                     .filter(distro -> Distro.GRAALVM_CE16 == distro)
                      .filter(distro -> Distro.GRAALVM_CE11 == distro)
                      .filter(distro -> Distro.GRAALVM_CE8 == distro)
                      .filter(distro -> Distro.MANDREL == distro)

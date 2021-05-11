@@ -42,74 +42,74 @@ import java.util.regex.Pattern;
 
 
 public class Constants {
-    public static final String        PACKAGES_COLLECTION       = "packages";
-    public static final String        DOWNLOADS_COLLECTION      = "downloads";
-    public static final String        DISTRO_UPDATES_COLLECTION = "distroupdates";
-    public static final String            SHEDLOCK_COLLECTION        = "shedLock";
-    public static final String            STATE_COLLECTION           = "state";
-    public static final String            SENTINEL_COLLECTION        = "sentinel";
+    public static final String        PACKAGES_COLLECTION              = "packages";
+    public static final String        DOWNLOADS_COLLECTION             = "downloads";
+    public static final String        DISTRO_UPDATES_COLLECTION        = "distroupdates";
+    public static final String        SHEDLOCK_COLLECTION              = "shedLock";
+    public static final String        STATE_COLLECTION                 = "state";
+    public static final String        SENTINEL_COLLECTION              = "sentinel";
 
-    public static final long              UPDATE_TIMEOUT_IN_MINUTES  = 20;
-    public static final long              PRELOAD_TIMEOUT_IN_MINUTES = 15;
+    public static final long          UPDATE_TIMEOUT_IN_MINUTES        = 20;
+    public static final long          PRELOAD_TIMEOUT_IN_MINUTES       = 15;
+    public static final long          SYNCHRONIZING_TIMEOUT_IN_MINUTES = 15;
+    public static final long          UPLOAD_TIMEOUT_IN_MINUTES        = 15;
 
-    public static final String        CACHE_DATA_FILE           = "disco.json";
-    public static final String        CACHE_DELTA_FILE          = "delta.json";
+    public static final Pattern       POSITIVE_INTEGER_PATTERN         = Pattern.compile("\\d+");
 
-    public static final Pattern       POSITIVE_INTEGER_PATTERN  = Pattern.compile("\\d+");
+    public static final String        JDK                              = "jdk";
+    public static final String        JRE                              = "jre";
+    public static final String        JDK_PREFIX                       = "jdk-";
+    public static final String        JRE_PREFIX                       = "jre-";
+    public static final String        JDK_POSTFIX                      = "-jdk";
+    public static final String        JRE_POSTFIX                      = "-jre";
+    public static final String        EA_POSTFIX                       = "-ea";
+    public static final String        GA_POSTFIX                       = "-ga";
+    public static final String        FX_POSTFIX                       = "-fx";
+    public static final String        HEADLESS_POSTFIX                 = "-headless";
 
-    public static final String        JDK                       = "jdk";
-    public static final String        JRE                       = "jre";
-    public static final String        JDK_PREFIX                = "jdk-";
-    public static final String        JRE_PREFIX                = "jre-";
-    public static final String        JDK_POSTFIX               = "-jdk";
-    public static final String        JRE_POSTFIX               = "-jre";
-    public static final String        EA_POSTFIX                = "-ea";
-    public static final String        GA_POSTFIX                = "-ga";
-    public static final String        FX_POSTFIX                = "-fx";
-    public static final String        HEADLESS_POSTFIX          = "-headless";
+    public static final String        MAINTAINED_PROPERTIES_URL        = "https://github.com/foojay2020/maintained_major_versions/raw/main/maintained.properties";
 
-    public static final String        MAINTAINED_PROPERTIES_URL = "https://github.com/foojay2020/maintained_major_versions/raw/main/maintained.properties";
+    public static final String        BASE_URL                         = null == Config.INSTANCE.getFoojayApiBaseUrl() ? "https://api.foojay.io/disco" : Config.INSTANCE.getFoojayApiBaseUrl();
+    public static final String        API_VERSION_V1                   = "1.0";
+    public static final String        API_VERSION_V2                   = "2.0";
+    public static final String        ENDPOINT_PACKAGES                = "packages";
+    public static final String        ENDPOINT_EPHEMERAL_IDS           = "ephemeral_ids";
+    public static final String        SWAGGER_UI_URL                   = "https://api.foojay.io/swagger-ui/";
 
-    public static final String        BASE_URL                  = null == Config.INSTANCE.getFoojayApiBaseUrl() ? "https://api.foojay.io/disco" : Config.INSTANCE.getFoojayApiBaseUrl();
-    public static final String        API_VERSION_V1            = "1.0";
-    public static final String        API_VERSION_V2            = "2.0";
-    public static final String        ENDPOINT_PACKAGES         = "packages";
-    public static final String        ENDPOINT_EPHEMERAL_IDS    = "ephemeral_ids";
-    public static final String        SWAGGER_UI_URL            = "https://api.foojay.io/swagger-ui/";
+    public static final String        FILE_ENDING_JAR                  = "jar";
+    public static final String        FILE_ENDING_TXT                  = "txt";
+    public static final String        FILE_ENDING_SHA1                 = "sha1";
+    public static final String        FILE_ENDING_SHA256               = "sha256";
+    public static final String        FILE_ENDING_SYMBOLS_TAR_GZ       = "symbols.tar.gz";
+    public static final String        FILE_ENDING_SIG                  = "sig";
 
-    public static final String        FILE_ENDING_JAR           = "jar";
-    public static final String        FILE_ENDING_TXT           = "txt";
-    public static final String        FILE_ENDING_SHA1          = "sha1";
-    public static final String        FILE_ENDING_SHA256        = "sha256";
-    public static final String        FILE_ENDING_SYMBOLS_TAR_GZ = "symbols.tar.gz";
-
-    public static final String        SCOPE_IDS_KEY             = "scope_ids";
+    public static final String        SCOPE_IDS_KEY                    = "scope_ids";
     
-    public static final String        SQUARE_BRACKET_OPEN       = "[";
-    public static final String        SQUARE_BRACKET_CLOSE      = "]";
-    public static final String        CURLY_BRACKET_OPEN        = "{";
-    public static final String        CURLY_BRACKET_CLOSE       = "}";
-    public static final String        INDENTED_QUOTES           = "  \"";
-    public static final String        QUOTES                    = "\"";
-    public static final String        COLON                     = ":";
-    public static final String        COMMA                     = ",";
-    public static final String        SLASH                     = "/";
-    public static final String        NEW_LINE                  = "\n";
-    public static final String        COMMA_NEW_LINE            = ",\n";
-    public static final String        INDENT                    = "  ";
+    public static final String        SQUARE_BRACKET_OPEN              = "[";
+    public static final String        SQUARE_BRACKET_CLOSE             = "]";
+    public static final String        CURLY_BRACKET_OPEN               = "{";
+    public static final String        CURLY_BRACKET_CLOSE              = "}";
+    public static final String        INDENTED_QUOTES                  = "  \"";
+    public static final String        QUOTES                           = "\"";
+    public static final String        COLON                            = ":";
+    public static final String        COMMA                            = ",";
+    public static final String        SLASH                            = "/";
+    public static final String        NEW_LINE                         = "\n";
+    public static final String        COMMA_NEW_LINE                   = ",\n";
+    public static final String        INDENT                           = "  ";
 
-    public static final String        RESULT                     = "result";
-    public static final String        MESSAGE                    = "message";
+    public static final String        RESULT                           = "result";
+    public static final String        MESSAGE                          = "message";
 
-    public static final String        SENTINEL_PKG_ID            = "a2a505f4d8956eb730c1ef285b23c269"; //https://cdn.azul.com/zulu/bin/zulu6.2.0.9-ca-jdk6.0.42-linux.x86_64.rpm
+    public static final String        SENTINEL_PKG_ID                  = "a2a505f4d8956eb730c1ef285b23c269"; //https://cdn.azul.com/zulu/bin/zulu6.2.0.9-ca-jdk6.0.42-linux.x86_64.rpm
 
-    public static final DateTimeFormatter DTF                        = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
+    public static final DateTimeFormatter DTF                          = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
 
     public static final Map<String, String> PARAMETER_LOOKUP = new HashMap<>() {{
         put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
         put(Pkg.FIELD_ARCHIVE_TYPE, "apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip");
         put(Pkg.FIELD_BITNESS, "32, 64");
-        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, liberica, liberica_native, mandrel, microsoft, ojdk_build, openlogic, oracle, oracle_open_jdk, redhat, sap_machine, temurin, trava, zulu");
+        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, graalvm_ce16, liberica, liberica_native, mandrel, microsoft, ojdk_build, openlogic, oracle, oracle_open_jdk, redhat, sap_machine, temurin, trava, zulu");
         put(Pkg.FIELD_OPERATING_SYSTEM, "aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows");
         put(Pkg.FIELD_LIB_C_TYPE, "c_std_lib, glibc, libc, musl");
         put(Pkg.FIELD_PACKAGE_TYPE, "jdk, jre");
@@ -249,6 +249,7 @@ public class Constants {
         put(Distro.DRAGONWELL, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
         put(Distro.GRAALVM_CE8, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.GRAALVM_CE11, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
+        put(Distro.GRAALVM_CE16, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.LIBERICA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
         put(Distro.LIBERICA_NATIVE, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
         put(Distro.MANDREL, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));

@@ -20,5 +20,5 @@
 package io.foojay.api.util;
 
 public enum State {
-    IDLE, PRELOADING, UPDATING, CLEANUP, ERROR
+    IDLE, PRELOADING, UPDATING, UPLOADING, SYNCRONIZING, ERROR
 }

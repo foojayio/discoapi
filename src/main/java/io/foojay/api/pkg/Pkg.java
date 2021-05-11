@@ -73,10 +73,12 @@ public class Pkg {
     public  static final String            FIELD_FILENAME               = "filename";
     public  static final String            FIELD_DIRECT_DOWNLOAD_URI    = "direct_download_uri";
     public  static final String            FIELD_DOWNLOAD_SITE_URI      = "download_site_uri";
+    public  static final String            FIELD_SIGNATURE_URI          = "signature_uri";
     public  static final String            FIELD_EPHEMERAL_ID           = "ephemeral_id";
     public  static final String            FIELD_LINKS                  = "links";
     public  static final String            FIELD_DOWNLOAD               = "pkg_info_uri";
     public  static final String            FIELD_FEATURE                = "feature";
+    public  static final String            FIELD_DISTRO_SIGNATURE_URI   = "distro_signature_uri";
     private              Distribution      distribution;
     private              VersionNumber     versionNumber;
     private              VersionNumber     javaVersion;
@@ -97,15 +99,16 @@ public class Pkg {
     private              String            filename;
     private              String            directDownloadUri;
     private              String            downloadSiteUri;
+    private              String            signatureUri;
     private              List<Feature>     features;
 
 
     public Pkg() {
-        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, false, true, "", "", "", new ArrayList<>());
+        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, false, true, "", "", "", "", new ArrayList<>());
     }
     public Pkg(final Distribution distribution, final VersionNumber versionNumber, final Architecture architecture, final Bitness bitness, final OperatingSystem operatingSystem, final PackageType packageType,
                final ReleaseStatus releaseStatus, final ArchiveType archiveType, final TermOfSupport termOfSupport, final boolean javafxBundled, final boolean directlyDownloadable, final String filename,
-               final String directDownloadUri, final String downloadSiteUri, final List<Feature> features) {
+               final String directDownloadUri, final String downloadSiteUri, final String signatureUri, final List<Feature> features) {
         this.distribution         = distribution;
         this.versionNumber        = versionNumber;
         this.javaVersion          = new VersionNumber();
@@ -125,6 +128,7 @@ public class Pkg {
         this.filename             = filename;
         this.directDownloadUri    = directDownloadUri;
         this.downloadSiteUri      = downloadSiteUri;
+        this.signatureUri         = signatureUri;
         this.features             = features;
         this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
     }
@@ -153,6 +157,7 @@ public class Pkg {
         this.filename             = json.get(FIELD_FILENAME).getAsString();
         this.directDownloadUri    = json.get(FIELD_DIRECT_DOWNLOAD_URI).getAsString();
         this.downloadSiteUri      = json.get(FIELD_DOWNLOAD_SITE_URI).getAsString();
+        this.signatureUri         = json.has(FIELD_SIGNATURE_URI) ? json.get(FIELD_SIGNATURE_URI).getAsString() : "";
         this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
 
         if (json.has(FIELD_FEATURE)) {
@@ -262,6 +267,9 @@ public class Pkg {
     public String getDownloadSiteUri() { return downloadSiteUri; }
     public void setDownloadSiteUri(final String downloadSiteUri) { this.downloadSiteUri = downloadSiteUri; }
 
+    public String getSignatureUri() { return signatureUri; }
+    public void setSignatureUri(final String signatureUri) { this.signatureUri = signatureUri; }
+
     public List<Feature> getFeatures() { return features; }
     public void setFeatures(final List<Feature> features) { this.features = features; }
 
@@ -297,6 +305,7 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();
@@ -345,6 +354,7 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();
@@ -376,14 +386,43 @@ public class Pkg {
         }
     }
 
+    public boolean isNewerThan(final Pkg pkg) {
+        return (equalsExceptUpdate(pkg) && getSemver().compareTo(pkg.getSemver()) >= 0);
+    }
+
+    public boolean equalsExceptUpdate(final Pkg pkg) {
+        if (this.equals(pkg)) { return false; }
+        if (null == pkg) { return false; }
+        return distribution.equals(pkg.distribution) &&
+               getFeatureVersion().getAsInt() == pkg.getFeatureVersion().getAsInt() &&
+               architecture                 == pkg.architecture &&
+               operatingSystem              == pkg.operatingSystem &&
+               packageType                  == pkg.packageType &&
+               releaseStatus                == pkg.releaseStatus &&
+               archiveType                  == pkg.archiveType &&
+               termOfSupport                == pkg.termOfSupport &&
+               javafxBundled                == pkg.javafxBundled &&
+               directlyDownloadable         == pkg.directlyDownloadable &&
+               !getId().equals(pkg.getId());
+    }
+
     @Override public boolean equals(final Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (null == o || getClass() != o.getClass()) return false;
         Pkg pkg = (Pkg) o;
-        return javafxBundled == pkg.javafxBundled && directlyDownloadable == pkg.directlyDownloadable && distribution.equals(pkg.distribution) && versionNumber.equals(pkg.versionNumber) &&
-               architecture == pkg.architecture && bitness == pkg.bitness && operatingSystem == pkg.operatingSystem && packageType == pkg.packageType &&
-               releaseStatus == pkg.releaseStatus && archiveType == pkg.archiveType && termOfSupport == pkg.termOfSupport && filename.equals(pkg.filename) &&
-               directDownloadUri.equals(pkg.directDownloadUri);
+        return distribution.equals(pkg.distribution) &&
+               versionNumber.equals(pkg.versionNumber) &&
+               architecture         == pkg.architecture &&
+               operatingSystem      == pkg.operatingSystem &&
+               packageType          == pkg.packageType &&
+               releaseStatus        == pkg.releaseStatus &&
+               archiveType          == pkg.archiveType &&
+               termOfSupport        == pkg.termOfSupport &&
+               javafxBundled        == pkg.javafxBundled &&
+               directlyDownloadable == pkg.directlyDownloadable &&
+               filename.equals(pkg.filename) &&
+               directDownloadUri.equals(pkg.directDownloadUri) &&
+               getId().equals(pkg.getId());
     }
 
     @Override public int hashCode() {

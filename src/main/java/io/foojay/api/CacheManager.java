@@ -23,7 +23,6 @@ import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.EphemeralIdCache;
 import io.foojay.api.util.Helper;
@@ -40,16 +39,25 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.CompletionService;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -58,10 +66,10 @@ import java.util.stream.Collectors;
 public enum CacheManager {
     INSTANCE;
 
-    private static final Logger                           LOGGER                        = LoggerFactory.getLogger(CacheManager.class);
-    public final         PkgCache<String, Pkg>            pkgCache                      = new PkgCache<>();
-    public final         EphemeralIdCache<String, String> ephemeralIdCache              = new EphemeralIdCache<>();
-    public final         Map<Integer, Boolean>            maintainedMajorVersions       = new ConcurrentHashMap<>() {{
+    private static final Logger                           LOGGER                             = LoggerFactory.getLogger(CacheManager.class);
+    public final         PkgCache<String, Pkg>            pkgCache                           = new PkgCache<>();
+    public final         EphemeralIdCache<String, String> ephemeralIdCache                   = new EphemeralIdCache<>();
+    public final         Map<Integer, Boolean>            maintainedMajorVersions            = new ConcurrentHashMap<>() {{
         put(1, false);
         put(2, false);
         put(3, false);
@@ -80,16 +88,20 @@ public enum CacheManager {
         put(16, true);
         put(17, true);
     }};
-    public               AtomicBoolean                    initialized                   = new AtomicBoolean(false);
-    public               AtomicBoolean                    ephemeralIdCacheIsUpdating    = new AtomicBoolean(false);
-    public               AtomicReference<Duration>        durationToUpdateMongoDb       = new AtomicReference<>();
-    public               AtomicReference<Duration>        durationForLastUpdateRun      = new AtomicReference();
-    public               AtomicInteger                    distrosUpdatedInLastRun       = new AtomicInteger(-1);
-    public               AtomicInteger                    packagesAddedInUpdate         = new AtomicInteger(0);
-    private final        List<MajorVersion>               majorVersions                 = new LinkedList<>();
+    public               AtomicBoolean                    ephemeralIdCacheIsUpdating         = new AtomicBoolean(false);
+    public               AtomicReference<String>          publicPkgs                         = new AtomicReference<>();
+    public               AtomicReference<String>          publicPkgsIncldugingEa             = new AtomicReference<>();
+    public               AtomicReference<String>          publicPkgsDownloadable             = new AtomicReference<>();
+    public               AtomicReference<String>          publicPkgsIncldugingEaDownloadable = new AtomicReference<>();
+    public               AtomicLong                       msToGetAllPkgsFromDB               = new AtomicLong(-1);
+    public               AtomicReference<Duration>        durationToUpdateMongoDb            = new AtomicReference<>();
+    public               AtomicReference<Duration>        durationForLastUpdateRun           = new AtomicReference();
+    public               AtomicInteger                    distrosUpdatedInLastRun            = new AtomicInteger(-1);
+    public               AtomicInteger                    packagesAddedInUpdate              = new AtomicInteger(0);
+    public               AtomicLong                       numberOfPackages                   = new AtomicLong(-1);
+    private final        List<MajorVersion>               majorVersions                      = new LinkedList<>();
 
 
-    public boolean isInitialized() { return initialized.get(); }
 
     public void updateAllDistros() {
         final State state = MongoDbManager.INSTANCE.getState();
@@ -128,13 +140,7 @@ public enum CacheManager {
 
                         List<Pkg> otherPkgs = deltaPkgs.values()
                                                        .stream()
-                                                       .filter(p -> p.getDistribution().equals(pkg.getDistribution()))
-                                                       .filter(p -> p.getFeatureVersion().getAsInt() == pkg.getFeatureVersion().getAsInt())
-                                                       .filter(p -> p.getOperatingSystem() == pkg.getOperatingSystem())
-                                                       .filter(p -> p.getArchiveType() == pkg.getArchiveType())
-                                                       .filter(p -> p.getArchitecture() == pkg.getArchitecture())
-                                                       .filter(p -> p.getPackageType() == pkg.getPackageType())
-                                                       .filter(p -> p.getReleaseStatus() == pkg.getReleaseStatus())
+                                                       .filter(p -> p.equalsExceptUpdate(pkg))
                                                        .collect(Collectors.toList());
 
                         if (!otherPkgs.isEmpty()) {
@@ -189,50 +195,26 @@ public enum CacheManager {
                     deltaPkgs.clear();
                 }
 
-        final List<Distro> distrosBasedOnOpenJDK = Distro.getDistributionsBasedOnOpenJDK();
-        final List<Distro> distrosBasedOnGraalVM = Distro.getDistributionsBasedOnGraalVm();
-        Distro.getAsListWithoutNoneAndNotFound()
-              .forEach(distro -> {
-                  if (distrosBasedOnOpenJDK.contains(distro)) {
-                    updateLatestBuild(ReleaseStatus.GA);
-                    updateLatestBuild(ReleaseStatus.EA);
-                    LOGGER.info("Latest build info updated for GA and EA releases with Java version number in package cache.");
-                  } else if (distrosBasedOnGraalVM.contains(distro)) {
-                // Check latest builds for GraalVM based distros and set latest_build_available=true
-                    for (int i = 19; i <= 40; i++) {
-                        int featureVersion = i;
-                        Distro.getDistributions()
-                              .stream()
-                              .filter(distribution -> distribution.getDistro() == Distro.GRAALVM_CE8 || distribution.getDistro() == Distro.GRAALVM_CE11 ||
-                                                      distribution.getDistro() == Distro.LIBERICA_NATIVE || distribution.getDistro() == Distro.MANDREL)
-                              .forEach(distribution -> {
-                                  Optional<Pkg> pkgWithMaxVersion = pkgsFound.stream()
-                                                                        .filter(pkg -> pkg.getDistribution().getDistro() == distribution.getDistro())
-                                                                        .filter(pkg -> featureVersion == pkg.getJavaVersion().getFeature().getAsInt())
-                                                                        .filter(pkg -> ReleaseStatus.GA == pkg.getReleaseStatus())
-                                                                        .max(Comparator.comparing(Pkg::getJavaVersion));
-                                  if (pkgWithMaxVersion.isPresent()) {
-                                      SemVer maxVersion = pkgWithMaxVersion.get().getSemver();
-                                      pkgsFound.stream()
-                                          .filter(pkg -> pkg.getDistribution().getDistro() == distribution.getDistro())
-                                          .filter(pkg -> maxVersion.compareTo(pkg.getSemver()) == 0)
-                                          .forEach(pkg -> pkg.setLatestBuildAvailable(true));
-                                  }
-            });
-                    }
-                    LOGGER.debug("\"Latest build info updated for GraalVM based distros in package cache.");
-                }
-              });
+        // Update latestBuildAvailable
+        if (packagesAddedInUpdate.get() > 0) {
+            Collection<Pkg> updatedPkgCache = Helper.updateLatestBuildAvailable(pkgCache.getPkgs());
+            updatedPkgCache.forEach(pkg -> pkgCache.get(pkg.getId()).setLatestBuildAvailable(pkg.isLatestBuildAvailable()));
 
                 // Synchronize latestBuildAvailable in mongodb database with cache
                 MongoDbManager.INSTANCE.syncLatestBuildAvailableInDatabaseWithCache(pkgCache.getPkgs());
+        }
+        MongoDbManager.INSTANCE.setState(State.IDLE);
+
+        numberOfPackages.set(pkgCache.size());
 
         Instant now = Instant.now();
         durationToUpdateMongoDb.set(Duration.between(updateMongoDbStart, now));
         distrosUpdatedInLastRun.set(counter.get());
         durationForLastUpdateRun.set(Duration.between(updateAllDistrosStart, now));
 
-        MongoDbManager.INSTANCE.setState(State.IDLE);
+        if (packagesAddedInUpdate.get() > 0 || null == publicPkgs.get() || null == publicPkgsIncldugingEa.get() || null == publicPkgsDownloadable.get() || null == publicPkgsIncldugingEaDownloadable.get()) {
+            updateAllPkgsMsgs();
+        }
     }
 
     public void updateEphemeralIdCache() {
@@ -260,6 +242,7 @@ public enum CacheManager {
                                      .stream()
                                      .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8)
                                      .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11)
+                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE16)
                                      .filter(pkg -> pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE)
                                      .filter(pkg -> pkg.getDistribution().getDistro() != Distro.MANDREL)
                                      .map(pkg -> pkg.getVersionNumber().getFeature().getAsInt())
@@ -305,26 +288,101 @@ public enum CacheManager {
         }
     }
 
-    private void updateLatestBuild(final ReleaseStatus releaseStatus) {
-        Distro.getDistrosWithJavaVersioning()
+    public void updateAllPkgsMsgs() {
+        publicPkgs.set(Helper.getAllPackagesV2Msg(false, false));
+        publicPkgsIncldugingEa.set(Helper.getAllPackagesV2Msg(false, true));
+        publicPkgsDownloadable.set(Helper.getAllPackagesV2Msg(true, false));
+        publicPkgsIncldugingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true));
+    }
+
+    public void cleanupPkgCache() {
+        LOGGER.debug("Cleanup cache and update database");
+
+        final State state = MongoDbManager.INSTANCE.getState();
+        if (State.IDLE != state) { return; }
+
+        final long start = System.currentTimeMillis();
+        LOGGER.debug("Started cleaning up the cache");
+
+        List<Pkg> pkgsToRemove = new CopyOnWriteArrayList<>();
+
+        // Oracle packages
+        ExecutorService              oracleExecutor    = Executors.newSingleThreadExecutor();
+        CompletionService<List<Pkg>> oracleService     = new ExecutorCompletionService<>(oracleExecutor);
+        List<Pkg>                    oraclePkgsFromWeb = new ArrayList<>();
+        try {
+            // Get packages from Oracle
+            oracleService.submit(Helper.createTask(Distro.ORACLE));
+            oracleExecutor.shutdown();
+            while (!oracleExecutor.isTerminated()) {
+                try {
+                    oraclePkgsFromWeb.addAll(oracleService.take().get());
+                } catch (ExecutionException | InterruptedException e) {
+                    LOGGER.error("Error adding fetched Oracle packages to list. {}", e.getMessage());
+                }
+            }
+        } finally {
+            oracleExecutor.shutdownNow();
+        }
+
+        List<Pkg> oraclePkgsFromCache = CacheManager.INSTANCE.pkgCache.getPkgs()
               .stream()
-              .forEach(distro -> MajorVersion.getAllMajorVersions().forEach(majorVersion -> {
-                      final int mv   = majorVersion.getAsInt();
-                      List<Pkg> pkgs = pkgCache.getPkgs()
+                                                                      .filter(pkg -> Distro.ORACLE.get().equals(pkg.getDistribution()))
+                                                                      .collect(Collectors.toList());
+
+        if (oraclePkgsFromCache.size() > oraclePkgsFromWeb.size()) {
+            List<String> oracleFilenamesFromWeb = oraclePkgsFromWeb.stream().map(pkgWeb -> pkgWeb.getFileName()).collect(Collectors.toList());
+            pkgsToRemove.addAll(oraclePkgsFromCache.stream().filter(pkgCache -> !oracleFilenamesFromWeb.contains(pkgCache.getFileName())).collect(Collectors.toList()));
+            LOGGER.debug("Oracle packages need to be removed from cache");
+        } else {
+            LOGGER.debug("Oracle packages are up to date");
+        }
+
+        // Redhat
+        ExecutorService              redhatExecutor    = Executors.newSingleThreadExecutor();
+        CompletionService<List<Pkg>> redhatService     = new ExecutorCompletionService<>(redhatExecutor);
+        List<Pkg>                    redhatPkgsFromWeb = new ArrayList<>();
+        try {
+            // Get packages from Redhat
+            redhatService.submit(Helper.createTask(Distro.RED_HAT));
+            redhatExecutor.shutdown();
+            while (!redhatExecutor.isTerminated()) {
+                try {
+                    redhatPkgsFromWeb.addAll(redhatService.take().get());
+                } catch (ExecutionException | InterruptedException e) {
+                    LOGGER.error("Error adding fetched Redhat packages to list. {}", e.getMessage());
+                }
+            }
+        } finally {
+            redhatExecutor.shutdownNow();
+        }
+
+        List<Pkg> redhatPkgsFromCache = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                .stream()
-                                               .filter(pkg -> pkg.getReleaseStatus() == releaseStatus)
-                                               .filter(pkg -> pkg.getDistribution().getDistro() == distro)
-                                               .filter(pkg -> pkg.getJavaVersion().getMajorVersion().getAsInt() == mv)
+                                                                      .filter(pkg -> Distro.RED_HAT.get().equals(pkg.getDistribution()))
                                                .collect(Collectors.toList());
-                      SemVer maxSemVer = pkgs.stream().max(Comparator.comparing(Pkg::getSemver)).map(pkg -> pkg.getSemver()).orElse(null);
-                      if (null != maxSemVer) {
-                          pkgs.forEach(pkg -> pkg.setLatestBuildAvailable(false));
-                          pkgs.stream()
-                              .filter(pkg -> pkg.getSemver().compareTo(maxSemVer) == 0)
-                              .collect(Collectors.toList())
-                              .forEach(pkg -> pkg.setLatestBuildAvailable(true));
-                      }
-              }));
+
+        if (redhatPkgsFromCache.size() > redhatPkgsFromWeb.size()) {
+            List<String> redhatFilenamesFromWeb = redhatPkgsFromWeb.stream().map(pkgWeb -> pkgWeb.getFileName()).collect(Collectors.toList());
+            pkgsToRemove.addAll(redhatPkgsFromCache.stream().filter(pkgCache -> !redhatFilenamesFromWeb.contains(pkgCache.getFileName())).collect(Collectors.toList()));
+            LOGGER.debug("Redhat packages need to be removed from cache");
+        } else {
+            LOGGER.debug("Redhat packages are up to date");
+        }
+
+        // SAP Machine
+        List<Pkg> sapPkgsFromCache = CacheManager.INSTANCE.pkgCache.getPkgs()
+                                                                   .stream()
+                                                                   .filter(pkg -> Distro.SAP_MACHINE.get().equals(pkg.getDistribution()))
+                                                                   .collect(Collectors.toList());
+        pkgsToRemove.addAll(sapPkgsFromCache.stream().filter(pkg -> pkg.getFileName().contains("internal")).collect(Collectors.toList()));
+
+
+        // Remove pkgs from cache and database
+        CacheManager.INSTANCE.pkgCache.getPkgs().removeAll(pkgsToRemove);
+        MongoDbManager.INSTANCE.removePkgs(pkgsToRemove);
+
+        LOGGER.debug("Cache cleaned up in {} ms", (System.currentTimeMillis() - start));
     }
 
     public String getEphemeralIdForPkg(final String pkgId) {
@@ -336,5 +394,29 @@ public enum CacheManager {
             updateMajorVersions();
         }
         return majorVersions;
+    }
+
+    public void syncCacheWithDatabase() {
+        try {
+            TimeUnit.MILLISECONDS.sleep(ThreadLocalRandom.current().nextLong(3500));
+        } catch (InterruptedException e) {
+            LOGGER.debug("Synchronizing wait interrupted. {}", e.getMessage());
+        }
+
+        final State state = MongoDbManager.INSTANCE.getState();
+        if (State.IDLE != state) { return; }
+
+        LOGGER.debug("Synchronizing local cache with data from mongodb");
+        final long startGettingAllPkgsFromMongoDb = System.currentTimeMillis();
+        MongoDbManager.INSTANCE.setState(State.SYNCRONIZING);
+        List<Pkg> pkgsFromMongoDb = MongoDbManager.INSTANCE.getPkgs();
+        MongoDbManager.INSTANCE.setState(State.IDLE);
+        msToGetAllPkgsFromDB.set(System.currentTimeMillis() - startGettingAllPkgsFromMongoDb);
+
+        Map<String, Pkg> pkgsToAdd = pkgsFromMongoDb.stream()
+                                                    .filter(pkg -> !pkgCache.containsKey(pkg.getId()))
+                                                    .collect(Collectors.toMap(Pkg::getId, pkg -> pkg));
+        pkgCache.addAll(pkgsToAdd);
+        numberOfPackages.set(pkgCache.size());
     }
 }

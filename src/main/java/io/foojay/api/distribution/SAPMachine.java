@@ -176,11 +176,11 @@ public class SAPMachine implements Distribution {
         JsonArray assets = jsonObj.getAsJsonArray("assets");
         for (JsonElement element : assets) {
             JsonObject assetJsonObj = element.getAsJsonObject();
-            String     fileName     = assetJsonObj.get("name").getAsString();
+            String     filename     = assetJsonObj.get("name").getAsString();
 
-            if (fileName.endsWith("txt") || fileName.endsWith("symbols.tar.gz")) { continue; }
+            if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) { continue; }
 
-            String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
+            String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
 
             VersionNumber vNumber = VersionNumber.fromText(withoutPrefix);
             if (latest) {
@@ -194,12 +194,12 @@ public class SAPMachine implements Distribution {
             Pkg pkg = new Pkg();
 
             ArchiveType ext = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
-                                                                      .filter(entry -> fileName.endsWith(entry.getKey()))
+                                                                      .filter(entry -> filename.endsWith(entry.getKey()))
                                                                       .findFirst()
                                                                       .map(Entry::getValue)
                                                                       .orElse(ArchiveType.NONE);
             if (ArchiveType.NONE == ext) {
-                LOGGER.debug("Archive Type not found in SAP Machine for filename: {}", fileName);
+                LOGGER.debug("Archive Type not found in SAP Machine for filename: {}", filename);
                 return pkgs;
             }
 
@@ -209,7 +209,7 @@ public class SAPMachine implements Distribution {
             pkg.setTermOfSupport(supTerm);
 
             pkg.setDistribution(Distro.SAP_MACHINE.get());
-            pkg.setFileName(fileName);
+            pkg.setFileName(filename);
             pkg.setDirectDownloadUri(downloadLink);
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
@@ -250,7 +250,7 @@ public class SAPMachine implements Distribution {
                                                              .orElse(Architecture.NONE);
 
             if (Architecture.NONE == arch) {
-                LOGGER.debug("Architecture not found in SAP Machine for filename: {}", fileName);
+                LOGGER.debug("Architecture not found in SAP Machine for filename: {}", filename);
                 return pkgs;
             }
 
@@ -280,7 +280,7 @@ public class SAPMachine implements Distribution {
                 }
             }
             if (OperatingSystem.NONE == os) {
-                LOGGER.debug("Operating System not found in SAP Machine for filename: {}", fileName);
+                LOGGER.debug("Operating System not found in SAP Machine for filename: {}", filename);
                 continue;
             }
             pkg.setOperatingSystem(os);
@@ -301,7 +301,7 @@ public class SAPMachine implements Distribution {
                 JsonObject assetJsonObj = element.getAsJsonObject();
                 String     filename     = assetJsonObj.get("name").getAsString();
 
-                if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta")) { continue; }
+                if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) { continue; }
 
                 final String        withoutPrefix = filename.replace("sapmachine-", "");
                 final VersionNumber versionNumber = VersionNumber.fromText(withoutPrefix);
@@ -439,8 +439,8 @@ public class SAPMachine implements Distribution {
                                 for (String os : operatingSystems) {
                                     if (imageTypeObj.has(os)) {
                                         final String downloadLink = imageTypeObj.get(os).getAsString();
-                                        final String fileName = Helper.getFileNameFromText(downloadLink);
-                                        if (fileName.contains("beta")) { continue; }
+                                        final String filename     = Helper.getFileNameFromText(downloadLink);
+                                        if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) { continue; }
                                         Pkg          pkg      = new Pkg();
                                         pkg.setDistribution(Distro.SAP_MACHINE.get());
                                         pkg.setBitness(BIT_64);
@@ -448,11 +448,11 @@ public class SAPMachine implements Distribution {
                                         pkg.setJavaVersion(versionNumber);
                                         pkg.setDistributionVersion(versionNumber);
                                         pkg.setDirectDownloadUri(downloadLink);
-                                        pkg.setFileName(fileName);
-                                        pkg.setArchiveType(ArchiveType.getFromFileName(fileName));
+                                        pkg.setFileName(filename);
+                                        pkg.setArchiveType(ArchiveType.getFromFileName(filename));
                                         pkg.setJavaFXBundled(false);
                                         pkg.setTermOfSupport(majorVersion.getTermOfSupport());
-                                        pkg.setReleaseStatus((fileName.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+                                        pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
                                         pkg.setPackageType(PackageType.fromText(imageType));
                                         switch (os) {
                                             case "linux-x64":
@@ -529,7 +529,7 @@ public class SAPMachine implements Distribution {
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
         for (String href : fileHrefs) {
             final String          filename        = Helper.getFileNameFromText(href);
-            if (filename.contains("beta")) { continue; }
+            if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) { continue; }
 
             final String          withoutPrefix   = filename.replace("sapmachine-", "");
             final VersionNumber   versionNumber   = VersionNumber.fromText(withoutPrefix);
