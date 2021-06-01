@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -67,6 +68,11 @@ public class PkgCache<T extends String, U extends Pkg> implements Cache<T, U> {
 
     @Override public boolean isEmpty() { return cache.isEmpty(); }
 
+    public void setAll(final Map<T,U> entries) {
+        cache.clear();
+        cache.putAll(entries);
+    }
+
     public boolean containsKey(final T key) { return cache.containsKey(key); }
 
     public Set<Entry<T,U>> getEntrySet() { return cache.entrySet(); }
@@ -74,5 +80,7 @@ public class PkgCache<T extends String, U extends Pkg> implements Cache<T, U> {
     public Collection<T> getKeys() { return cache.keySet(); }
 
     public Collection<U> getPkgs() { return cache.values(); }
+
+    public HashMap<T,U> getCopy() { return new HashMap<>(cache); }
 }
 

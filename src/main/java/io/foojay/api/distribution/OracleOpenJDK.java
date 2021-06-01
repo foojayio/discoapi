@@ -354,6 +354,8 @@ public class OracleOpenJDK implements Distribution {
                 }
                 pkg.setOperatingSystem(os);
 
+                pkg.setFreeUseInProduction(Boolean.TRUE);
+
                 pkgs.add(pkg);
             }
         }
@@ -461,6 +463,8 @@ public class OracleOpenJDK implements Distribution {
                     continue;
                 }
                 pkg.setOperatingSystem(os);
+
+                pkg.setFreeUseInProduction(Boolean.TRUE);
 
                 pkgs.add(pkg);
             }
@@ -616,6 +620,8 @@ public class OracleOpenJDK implements Distribution {
                     pkg.setReleaseStatus(EA);
                 }
 
+                pkg.setFreeUseInProduction(Boolean.TRUE);
+
                 pkgs.add(pkg);
             }
         });
@@ -692,6 +698,8 @@ public class OracleOpenJDK implements Distribution {
         pkg.setReleaseStatus(rs);
         pkg.setOperatingSystem(operatingSystem);
 
+        pkg.setFreeUseInProduction(Boolean.TRUE);
+
         return pkg;
     }
 
@@ -726,6 +734,8 @@ public class OracleOpenJDK implements Distribution {
             pkg.setArchiveType(archiveType);
             pkg.setDirectDownloadUri(downloadLink);
             pkg.setJavaFXBundled(versionNumber.getFeature().getAsInt() <= 10);
+
+            pkg.setFreeUseInProduction(Boolean.TRUE);
 
             pkgs.add(pkg);
         }

@@ -535,6 +535,9 @@ public class VersionNumber implements Comparable<VersionNumber> {
         return isEqual;
     }
 
+    public static boolean equalsExceptBuild(final VersionNumber v1, final VersionNumber v2) { return v1.equals(v2); }
+    public static boolean equalsIncludingBuild(final VersionNumber v1, final VersionNumber v2) { return v1.compareTo(v2) == 0; }
+
     public String toStringInclBuild(final boolean javaFormat) {
         return toString(OutputFormat.REDUCED, javaFormat, true);
     }

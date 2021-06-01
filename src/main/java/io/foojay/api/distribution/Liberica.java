@@ -263,7 +263,7 @@ public class Liberica implements Distribution {
         String        packageType   = jsonObj.get(FIELD_PACKAGE_TYPE).toString().replaceAll("\"", "");
         String        bundleTyp     = jsonObj.get(FIELD_BUNDLE_TYPE).toString().replaceAll("\"", "");
         boolean       isGA          = jsonObj.get(FIELD_GA).getAsBoolean();
-        boolean       isFX          = jsonObj.get(FIELD_FX).getAsBoolean();
+        boolean       isFX          = jsonObj.get(FIELD_FX).getAsBoolean() || fileName.contains("-full");
         boolean       isLTS         = jsonObj.get(FIELD_LTS).getAsBoolean();
         Integer       bits          = jsonObj.get(FIELD_BITNESS).getAsInt();
         String        os            = jsonObj.get(FIELD_OS).getAsString();
@@ -348,6 +348,8 @@ public class Liberica implements Distribution {
 
         pkg.setFileName(fileName);
         pkg.setDirectDownloadUri(downloadLink);
+
+        pkg.setFreeUseInProduction(Boolean.TRUE);
 
         pkgs.add(pkg);
         return pkgs;

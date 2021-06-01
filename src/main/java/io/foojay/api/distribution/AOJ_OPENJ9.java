@@ -331,6 +331,8 @@ public class AOJ_OPENJ9 implements Distribution {
                     installerPkg.setFileName(installerName);
                     installerPkg.setDirectDownloadUri(installerDownloadLink);
 
+                    installerPkg.setFreeUseInProduction(Boolean.TRUE);
+
                     pkgs.add(installerPkg);
                 }
             }
@@ -392,6 +394,8 @@ public class AOJ_OPENJ9 implements Distribution {
                     packagePkg.setArchiveType(ext);
                     packagePkg.setFileName(packageName);
                     packagePkg.setDirectDownloadUri(packageDownloadLink);
+
+                    packagePkg.setFreeUseInProduction(Boolean.TRUE);
 
                     pkgs.add(packagePkg);
                 }

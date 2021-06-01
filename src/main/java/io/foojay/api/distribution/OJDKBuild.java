@@ -275,6 +275,8 @@ public class OJDKBuild implements Distribution {
             }
             pkg.setOperatingSystem(os);
 
+            pkg.setFreeUseInProduction(Boolean.TRUE);
+
             pkgs.add(pkg);
         }
 
@@ -414,6 +416,8 @@ public class OJDKBuild implements Distribution {
                     continue;
                 }
                 pkg.setOperatingSystem(os);
+
+                pkg.setFreeUseInProduction(Boolean.TRUE);
 
                 pkgs.add(pkg);
             }

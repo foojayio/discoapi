@@ -275,6 +275,9 @@ public class Corretto implements Distribution {
                 continue;
             }
             pkg.setOperatingSystem(os);
+
+            pkg.setFreeUseInProduction(Boolean.TRUE);
+
             pkgs.add(pkg);
         }
 

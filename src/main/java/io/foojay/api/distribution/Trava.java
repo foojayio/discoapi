@@ -418,6 +418,8 @@ public class Trava implements Distribution {
                 }
                 pkg.setOperatingSystem(os);
 
+                pkg.setFreeUseInProduction(Boolean.TRUE);
+
                 pkgs.add(pkg);
             }
         }

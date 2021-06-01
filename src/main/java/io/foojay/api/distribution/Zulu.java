@@ -119,6 +119,7 @@ public class Zulu implements Distribution {
     private static final String                       FIELD_NAME                 = "name";
     private static final String                       FIELD_URL                  = "url";
     private static final String                       FIELD_JDK_VERSION          = "jdk_version";
+    private static final String                       FIELD_JAVA_VERSION         = "java_version";
     private static final String                       FIELD_ZULU_VERSION         = "zulu_version";
     private static final String                       FIELD_SHA_256_HASH         = "sha256_hash";
 
@@ -235,15 +236,13 @@ public class Zulu implements Distribution {
         String fileName     = jsonObj.get(FIELD_NAME).getAsString();
         String downloadLink = jsonObj.get(FIELD_URL).getAsString();
 
-        //TODO: remove workaround as soon as the Zulu API has the right 4th number in the jdk_version
-        //vNumber = new VersionNumber(jdkVersionArray.get(0).getAsInt(), jdkVersionArray.get(1).getAsInt(), jdkVersionArray.get(2).getAsInt(), jdkVersionArray.get(3).getAsInt());
 
         JsonArray jdkVersionArray = jsonObj.get(FIELD_JDK_VERSION).getAsJsonArray();
         VersionNumber vNumber;
         if (fileName.toLowerCase().startsWith("zulu1.")) {
             vNumber = new VersionNumber(jdkVersionArray.get(0).getAsInt(), jdkVersionArray.get(1).getAsInt(), jdkVersionArray.get(2).getAsInt(), 0);
         } else {
-            //WORKAROUND: get the real version number from the filename without the prefix
+            //Get the real version number from the filename without the prefix
             final String fileNameWithoutPrefix = fileName.replaceAll(FILENAME_PREFIX_VN_PATTERN.pattern(), "");
             vNumber = VersionNumber.fromText(fileNameWithoutPrefix);
         }
@@ -254,10 +253,7 @@ public class Zulu implements Distribution {
         if (!latest && versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }
         if (latest) {
             if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }
-        } /*else {
-            if (!versionNumber.equals(vNumber)) { return pkgs; }
         }
-        */
 
         TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
 
@@ -369,6 +365,8 @@ public class Zulu implements Distribution {
 
         pkg.setTermOfSupport(supTerm);
 
+        pkg.setFreeUseInProduction(Boolean.TRUE);
+
         pkgs.add(pkg);
 
         return pkgs;
@@ -457,6 +455,8 @@ public class Zulu implements Distribution {
                 pkg.setArchiveType(archiveType);
                 pkg.setDirectDownloadUri(downloadLink);
                 pkg.setJavaFXBundled(filename.contains("-fx"));
+
+                pkg.setFreeUseInProduction(Boolean.TRUE);
 
                 pkgs.add(pkg);
             }

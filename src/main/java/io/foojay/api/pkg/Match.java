@@ -13,20 +13,19 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.foojay.api.scopes;
-
-import io.foojay.api.pkg.ApiFeature;
+package io.foojay.api.pkg;
 
 import java.util.Arrays;
 import java.util.List;
 
 
-public enum BasicScope implements Scope, ApiFeature {
-    PUBLIC("Public", "public"),
+public enum Match implements ApiFeature {
+    ANY("Any", "any"),
+    ALL("All", "all"),
     NONE("-", ""),
     NOT_FOUND("", "");
 
@@ -34,7 +33,7 @@ public enum BasicScope implements Scope, ApiFeature {
     private final String apiString;
 
 
-    BasicScope(final String uiString, final String apiString) {
+    Match(final String uiString, final String apiString) {
         this.uiString  = uiString;
         this.apiString = apiString;
     }
@@ -44,22 +43,27 @@ public enum BasicScope implements Scope, ApiFeature {
 
     @Override public String getApiString() { return apiString; }
 
-    @Override public ApiFeature getDefault() { return PUBLIC; }
+    @Override public Match getDefault() { return Match.ANY; }
 
-    @Override public ApiFeature getNotFound() { return BasicScope.NOT_FOUND; }
+    @Override public Match getNotFound() { return Match.ANY; }
 
-    @Override public ApiFeature[] getAll() { return values(); }
+    @Override public Match[] getAll() { return values(); }
 
-
-    public static Scope fromText(final String text) {
-        switch(text) {
-            case "public":
-            case "Public":
-                return PUBLIC;
+    public static Match fromText(final String text) {
+        if (null == text) { return ANY; }
+        switch (text) {
+            case "any":
+            case "ANY":
+            case "Any":
+                return ANY;
+            case "all":
+            case "ALL":
+            case "All":
+                return ALL;
             default:
-                return NOT_FOUND;
+                return ANY;
         }
     }
 
-    public static List<BasicScope> getAsList() { return Arrays.asList(values()); }
+    public static List<Match> getAsList() { return Arrays.asList(values()); }
 }

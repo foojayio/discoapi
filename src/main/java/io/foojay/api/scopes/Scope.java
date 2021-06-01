@@ -21,11 +21,11 @@ package io.foojay.api.scopes;
 
 public interface Scope {
     Scope NOT_FOUND = new Scope() {
-        @Override public String getName() { return ""; }
-        @Override public String getToken() { return ""; }
+        @Override public String getUiString() { return ""; }
+        @Override public String getApiString() { return ""; }
     };
 
-    String getName();
+    String getUiString();
 
-    String getToken();
+    String getApiString();
 }

@@ -37,13 +37,10 @@ import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.StringReader;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Properties;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,6 +49,7 @@ import java.util.stream.Collectors;
 import static io.foojay.api.pkg.PackageType.JDK;
 import static io.foojay.api.pkg.PackageType.JRE;
 import static io.foojay.api.pkg.ReleaseStatus.EA;
+import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
 public class Microsoft implements Distribution {
@@ -59,7 +57,7 @@ public class Microsoft implements Distribution {
 
     private static final Pattern       FILENAME_PREFIX_PATTERN = Pattern.compile("microsoft-");
     private static final Matcher       FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
-    private static final String        PACKAGE_URL             = "https://www.microsoft.com/openjdk";
+    private static final String        PACKAGE_URL             = "https://docs.microsoft.com/java/openjdk/download";
     public  static final String        PKGS_PROPERTIES         = "https://github.com/foojay2020/openjdk_releases/raw/main/microsoft.properties";
 
     // URL parameters
@@ -138,98 +136,6 @@ public class Microsoft implements Distribution {
     }
 
     public List<Pkg> getAllPkgs() {
-        final List<Pkg>    pkgs          = new ArrayList<>();
-
-        // Temporary solution as long as no GA builds of Microsoft Build of OpenJDK are available
-        final List<String> downloadLinks = new ArrayList<>();
-
-        // Load jdk properties
-        try {
-            final Properties           propertiesPkgs = new Properties();
-            final HttpResponse<String> response       = Helper.get(PKGS_PROPERTIES);
-            if (null == response) {
-                LOGGER.debug("No jdk properties found for {}", getName());
-                return pkgs;
-            }
-            final String propertiesText = response.body();
-            if (propertiesText.isEmpty()) {
-                LOGGER.debug("jdk properties are empty for {}", getName());
-                return pkgs;
-            }
-            propertiesPkgs.load(new StringReader(propertiesText));
-
-            propertiesPkgs.forEach((key, value) -> {
-                String downloadLink = value.toString();
-                downloadLinks.add(downloadLink);
-            });
-        } catch (Exception e) {
-            LOGGER.error("Error reading jdk properties file from github for {}. {}", getName(), e.getMessage());
-        }
-
-        for (String downloadLink : downloadLinks) {
-            final String          filename        = downloadLink.replace("https://aka.ms/download-jdk/", "");
-            if (filename.contains("debugsymbols") || filename.startsWith("jdk")) { continue; }
-
-            final String          withoutPrefix   = filename.replace("microsoft-", "");
-            final VersionNumber   versionNumber   = VersionNumber.fromText(withoutPrefix);
-            versionNumber.setPatch(0);
-            versionNumber.setFifth(0);
-            final MajorVersion    majorVersion    = versionNumber.getMajorVersion();
-            final PackageType     packageType     = withoutPrefix.startsWith("jdk") ? JDK : JRE;
-
-            OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
-                                                                               .stream()
-                                                                               .filter(entry -> withoutPrefix.contains(entry.getKey()))
-                                                                               .findFirst()
-                                                                               .map(Entry::getValue)
-                                                                               .orElse(OperatingSystem.NOT_FOUND);
-            if (OperatingSystem.NOT_FOUND == operatingSystem) {
-                LOGGER.debug("Operating System not found in {} for filename: {}", getName(), filename);
-                continue;
-            }
-
-            final Architecture architecture = Constants.ARCHITECTURE_LOOKUP.entrySet()
-                                                                           .stream()
-                                                                           .filter(entry -> withoutPrefix.contains(entry.getKey()))
-                                                                           .findFirst()
-                                                                           .map(Entry::getValue)
-                                                                           .orElse(Architecture.NOT_FOUND);
-            if (Architecture.NOT_FOUND == architecture) {
-                LOGGER.debug("Architecture not found in {} for filename: {}", getName(), filename);
-                continue;
-            }
-
-            ArchiveType archiveType = ArchiveType.getFromFileName(filename);
-            if (OperatingSystem.MACOS == operatingSystem) {
-                switch(archiveType) {
-                    case DEB:
-                    case RPM: operatingSystem = OperatingSystem.LINUX; break;
-                    case CAB:
-                    case MSI:
-                    case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
-                }
-            }
-
-            Pkg pkg = new Pkg();
-            pkg.setDistribution(Distro.MICROSOFT.get());
-            pkg.setArchitecture(architecture);
-            pkg.setBitness(architecture.getBitness());
-            pkg.setVersionNumber(versionNumber);
-            pkg.setJavaVersion(versionNumber);
-            pkg.setDistributionVersion(versionNumber);
-            pkg.setDirectDownloadUri(downloadLink);
-            pkg.setFileName(filename);
-            pkg.setArchiveType(archiveType);
-            pkg.setJavaFXBundled(false);
-            pkg.setTermOfSupport(majorVersion.getTermOfSupport());
-            //pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
-            pkg.setReleaseStatus(EA);
-            pkg.setPackageType(packageType);
-            pkg.setOperatingSystem(operatingSystem);
-            pkgs.add(pkg);
-        }
-
-        /* Temporary disabled
         List<Pkg> pkgs = new ArrayList<>();
         try {
             String html = Helper.getTextFromUrl(PACKAGE_URL);
@@ -237,8 +143,6 @@ public class Microsoft implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Microsoft. {}", e);
         }
-        */
-
         return pkgs;
     }
 
@@ -247,12 +151,25 @@ public class Microsoft implements Distribution {
         if (null == html || html.isEmpty()) { return pkgs; }
 
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
+        List<String> sigFileHrefs = new ArrayList<>(Helper.getSigFileHrefsFromString(html));
         for (String href : fileHrefs) {
             final String          filename        = Helper.getFileNameFromText(href);
             if (filename.contains("debugsymbols") || filename.startsWith("jdk")) { continue; }
 
             final String          withoutPrefix   = filename.replace("microsoft-", "");
             final VersionNumber   versionNumber   = VersionNumber.fromText(withoutPrefix);
+
+            if (versionNumber.getPatch().isPresent() && versionNumber.getPatch().getAsInt() != 0 &&
+                versionNumber.getFifth().isPresent() && versionNumber.getFifth().getAsInt() != 0) {
+                    versionNumber.setPatch(0);
+                    versionNumber.setFifth(0);
+            } else if (versionNumber.getPatch().isPresent() && versionNumber.getPatch().getAsInt() != 0 &&
+                       versionNumber.getFifth().isPresent() && versionNumber.getFifth().getAsInt() != 0 &&
+                       versionNumber.getSixth().isPresent() && versionNumber.getSixth().getAsInt() != 0) {
+                versionNumber.setFifth(0);
+                versionNumber.setSixth(0);
+            }
+
             final MajorVersion    majorVersion    = versionNumber.getMajorVersion();
             final PackageType     packageType     = withoutPrefix.startsWith("jdk") ? JDK : JRE;
 
@@ -298,13 +215,15 @@ public class Microsoft implements Distribution {
             pkg.setDistributionVersion(versionNumber);
             pkg.setDirectDownloadUri(href);
             pkg.setFileName(filename);
+            if (sigFileHrefs.contains(href.toLowerCase() + ".sig")) { pkg.setSignatureUri(href.toLowerCase() + ".sig"); }
             pkg.setArchiveType(archiveType);
             pkg.setJavaFXBundled(false);
             pkg.setTermOfSupport(majorVersion.getTermOfSupport());
-            //pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
-            pkg.setReleaseStatus(EA);
+            pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
+            pkg.setFreeUseInProduction(Boolean.TRUE);
+
             pkgs.add(pkg);
         }
 

@@ -31,6 +31,7 @@ import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.scopes.DownloadScope;
 import io.foojay.api.scopes.BasicScope;
 import io.foojay.api.scopes.Scope;
+import io.foojay.api.scopes.UsageScope;
 
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -44,6 +45,7 @@ import java.util.regex.Pattern;
 public class Constants {
     public static final String        PACKAGES_COLLECTION              = "packages";
     public static final String        DOWNLOADS_COLLECTION             = "downloads";
+    public static final String        DOWNLOADS_USER_AGENT_COLLECTION  = "downloadsUserAgent";
     public static final String        DISTRO_UPDATES_COLLECTION        = "distroupdates";
     public static final String        SHEDLOCK_COLLECTION              = "shedLock";
     public static final String        STATE_COLLECTION                 = "state";
@@ -51,8 +53,8 @@ public class Constants {
 
     public static final long          UPDATE_TIMEOUT_IN_MINUTES        = 20;
     public static final long          PRELOAD_TIMEOUT_IN_MINUTES       = 15;
+    public static final long          UPLOAD_TIMEOUT_IN_MINUTES        = 10;
     public static final long          SYNCHRONIZING_TIMEOUT_IN_MINUTES = 15;
-    public static final long          UPLOAD_TIMEOUT_IN_MINUTES        = 15;
 
     public static final Pattern       POSITIVE_INTEGER_PATTERN         = Pattern.compile("\\d+");
 
@@ -83,8 +85,6 @@ public class Constants {
     public static final String        FILE_ENDING_SYMBOLS_TAR_GZ       = "symbols.tar.gz";
     public static final String        FILE_ENDING_SIG                  = "sig";
 
-    public static final String        SCOPE_IDS_KEY                    = "scope_ids";
-    
     public static final String        SQUARE_BRACKET_OPEN              = "[";
     public static final String        SQUARE_BRACKET_CLOSE             = "]";
     public static final String        CURLY_BRACKET_OPEN               = "{";
@@ -232,36 +232,48 @@ public class Constants {
         put("-ea", ReleaseStatus.EA);
         put("_ea", ReleaseStatus.EA);
         put("ea-", ReleaseStatus.EA);
-        put("ea", ReleaseStatus.EA); 
+        put("ea", ReleaseStatus.EA);
         put("EA", ReleaseStatus.EA);
         put("/GA/", ReleaseStatus.GA);
         put("-ga", ReleaseStatus.GA);
         put("_ga", ReleaseStatus.GA);
-        put("ga-", ReleaseStatus.GA); 
-        put("ga", ReleaseStatus.GA); 
+        put("ga-", ReleaseStatus.GA);
+        put("ga", ReleaseStatus.GA);
         put("GA", ReleaseStatus.GA);
     }};
 
     public static final ConcurrentHashMap<Distro, List<Scope>> SCOPE_LOOKUP = new ConcurrentHashMap<>() {{
-        put(Distro.AOJ, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
-        put(Distro.AOJ_OPENJ9, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
-        put(Distro.CORRETTO, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
-        put(Distro.DRAGONWELL, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
-        put(Distro.GRAALVM_CE8, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
-        put(Distro.GRAALVM_CE11, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
-        put(Distro.GRAALVM_CE16, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
-        put(Distro.LIBERICA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
-        put(Distro.LIBERICA_NATIVE, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
-        put(Distro.MANDREL, List.of(BasicScope.PUBLIC, DownloadScope.DIRECTLY));
-        put(Distro.MICROSOFT, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
-        put(Distro.OJDK_BUILD, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
-        put(Distro.OPEN_LOGIC, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
-        put(Distro.ORACLE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY));
-        put(Distro.ORACLE_OPEN_JDK, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
-        put(Distro.RED_HAT, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY));
-        put(Distro.SAP_MACHINE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
-        put(Distro.TEMURIN, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
-        put(Distro.TRAVA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
-        put(Distro.ZULU, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY));
+        // Builds of OpenJDK
+        put(Distro.AOJ, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.AOJ_OPENJ9, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.CORRETTO, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.DRAGONWELL, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.LIBERICA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.MICROSOFT, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.OJDK_BUILD, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.OPEN_LOGIC, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.ORACLE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY, UsageScope.LICENSE_NEEDED_FOR_PRODUCTION));
+        put(Distro.ORACLE_OPEN_JDK, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.RED_HAT, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY, UsageScope.LICENSE_NEEDED_FOR_PRODUCTION));
+        put(Distro.SAP_MACHINE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.TEMURIN, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.TRAVA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.ZULU, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        // Builds of GraalVM
+        put(Distro.GRAALVM_CE8, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_GRAALVM, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.GRAALVM_CE11, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_GRAALVM, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.GRAALVM_CE16, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_GRAALVM, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.LIBERICA_NATIVE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_GRAALVM, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.MANDREL, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_GRAALVM, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+    }};
+
+    public static final ConcurrentHashMap<Scope, List<Distro>> REVERSE_SCOPE_LOOKUP = new ConcurrentHashMap<>() {{
+        put(BasicScope.PUBLIC, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU));
+        put(DownloadScope.DIRECTLY, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE_OPEN_JDK, Distro.SAP_MACHINE, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU));
+        put(DownloadScope.NOT_DIRECTLY, List.of(Distro.ORACLE, Distro.RED_HAT));
+        put(BuildScope.BUILD_OF_OPEN_JDK, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.LIBERICA, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU));
+        put(BuildScope.BUILD_OF_GRAALVM, List.of(Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.LIBERICA_NATIVE, Distro.MANDREL));
+        put(UsageScope.FREE_TO_USE_IN_PRODUCTION, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE_OPEN_JDK, Distro.SAP_MACHINE, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU));
+        put(UsageScope.LICENSE_NEEDED_FOR_PRODUCTION, List.of(Distro.ORACLE, Distro.RED_HAT));
     }};
 }

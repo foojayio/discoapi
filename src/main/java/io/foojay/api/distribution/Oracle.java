@@ -312,6 +312,7 @@ public class Oracle implements Distribution {
             pkg.setDownloadSiteUri(packageUrl);
             pkg.setJavaFXBundled(javafxBundled);
             pkg.setDirectlyDownloadable(false);
+            pkg.setFreeUseInProduction(Boolean.FALSE);
 
             pkgs.add(pkg);
         }

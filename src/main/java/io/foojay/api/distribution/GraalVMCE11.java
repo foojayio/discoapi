@@ -238,6 +238,8 @@ public class GraalVMCE11 implements Distribution {
             }
             pkg.setOperatingSystem(os);
 
+            pkg.setFreeUseInProduction(Boolean.TRUE);
+
             pkgs.add(pkg);
         }
 

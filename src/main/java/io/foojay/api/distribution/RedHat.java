@@ -244,6 +244,8 @@ public class RedHat implements Distribution {
             pkg.setFileName(Helper.getFileNameFromText(filename));
             pkg.setDownloadSiteUri("https://developers.redhat.com/products/openjdk/download");
 
+            pkg.setFreeUseInProduction(Boolean.FALSE);
+
             pkgs.add(pkg);
         }
 

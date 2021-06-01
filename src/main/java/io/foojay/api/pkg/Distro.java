@@ -40,6 +40,8 @@ import io.foojay.api.distribution.RedHat;
 import io.foojay.api.distribution.SAPMachine;
 import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
+import io.foojay.api.scopes.BuildScope;
+import io.foojay.api.scopes.UsageScope;
 import io.foojay.api.util.OutputFormat;
 
 import java.time.Duration;
@@ -47,6 +49,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -59,6 +62,7 @@ import static io.foojay.api.util.Constants.INDENT;
 import static io.foojay.api.util.Constants.INDENTED_QUOTES;
 import static io.foojay.api.util.Constants.NEW_LINE;
 import static io.foojay.api.util.Constants.QUOTES;
+import static io.foojay.api.util.Constants.REVERSE_SCOPE_LOOKUP;
 import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
 import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
@@ -84,6 +88,7 @@ public enum Distro implements ApiFeature {
     TEMURIN("Temurin", "temurin", new Temurin(), 60),
     TRAVA("Trava", "trava", new Trava(), 1440),
     ZULU("Zulu", "zulu", new Zulu(), 15),
+    //ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), 15),
     NONE("-", "", null, 0),
     NOT_FOUND("", "", null, 0);
 
@@ -133,7 +138,32 @@ public enum Distro implements ApiFeature {
             case "zulu":
             case "ZULU":
             case "Zulu":
+            case "ZuluCore":
+            case "zulucore":
+            case "zulu_core":
+            case "ZULU_CORE":
+            case "Zulu_Core":
+            case "zulu core":
+            case "ZULU CORE":
+            case "Zulu Core":
                 return ZULU;
+            /*
+            case "zing":
+            case "ZING":
+            case "Zing":
+            case "prime":
+            case "PRIME":
+            case "Prime":
+            case "ZuluPrime":
+            case "zuluprime":
+            case "zulu_prime":
+            case "ZULU_PRIME":
+            case "Zulu_Prime":
+            case "zulu prime":
+            case "ZULU PRIME":
+            case "Zulu Prime":
+                return ZULU_PRIME;
+            */
             case "aoj":
             case "AOJ":
                 return AOJ;
@@ -320,32 +350,45 @@ public enum Distro implements ApiFeature {
     }
 
     public static List<Distro> getDistributionsBasedOnOpenJDK() {
-        return Arrays.stream(values())
-                     .filter(distro -> Distro.NONE != distro)
-                     .filter(distro -> Distro.NOT_FOUND != distro)
-                     .filter(distro -> Distro.GRAALVM_CE16 != distro)
-                     .filter(distro -> Distro.GRAALVM_CE11 != distro)
-                     .filter(distro -> Distro.GRAALVM_CE8 != distro)
-                     .filter(distro -> Distro.MANDREL != distro)
-                     .filter(distro -> Distro.LIBERICA_NATIVE != distro)
-                     .collect(Collectors.toList());
+        return REVERSE_SCOPE_LOOKUP.get(BuildScope.BUILD_OF_OPEN_JDK);
     }
 
     public static List<Distro> getDistributionsBasedOnGraalVm() {
-        return Arrays.stream(values())
-                     .filter(distro -> Distro.NONE != distro)
-                     .filter(distro -> Distro.NOT_FOUND != distro)
-                     .filter(distro -> Distro.GRAALVM_CE16 == distro)
-                     .filter(distro -> Distro.GRAALVM_CE11 == distro)
-                     .filter(distro -> Distro.GRAALVM_CE8 == distro)
-                     .filter(distro -> Distro.MANDREL == distro)
-                     .filter(distro -> Distro.LIBERICA_NATIVE == distro)
-                     .collect(Collectors.toList());
+        return REVERSE_SCOPE_LOOKUP.get(BuildScope.BUILD_OF_GRAALVM);
     }
 
+    public static List<Distro> getDistributionsFreeForProduction() {
+        return REVERSE_SCOPE_LOOKUP.get(UsageScope.FREE_TO_USE_IN_PRODUCTION);
+    }
+
+
     public String toString(final OutputFormat outputFormat) {
+        return toString(outputFormat, false);
+    }
+    public String toString(final OutputFormat outputFormat, final boolean latest_per_update) {
         final StringBuilder msgBuilder = new StringBuilder();
-        final List<SemVer> versions = get().getVersions();
+        final List<SemVer> versions;
+        if (latest_per_update) {
+            final List<SemVer> allVersions = get().getVersions();
+            versions = allVersions.stream()
+                                  .map(semver -> semver.getVersionNumber().toString(OutputFormat.REDUCED_COMPRESSED, true, false))
+                                  .collect(Collectors.toList())
+                                  .stream()
+                                  .distinct()
+                                  .map(vtext -> SemVer.fromText(vtext).getSemVer1())
+                                  .collect(Collectors.toSet())
+                                  .stream()
+                                  .map(unique -> allVersions.stream()
+                                                            .filter(semver -> semver.getVersionNumber().equals(unique.getVersionNumber()))
+                                                            .max(Comparator.comparing(SemVer::getVersionNumber)))
+                                  .filter(Optional::isPresent)
+                                  .map(Optional::get)
+                                  .sorted(Comparator.comparing(SemVer::getVersionNumber).reversed())
+                                  .collect(Collectors.toList());
+        } else {
+            versions = get().getVersions();
+        }
+
         switch(outputFormat) {
             case FULL:
                 msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)

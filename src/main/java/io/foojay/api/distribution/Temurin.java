@@ -34,6 +34,7 @@ import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
+import io.foojay.api.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -167,6 +168,9 @@ public class Temurin implements Distribution {
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                                               final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         List<Pkg> pkgs = new ArrayList<>();
+
+        //pkg.setFreeUseInProduction(Boolean.TRUE);
+
         return pkgs;
     }
 }

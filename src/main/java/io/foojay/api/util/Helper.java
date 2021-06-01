@@ -50,9 +50,12 @@ import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
+import io.foojay.api.scopes.YamlScopes;
+import io.micronaut.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -60,10 +63,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.StringReader;
-import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpClient.Version;
@@ -105,6 +105,7 @@ import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
+import static io.foojay.api.util.Constants.API_VERSION_V1;
 import static io.foojay.api.util.Constants.API_VERSION_V2;
 import static io.foojay.api.util.Constants.COLON;
 import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
@@ -131,6 +132,7 @@ public class Helper {
     public  static final Pattern    DRAGONWELL_11_FILE_NAME_SHA256_PATTERN = Pattern.compile("(OpenJDK[0-9]+U[a-z0-9_\\-\\.]+)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)(\\s+\\(Experimental ONLY\\))?\\h+\\|\\h+([0-9a-z]{64})");
     public  static final Pattern    DRAGONWELL_8_FILE_NAME_SHA256_PATTERN  = Pattern.compile("(\\()?(Alibaba_Dragonwell[0-9\\.A-Za-z_\\-]+)(\\)=\\s+)?|([\\\\r\\\\n]+)?([a-z0-9]{64})");
     public  static final Pattern    HREF_FILE_PATTERN                      = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
+    public  static final Pattern    HREF_SIG_FILE_PATTERN                  = Pattern.compile("href=\"([^\"]*(\\.sig))\"");
     public  static final Pattern    HREF_DOWNLOAD_PATTERN                  = Pattern.compile("(\\>)(\\s|\\h?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(\\<)");
     public  static final Matcher    FILE_URL_MATCHER                       = FILE_URL_PATTERN.matcher("");
     public  static final Matcher    FILE_URL_MD5_MATCHER                   = FILE_URL_MD5_PATTERN.matcher("");
@@ -138,6 +140,7 @@ public class Helper {
     public  static final Matcher    DRAGONWELL_11_FILE_NAME_SHA256_MATCHER = DRAGONWELL_11_FILE_NAME_SHA256_PATTERN.matcher("");
     public  static final Matcher    DRAGONWELL_8_FILE_NAME_SHA256_MATCHER  = DRAGONWELL_8_FILE_NAME_SHA256_PATTERN.matcher("");
     public  static final Matcher    HREF_FILE_MATCHER                      = HREF_FILE_PATTERN.matcher("");
+    public  static final Matcher    HREF_SIG_FILE_MATCHER                  = HREF_SIG_FILE_PATTERN.matcher("");
     public  static final Matcher    HREF_DOWNLOAD_MATCHER                  = HREF_DOWNLOAD_PATTERN.matcher("");
     private static       HttpClient httpClient;
     private static       HttpClient httpClientAsync;
@@ -575,6 +578,15 @@ public class Helper {
         return hrefsFound;
     }
 
+    public static Set<String> getSigFileHrefsFromString(final String text) {
+        Set<String> sigHrefsFound = new HashSet<>();
+        HREF_SIG_FILE_MATCHER.reset(text);
+        while (HREF_SIG_FILE_MATCHER.find()) {
+            sigHrefsFound.add(HREF_SIG_FILE_MATCHER.group(1).toLowerCase());
+        }
+        return sigHrefsFound;
+    }
+
     public static Set<String> getDownloadHrefsFromString(final String text) {
         Set<String> hrefsFound = new HashSet<>();
         HREF_DOWNLOAD_MATCHER.reset(text);
@@ -676,11 +688,13 @@ public class Helper {
         }
     }
 
-    public static Map<String, Object> loadYaml(final String uri) throws Exception {
-        Yaml yaml = new Yaml();
+    public static YamlScopes loadYamlScopes(final String uri) {
+        Constructor constructor = new Constructor(YamlScopes.class);
+        Yaml        yaml        = new Yaml(constructor );
         HttpResponse<String> response = get(uri);
-        if (null == response) { return new HashMap<>(); }
-        return yaml.load(new StringReader(response.body()));
+        if (null == response) { return null; }
+        if (null == response.body() || response.body().isEmpty()) { return null; }
+        return yaml.loadAs(response.body(), YamlScopes.class);
     }
 
     public static int getLeadingNumbers(final String text) {
@@ -1057,26 +1071,21 @@ public class Helper {
                                               .orElse(ReleaseStatus.NOT_FOUND);
     }
 
-    public static final boolean isUriValid(final String uri, final boolean followRedirects, final boolean headRequest) {
-        HttpURLConnection huc;
+    public static final boolean isUriValid(final String uri) {
+        if (null == httpClient) { httpClient = createHttpClient(); }
+        final HttpRequest request = HttpRequest.newBuilder()
+                                               .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                                               .uri(URI.create(uri))
+                                               .timeout(Duration.ofSeconds(60))
+                                               .build();
         try {
-            URL url = new URL(uri);
-            if (followRedirects) { HttpURLConnection.setFollowRedirects(false); }
-            huc = (HttpURLConnection) url.openConnection();
-            if (headRequest) { huc.setRequestMethod("HEAD"); }
-        } catch (IOException e) {
+            HttpResponse<Void> responseFuture = httpClient.send(request, BodyHandlers.discarding());
+            return 200 == responseFuture.statusCode();
+        } catch (InterruptedException | IOException e) {
             return false;
-        }
-        if (null == huc) {
-            return false;
-        } else {
-            try {
-                return 200 == huc.getResponseCode();
-            } catch (IOException e) {
-                return false;
-            }
         }
     }
+
 
     public static final String getAllPackagesV2Msg(final Boolean downloadable, final Boolean include_ea) {
         final List<Distro> publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();

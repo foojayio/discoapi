@@ -19,6 +19,9 @@
 
 package io.foojay.api;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
@@ -26,6 +29,7 @@ import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.EphemeralIdCache;
 import io.foojay.api.util.Helper;
+import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.PkgCache;
 import io.foojay.api.util.State;
 import io.micronaut.context.annotation.Requires;
@@ -60,6 +64,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static io.foojay.api.util.Constants.API_VERSION_V1;
+import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 @Requires(notEnv = Environment.TEST) // Don't run in tests
@@ -115,14 +125,14 @@ public enum CacheManager {
         AtomicInteger counter = new AtomicInteger(0);
 
         Distro.getAsListWithoutNoneAndNotFound().forEach(distro -> {
-            final Instant lastDownloadForDistro = MongoDbManager.INSTANCE.getLastDownloadForDistro(distro);
-            final double  delta                 = (lastDownloadForDistro.until(Instant.now(), ChronoUnit.MINUTES));
+            final Instant lastUpdateForDistro = MongoDbManager.INSTANCE.getLastUpdateForDistro(distro);
+            final double  delta               = (lastUpdateForDistro.until(Instant.now(), ChronoUnit.MINUTES));
             if (delta > distro.getMinUpdateIntervalInMinutes()) {
                 final Instant updateDistroStart = Instant.now();
                 pkgsFound.addAll(Helper.getPkgsOfDistro(distro));
                 distro.lastUpdateDuration.set(Duration.between(updateDistroStart, Instant.now()));
 
-                MongoDbManager.INSTANCE.setLastDownloadForDistro(distro);
+                MongoDbManager.INSTANCE.setLastUpdateForDistro(distro);
 
                 distro.lastUpdate.set(Instant.now());
                 counter.incrementAndGet();
@@ -197,8 +207,17 @@ public enum CacheManager {
 
         // Update latestBuildAvailable
         if (packagesAddedInUpdate.get() > 0) {
-            Collection<Pkg> updatedPkgCache = Helper.updateLatestBuildAvailable(pkgCache.getPkgs());
-            updatedPkgCache.forEach(pkg -> pkgCache.get(pkg.getId()).setLatestBuildAvailable(pkg.isLatestBuildAvailable()));
+            Map<String, Pkg> pkgCacheCopy               = pkgCache.getCopy();
+            Collection<Pkg>  pkgsEA                     = pkgCacheCopy.values().parallelStream().filter(pkg -> ReleaseStatus.EA == pkg.getReleaseStatus()).collect(Collectors.toList());
+            Collection<Pkg>  pkgsGA                     = pkgCacheCopy.values().parallelStream().filter(pkg -> ReleaseStatus.GA == pkg.getReleaseStatus()).collect(Collectors.toList());
+            Collection<Pkg>  eaPkgsAfterModification    = Helper.updateLatestBuildAvailable(pkgsEA);
+            Collection<Pkg>  gaPkgsAfterModification    = Helper.updateLatestBuildAvailable(pkgsGA);
+            Collection<Pkg>  eaGaPkgsAfterModification  = Stream.concat(eaPkgsAfterModification.stream(), gaPkgsAfterModification.stream()).collect(Collectors.toList());
+            List<Pkg>        latestBuildsAvailableAfter = eaGaPkgsAfterModification.parallelStream().filter(Pkg::isLatestBuildAvailable).collect(Collectors.toList());
+
+            pkgCacheCopy.values().forEach(pkg -> pkg.setLatestBuildAvailable(false));
+            latestBuildsAvailableAfter.forEach(pkg -> pkgCacheCopy.get(pkg.getId()).setLatestBuildAvailable(true));
+            pkgCache.setAll(pkgCacheCopy);
 
                 // Synchronize latestBuildAvailable in mongodb database with cache
                 MongoDbManager.INSTANCE.syncLatestBuildAvailableInDatabaseWithCache(pkgCache.getPkgs());

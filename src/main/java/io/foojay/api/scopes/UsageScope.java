@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.scopes;
@@ -23,15 +23,15 @@ import java.util.Arrays;
 import java.util.List;
 
 
-public enum BuildScope implements Scope {
-    BUILD_OF_OPEN_JDK("Build of OpenJDK", "build_of_openjdk"),
-    BUILD_OF_GRAALVM("Build of GraalVM", "build_of_graalvm");
+public enum UsageScope implements Scope {
+    FREE_TO_USE_IN_PRODUCTION("Free to use in production", "free_to_use_in_production"),
+    LICENSE_NEEDED_FOR_PRODUCTION("License needed for production", "license_needed_for_production");
 
     private final String uiString;
     private final String apiString;
 
 
-    BuildScope(final String uiString, final String apiString) {
+    UsageScope(final String uiString, final String apiString) {
         this.uiString  = uiString;
         this.apiString = apiString;
     }
@@ -44,15 +44,18 @@ public enum BuildScope implements Scope {
 
     public static Scope fromText(final String text) {
         switch(text) {
-            case "build_of_openjdk":
-                return BUILD_OF_OPEN_JDK;
-            case "build_of_graalvm":
-                return BUILD_OF_GRAALVM;
+            case "free":
+            case "free_to_use":
+            case "free_to_use_in_production":
+                return FREE_TO_USE_IN_PRODUCTION;
+            case "license":
+            case "license_needed":
+            case "license_needed_for_production":
+                return LICENSE_NEEDED_FOR_PRODUCTION;
             default:
                 return NOT_FOUND;
         }
     }
 
-    public static List<BuildScope> getAsList() { return Arrays.asList(values()); }
+    public static List<UsageScope> getAsList() { return Arrays.asList(values()); }
 }
-

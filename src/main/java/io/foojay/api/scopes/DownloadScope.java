@@ -27,26 +27,32 @@ public enum DownloadScope implements Scope {
     DIRECTLY("Directly downloadable", "directly_downloadable"),
     NOT_DIRECTLY("Not directly downloadable", "not_directly_downloadable");
 
-    private final String name;
-    private final String token;
+    private final String uiString;
+    private final String apiString;
 
 
-    DownloadScope(final String name, final String token) {
-        this.name  = name;
-        this.token = token;
+    DownloadScope(final String uiString, final String apiString) {
+        this.uiString  = uiString;
+        this.apiString = apiString;
     }
 
 
-    @Override public String getName() { return name; }
+    @Override public String getUiString() { return uiString; }
 
-    @Override public String getToken() { return token; }
+    @Override public String getApiString() { return apiString; }
 
 
-    public static Scope fromToken(final String token) {
-        for (Scope scope : DownloadScope.values()) {
-            if (scope.getToken().equals(token)) { return scope; }
+    public static Scope fromText(final String text) {
+        switch(text) {
+            case "directly":
+            case "directly_downloadable":
+                return DIRECTLY;
+            case "not_directly":
+            case "not_directly_downloadable":
+                return NOT_DIRECTLY;
+            default:
+                return NOT_FOUND;
         }
-        return Scope.NOT_FOUND;
     }
 
     public static List<DownloadScope> getAsList() { return Arrays.asList(values()); }

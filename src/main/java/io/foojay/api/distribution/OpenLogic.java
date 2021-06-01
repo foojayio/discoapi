@@ -269,6 +269,8 @@ public class OpenLogic implements Distribution {
             pkg.setFileName(Helper.getFileNameFromText(filename));
             pkg.setDirectDownloadUri(fileHref);
 
+            pkg.setFreeUseInProduction(Boolean.TRUE);
+
             pkgs.add(pkg);
         }
 

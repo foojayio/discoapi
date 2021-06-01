@@ -20,6 +20,8 @@
 package io.foojay.api.pkg;
 
 import io.foojay.api.CacheManager;
+import io.foojay.api.scopes.Scope;
+import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 
 import java.util.ArrayList;
@@ -39,6 +41,7 @@ import static io.foojay.api.util.Constants.NEW_LINE;
 import static io.foojay.api.util.Constants.QUOTES;
 import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
 import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
+import static java.util.stream.Collectors.toSet;
 
 
 /**
@@ -49,6 +52,7 @@ public class MajorVersion {
     public  static final String        FIELD_MAJOR_VERSION   = "major_version";
     public  static final String        FIELD_TERM_OF_SUPPORT = "term_of_support";
     public  static final String        FIELD_MAINTAINED      = "maintained";
+    public  static final String        FIELD_EARLY_ACCESS_ONLY = "early_access_only";
     public  static final String        FIELD_VERSIONS        = "versions";
     private        final int           majorVersion;
     private        final TermOfSupport termOfSupport;
@@ -193,7 +197,22 @@ public class MajorVersion {
     // Maintained
     public Boolean isMaintained() { return maintained; }
 
+    // Early Access only
+    public Boolean isEarlyAccessOnly() {
+        return getVersions().stream().filter(semver -> ReleaseStatus.EA == semver.getReleaseStatus()).count() == getVersions().size();
+    }
+
     // Versions
+    public List<SemVer> getVersions(final List<Scope> scopes, final Match match) {
+        final Match scopeMatch = (null == match || Match.NONE == match || Match.NOT_FOUND == match) ? Match.ANY : match;
+        return CacheManager.INSTANCE.pkgCache.getPkgs()
+                                             .stream()
+                                             .filter(pkg -> Match.ANY == scopeMatch ? Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scopes.stream().collect(toSet())::contains) : Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).containsAll(scopes))
+                                             .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
+                                             .filter(pkg -> ReleaseStatus.GA == pkg.getReleaseStatus())
+                                             .map(pkg -> pkg.getSemver())
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+    }
     public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
@@ -203,6 +222,16 @@ public class MajorVersion {
                                              .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
+    public List<SemVer> getVersionsOnlyEarlyAccess(final List<Scope> scopes, final Match match) {
+        final Match scopeMatch = (null == match || Match.NONE == match || Match.NOT_FOUND == match) ? Match.ANY : match;
+        return CacheManager.INSTANCE.pkgCache.getPkgs()
+                                             .stream()
+                                             .filter(pkg -> Match.ANY == scopeMatch ? Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scopes.stream().collect(toSet())::contains) : Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).containsAll(scopes))
+                                             .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
+                                             .filter(pkg -> ReleaseStatus.EA == pkg.getReleaseStatus())
+                                             .map(pkg -> pkg.getSemver())
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+    }
     public List<SemVer> getVersionsOnlyEarlyAccess() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
@@ -212,6 +241,15 @@ public class MajorVersion {
                                              .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
+    public List<SemVer> getVersionsIncludingEarlyAccess(final List<Scope> scopes, final Match match) {
+        final Match scopeMatch = (null == match || Match.NONE == match || Match.NOT_FOUND == match) ? Match.ANY : match;
+        return CacheManager.INSTANCE.pkgCache.getPkgs()
+                                             .stream()
+                                             .filter(pkg -> Match.ANY == scopeMatch ? Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scopes.stream().collect(toSet())::contains) : Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).containsAll(scopes))
+                                             .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
+                                             .map(pkg -> pkg.getSemver())
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+    }
     public List<SemVer> getVersionsIncludingEarlyAccess() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
@@ -226,6 +264,7 @@ public class MajorVersion {
                                                                         .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(majorVersion).append(COMMA_NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.name()).append(QUOTES).append(COMMA_NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA_NEW_LINE)
+                                                                        .append(INDENTED_QUOTES).append(FIELD_EARLY_ACCESS_ONLY).append(QUOTES).append(COLON).append(isEarlyAccessOnly()).append(COMMA_NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_VERSIONS).append(QUOTES).append(COLON).append(" ").append(SQUARE_BRACKET_OPEN).append(versions.isEmpty() ? "" : NEW_LINE);
         versions.forEach(versionNumber -> majorVersionMsgBuilder.append(INDENT).append(INDENTED_QUOTES).append(versionNumber).append(QUOTES).append(COMMA_NEW_LINE));
         if (!versions.isEmpty()) {

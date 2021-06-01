@@ -77,8 +77,8 @@ public class Pkg {
     public  static final String            FIELD_EPHEMERAL_ID           = "ephemeral_id";
     public  static final String            FIELD_LINKS                  = "links";
     public  static final String            FIELD_DOWNLOAD               = "pkg_info_uri";
+    public  static final String            FIELD_FREE_USE_IN_PROD       = "free_use_in_production";
     public  static final String            FIELD_FEATURE                = "feature";
-    public  static final String            FIELD_DISTRO_SIGNATURE_URI   = "distro_signature_uri";
     private              Distribution      distribution;
     private              VersionNumber     versionNumber;
     private              VersionNumber     javaVersion;
@@ -95,20 +95,21 @@ public class Pkg {
     private              Boolean           javafxBundled;
     private              Boolean           latestBuildAvailable;
     private              Boolean           directlyDownloadable;
-    private              boolean           headless;
+    private              Boolean           headless;
     private              String            filename;
     private              String            directDownloadUri;
     private              String            downloadSiteUri;
     private              String            signatureUri;
+    private              Boolean           freeUseInProduction;
     private              List<Feature>     features;
 
 
     public Pkg() {
-        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, false, true, "", "", "", "", new ArrayList<>());
+        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, Boolean.FALSE, Boolean.TRUE, "", "", "", "", Boolean.FALSE, new ArrayList<>());
     }
     public Pkg(final Distribution distribution, final VersionNumber versionNumber, final Architecture architecture, final Bitness bitness, final OperatingSystem operatingSystem, final PackageType packageType,
                final ReleaseStatus releaseStatus, final ArchiveType archiveType, final TermOfSupport termOfSupport, final boolean javafxBundled, final boolean directlyDownloadable, final String filename,
-               final String directDownloadUri, final String downloadSiteUri, final String signatureUri, final List<Feature> features) {
+               final String directDownloadUri, final String downloadSiteUri, final String signatureUri, final Boolean freeUseInProduction, final List<Feature> features) {
         this.distribution         = distribution;
         this.versionNumber        = versionNumber;
         this.javaVersion          = new VersionNumber();
@@ -129,6 +130,7 @@ public class Pkg {
         this.directDownloadUri    = directDownloadUri;
         this.downloadSiteUri      = downloadSiteUri;
         this.signatureUri         = signatureUri;
+        this.freeUseInProduction  = freeUseInProduction;
         this.features             = features;
         this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
     }
@@ -142,7 +144,7 @@ public class Pkg {
         this.versionNumber        = VersionNumber.fromText(json.get(FIELD_JAVA_VERSION).getAsString());
         this.javaVersion          = VersionNumber.fromText(json.get(FIELD_JAVA_VERSION).getAsString());
         this.distributionVersion  = VersionNumber.fromText(json.get(FIELD_DISTRIBUTION_VERSION).getAsString());
-        this.latestBuildAvailable = json.has(FIELD_LATEST_BUILD_AVAILABLE) ? json.get(FIELD_LATEST_BUILD_AVAILABLE).getAsBoolean() : Boolean.valueOf(false);
+        this.latestBuildAvailable = json.has(FIELD_LATEST_BUILD_AVAILABLE) ? json.get(FIELD_LATEST_BUILD_AVAILABLE).getAsBoolean() : Boolean.FALSE;
         this.architecture         = Architecture.fromText(json.get(FIELD_ARCHITECTURE).getAsString());
         this.bitness              = this.architecture.getBitness();
         this.operatingSystem      = OperatingSystem.fromText(json.get(FIELD_OPERATING_SYSTEM).getAsString());
@@ -152,14 +154,14 @@ public class Pkg {
         this.archiveType          = ArchiveType.fromText(json.get(FIELD_ARCHIVE_TYPE).getAsString());
         this.termOfSupport        = TermOfSupport.fromText(json.get(FIELD_TERM_OF_SUPPORT).getAsString());
         this.javafxBundled        = json.get(FIELD_JAVAFX_BUNDLED).getAsBoolean();
-        this.directlyDownloadable = json.has(FIELD_DIRECTLY_DOWNLOADABLE) ? json.get(FIELD_DIRECTLY_DOWNLOADABLE).getAsBoolean() : true;
-        this.headless             = false;
+        this.directlyDownloadable = json.has(FIELD_DIRECTLY_DOWNLOADABLE) ? json.get(FIELD_DIRECTLY_DOWNLOADABLE).getAsBoolean() : Boolean.TRUE;
+        this.headless             = Boolean.FALSE;
         this.filename             = json.get(FIELD_FILENAME).getAsString();
         this.directDownloadUri    = json.get(FIELD_DIRECT_DOWNLOAD_URI).getAsString();
         this.downloadSiteUri      = json.get(FIELD_DOWNLOAD_SITE_URI).getAsString();
         this.signatureUri         = json.has(FIELD_SIGNATURE_URI) ? json.get(FIELD_SIGNATURE_URI).getAsString() : "";
         this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
-
+        this.freeUseInProduction  = json.has(FIELD_FREE_USE_IN_PROD) ? json.get(FIELD_FREE_USE_IN_PROD).getAsBoolean() : Boolean.TRUE;
         if (json.has(FIELD_FEATURE)) {
             features = new ArrayList<>();
             JsonArray featureArray = json.getAsJsonArray(FIELD_FEATURE);
@@ -270,6 +272,9 @@ public class Pkg {
     public String getSignatureUri() { return signatureUri; }
     public void setSignatureUri(final String signatureUri) { this.signatureUri = signatureUri; }
 
+    public Boolean getFreeUseInProduction() { return freeUseInProduction; }
+    public void setFreeUseInProduction(final Boolean freeUseInProduction) { this.freeUseInProduction = null == freeUseInProduction ? Boolean.FALSE : freeUseInProduction; }
+
     public List<Feature> getFeatures() { return features; }
     public void setFeatures(final List<Feature> features) { this.features = features; }
 
@@ -293,7 +298,7 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toStringInclBuild(true)).append(QUOTES).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? Boolean.FALSE : latestBuildAvailable).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
@@ -306,6 +311,7 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();
@@ -328,6 +334,7 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENTED_QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                                           .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES)
                                           .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
@@ -355,6 +362,7 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
                                           .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();
@@ -380,6 +388,7 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                                           .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(CURLY_BRACKET_CLOSE).append(COMMA)
+                                          .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
                                           .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString();
@@ -395,6 +404,7 @@ public class Pkg {
         if (null == pkg) { return false; }
         return distribution.equals(pkg.distribution) &&
                getFeatureVersion().getAsInt() == pkg.getFeatureVersion().getAsInt() &&
+               getInterimVersion().getAsInt() == pkg.getInterimVersion().getAsInt() &&
                architecture                 == pkg.architecture &&
                operatingSystem              == pkg.operatingSystem &&
                packageType                  == pkg.packageType &&

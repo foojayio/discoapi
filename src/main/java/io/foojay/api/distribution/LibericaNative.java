@@ -264,6 +264,8 @@ public class LibericaNative implements Distribution {
                 }
             }
 
+            pkg.setFreeUseInProduction(Boolean.TRUE);
+
             pkgs.add(pkg);
         }
 

@@ -284,6 +284,7 @@ public class SAPMachine implements Distribution {
                 continue;
             }
             pkg.setOperatingSystem(os);
+            pkg.setFreeUseInProduction(Boolean.TRUE);
 
             pkgs.add(pkg);
         }
@@ -369,6 +370,7 @@ public class SAPMachine implements Distribution {
                 pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
                 pkg.setPackageType(packageType);
                 pkg.setOperatingSystem(operatingSystem);
+                pkg.setFreeUseInProduction(Boolean.TRUE);
 
                 pkgs.add(pkg);
             }
@@ -454,6 +456,7 @@ public class SAPMachine implements Distribution {
                                         pkg.setTermOfSupport(majorVersion.getTermOfSupport());
                                         pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
                                         pkg.setPackageType(PackageType.fromText(imageType));
+                                        pkg.setFreeUseInProduction(Boolean.TRUE);
                                         switch (os) {
                                             case "linux-x64":
                                                 pkg.setOperatingSystem(LINUX);
@@ -584,6 +587,7 @@ public class SAPMachine implements Distribution {
             pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
+            pkg.setFreeUseInProduction(Boolean.TRUE);
             pkgs.add(pkg);
         }
 

@@ -38,17 +38,13 @@ import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
-import io.foojay.api.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -247,6 +243,8 @@ public class Dragonwell implements Distribution {
             }
             if (OperatingSystem.NONE != operatingSystem && operatingSystem != os) { continue; }
             pkg.setOperatingSystem(os);
+
+            pkg.setFreeUseInProduction(Boolean.TRUE);
 
             pkgs.add(pkg);
         }
