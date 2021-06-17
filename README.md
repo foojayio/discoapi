@@ -24,6 +24,7 @@ The foojay Disco API is a general purpose API to discover builds of OpenJDK from
 * Temurin
 * Trava  
 * Zulu
+* Zulu Prime
   
 ---
 ### Terms that are used in this document:
@@ -56,111 +57,97 @@ Please find more information here:
 [foojay API Swagger doc](https://api.foojay.io/swagger-ui)
 
 ---
+### REST endpoints 
+/api.foojay.io/disco/v2.0/major_versions
+/api.foojay.io/disco/v2.0/distributions
+/api.foojay.io/disco/v2.0/packages
+/api.foojay.io/disco/v2.0/packages/jdks
+/api.foojay.io/disco/v2.0/packages/jres
+/api.foojay.io/disco/v2.0/ephemeral_ids
 
-### How to download a package ?
-1. Search for a package using the API (e.g. JDK 1.8.0_275 from Zulu for Windows as msi incl. JavaFX => https://api.foojay.io/disco/v1.0/packages?version=1.8.0_275&distro=zulu&archive_type=msi&package_type=jdk&operating_system=windows&javafx_bundled=true&latest=per_version)
-2. Once you have found the package of your choice, get it's ephemeral id from the json response
-3. Call the endpoint https://api.foojay.io/disco/v1.0/ephemeral_ids/PACKAGE_EPHEMERAL_ID
-4. Get the download link from the json response
-
-
-### Here are some use cases and ways how to handle them using the disco API:
-
-#### 1. What major versions are available incl. early access builds?
-```console
-curl "https://api.foojay.io/disco/v1.0/major_versions?ea=true&maintained=true"
-```
-
-The json response will look as follows (excerpt):
-```json
-[
-  {
-    "major_version": 17,
-    "term_of_support": "LTS",
-    "maintained": true,
-    "versions": [
-      "17-ea"
-    ]
-  },
-  {
-    "major_version": 16,
-    "term_of_support": "STS",
-    "maintained": true,
-    "versions": [
-      "16-ea"
-    ]
-  },
-  {
-    "major_version": 15,
-    "term_of_support": "MTS",
-    "maintained": true,
-    "versions": [
-      "15.0.1",
-      "15.0.1-ea",
-      "15",
-      "15-ea"
-    ]
-  },
-  ...
-]
-```
 ---
-#### 2. What is the latest long term stable major version?
-```console
-curl "https://api.foojay.io/disco/v1.0/major_versions/latest_lts"
-```
-The json response will look as follows:
-```json
+### Endpoint: major_versions
+<b>/api.foojay.io/disco/v2.0/major_versions</b> => Returns all major versions
+
+<b>/api.foojay.io/disco/v2.0/major_versions?ea=true</b> => Returns all major versions including early access builds
+
+<b>/api.foojay.io/disco/v2.0/major_versions?ga=true</b> => Returns all major versions including only general availability builds
+
+<b>/api.foojay.io/disco/v2.0/major_versions?maintained=true</b> => Returns all major versions that are maintained at the moment (e.g. 7, 8, 11, 13, 15, 16, 17-ea, 18-ea)
+
+
+### Endpoint: distributions
+<b>/api.foojay.io/disco/v2.0/distributions</b> => Returns all available distributions incl. their available versions
+
+<b>/api.foojay.io/disco/v2.0/distributions/zulu</b> => Returns the given distribution (here Zulu) with it's available versions
+
+
+### Endpoint: packages
+The packages endpoint can be used with the following url parameters:
+- <b>version</b> (e.g. 1.8.0_262, 11.0.9.1, 17-ea.1, 11.0.8..<11.0.10)
+  
+
+- <b>distro</b> (e.g. aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, graalvm_ce16, liberica, liberica_native, mandrel, microsoft, ojdk_build, openlogic, oracle, oracle_open_jdk, redhat, sap_machine, temurin, trava, zulu, zulu_prime)
+  
+
+- <b>architecture</b> (e.g. aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32)
+  
+
+- <b>archive_type</b> (e.g. apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip)
+  
+
+- <b>package_type</b> (e.g. jdk, jre)
+  
+
+- <b>operating_system</b> (e.g. aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows)
+  
+
+- <b>libc_type</b> (e.g. c_std_lib, glibc, libc, musl)
+  
+
+- <b>release_status</b> (e.g. ea, ga)
+  
+
+- <b>term_of_support</b> (e.g. sts, mts, lts)
+  
+
+- <b>bitness</b> (e.g. 32, 64)
+  
+
+- <b>javafx_bundled</b> (e.g. true, false)
+  
+
+- <b>directly_downloadable</b> (e.g. true, false)
+  
+
+- <b>latest</b> (e.g. all_of_version, per_distro, overall, available)
+
+### Get the download link of a package
+Let's assume we are looking for the latest version of JDK 11, including JavaFX for MacOS with Intel processor and we would like to use an installer, so it should be either dmg or pkg.
+The url parameters will look as follows:
+- latest=available
+- package_type=jdk
+- version=11
+- javafx_bundled=true
+- operating_system=macos
+- architecture=x64 (because of the Intel processor)
+- archive_type=dmg
+- archive_type=pkg
+
+So the http request will look as follows:
+https://api.foojay.io/disco/v2.0/packages?package_type=jdk&latest=available&version=11&javafx_bundled=true&operating_system=macos&architecture=x64&archive_type=dmg&archive_type=pkg
+
+The response to this request is the following:
+```JSON
 {
-  "major_version": 11,
-  "term_of_support": "LTS",
-  "maintained": true,
-  "versions": [
-    "11.0.9.1",
-    "11.0.9",
-    "11.0.8",
-    "11.0.7",
-    "11.0.6",
-    "11.0.5",
-    "11.0.4",
-    "11.0.3",
-    "11.0.2",
-    "11.0.1",
-    "11"
-  ]
-}
-```
----
-#### 3. What is the latest early access major version?
-```console
-curl "https://api.foojay.io/disco/v1.0/major_versions/latest_ea"
-```
-The json response will look as follows:
-```json
-{
-  "major_version": 17,
-  "term_of_support": "LTS",
-  "maintained": true,
-  "versions": [
-    "17-ea"
-  ]
-}
-```
----
-#### 4. Is there an update available for my Zulu version 11.0.8 incl. JavaFX on MacOS?
-```console
-curl "https://api.foojay.io/disco/v1.0/packages?version=11.0.8&operating_system=macos&latest=overall&release_status=ga&distro=zulu&archive_type=dmg&package_type=jdk&javafx_bundled=true"
-```
-The json response will look as follows:
-```json
-[
+  "result": [
   {
-    "id": "3edab9b6f6661cc5a64ea19e439959e6",
+    "id": "80667cb6036b564eb0ede541eaed69b1",
     "archive_type": "dmg",
     "distribution": "zulu",
     "major_version": 11,
-    "java_version": "11.0.9.1",
-    "distribution_version": "11.43.55.0",
+    "java_version": "11.0.11",
+    "distribution_version": "11.48.21",
     "latest_build_available": true,
     "release_status": "ga",
     "term_of_support": "lts",
@@ -170,157 +157,127 @@ The json response will look as follows:
     "package_type": "jdk",
     "javafx_bundled": true,
     "directly_downloadable": true,
-    "filename": "zulu11.43.55-ca-fx-jdk11.0.9.1-macosx_x64.dmg",
-    "ephemeral_id": "3173edab9b6f6661cc5a64ea19e439959e61608732413"
+    "filename": "zulu11.48.21-ca-fx-jdk11.0.11-macosx_x64.dmg",
+    "ephemeral_id": "30dba32311753589fb67efb6222ec2e9b7635b68",
+    "links": {
+        "pkg_info_uri": "https://api.foojay.io/disco/v2.0/ephemeral_ids/30dba32311753589fb67efb6222ec2e9b7635b68"
+    },
+    "free_use_in_production": true,
+    "feature": []
+  },
+  {
+    "id": "d1e3be3805303a416c346c065403312f",
+    "archive_type": "dmg",
+    "distribution": "liberica",
+    "major_version": 11,
+    "java_version": "11.0.11+b9",
+    "distribution_version": "11+b9",
+    "latest_build_available": true,
+    "release_status": "ga",
+    "term_of_support": "lts",
+    "operating_system": "macos",
+    "lib_c_type": "libc",
+    "architecture": "amd64",
+    "package_type": "jdk",
+    "javafx_bundled": true,
+    "directly_downloadable": true,
+    "filename": "bellsoft-jdk11.0.11+9-macos-amd64-full.dmg",
+    "ephemeral_id": "a4966fad9803d9911b71871a2000e278de1632b0",
+    "links": {
+      "pkg_info_uri": "https://api.foojay.io/disco/v2.0/ephemeral_ids/a4966fad9803d9911b71871a2000e278de1632b0"
+    },
+    "free_use_in_production": true,
+    "feature": []
+  },
+  {
+    "id": "638edd048fab2e47861df6fe1739f978",
+    "archive_type": "pkg",
+    "distribution": "liberica",
+    "major_version": 11,
+    "java_version": "11.0.11+b9",
+    "distribution_version": "11+b9",
+    "latest_build_available": true,
+    "release_status": "ga",
+    "term_of_support": "lts",
+    "operating_system": "macos",
+    "lib_c_type": "libc",
+    "architecture": "amd64",
+    "package_type": "jdk",
+    "javafx_bundled": true,
+    "directly_downloadable": true,
+    "filename": "bellsoft-jdk11.0.11+9-macos-amd64-full.pkg",
+    "ephemeral_id": "bd3fa08579073189ca8737f2ae3b0cf19bfd5f98",
+    "links": {
+      "pkg_info_uri": "https://api.foojay.io/disco/v2.0/ephemeral_ids/bd3fa08579073189ca8737f2ae3b0cf19bfd5f98"
+    },
+    "free_use_in_production": true,
+    "feature": []
   }
-]
-```
----
-#### 5. What versions does the Zulu distribution offer?
-```console
-curl "https://api.foojay.io/disco/v1.0/distributions/zulu"
-```
-The json response will look as follows:
-```json
-{
-  "name": "Zulu",
-  "api_parameter": "zulu",
-  "versions": [
-    "17-ea",
-    "16-ea",
-    "15.0.1",
-    "15",
-    "15-ea",
-    "14.0.2",
-    "14.0.1",
-    "14",
-    "14-ea",
-    "13.0.5.1",
-    "13.0.5",
-    "13.0.4",
-    "13.0.3",
-    "13.0.2",
-    "13.0.1",
-    "13",
-    "12.0.2",
-    "12.0.1",
-    "12",
-    "11.0.9.1",
-    "11.0.9",
-    "11.0.8",
-    "11.0.7",
-    "11.0.6",
-    "11.0.5",
-    "11.0.4",
-    "11.0.3",
-    "11.0.2",
-    "11.0.1",
-    "11",
-    "10.0.2",
-    "10.0.1",
-    "10",
-    "9.0.7",
-    "9.0.4",
-    "9.0.1",
-    "9",
-    "8.0.275",
-    "8.0.272",
-    "8.0.265",
-    "8.0.262",
-    "8.0.252",
-    "8.0.242",
-    "8.0.232",
-    "8.0.222",
-    "8.0.212",
-    "8.0.202",
-    "8.0.201",
-    "8.0.192",
-    "8.0.181",
-    "8.0.172",
-    "8.0.163",
-    "8.0.162",
-    "8.0.153",
-    "8.0.152",
-    "8.0.144",
-    "8.0.131",
-    "8.0.121",
-    "8.0.112",
-    "8.0.102",
-    "8.0.101",
-    "8.0.92",
-    "8.0.91",
-    "8.0.72",
-    "8.0.71",
-    "8.0.66",
-    "8.0.65",
-    "8.0.60",
-    "8.0.51",
-    "8.0.45",
-    "8.0.40",
-    "8.0.31",
-    "8.0.25",
-    "8.0.20",
-    "8.0.11",
-    "8.0.5",
-    "8",
-    "7.7.0.2",
-    "7.7.0.1",
-    "7.6.0.7",
-    "7.6.0.2",
-    "7.0.285",
-    "7.0.282",
-    "7.0.272",
-    "7.0.262",
-    "7.0.252",
-    "7.0.242",
-    "7.0.232",
-    "7.0.222",
-    "7.0.211",
-    "7.0.201",
-    "7.0.191",
-    "7.0.181",
-    "7.0.171",
-    "7.0.161",
-    "7.0.154",
-    "7.0.141",
-    "7.0.131",
-    "7.0.121",
-    "7.0.111",
-    "7.0.101",
-    "7.0.95",
-    "7.0.91",
-    "7.0.85",
-    "7.0.80",
-    "7.0.79",
-    "7.0.76",
-    "7.0.72",
-    "7.0.65",
-    "7.0.60",
-    "7.0.55",
-    "7.0.51",
-    "7.0.45",
-    "6.0.119",
-    "6.0.113",
-    "6.0.107",
-    "6.0.103",
-    "6.0.99",
-    "6.0.97",
-    "6.0.93",
-    "6.0.89",
-    "6.0.87",
-    "6.0.83",
-    "6.0.79",
-    "6.0.77",
-    "6.0.73",
-    "6.0.69",
-    "6.0.63",
-    "6.0.59",
-    "6.0.56",
-    "6.0.53",
-    "6.0.49",
-    "6.0.47",
-    "6.0.42"
-  ]
+  ],
+  "message": "3 package(s) found"
 }
 ```
+As you can see the API found 3 packages in 2 distributions, Zulu and Liberica.
+
+<b>Attention:</b>
+
+The list of packages will always be in reverse alphabetical order. This will lead to the fact that in most cases the
+first package that will be shown will be from the Zulu distribution. The reason for this is simple and it is the fact that
+Zulu has the most packages available for all versions and there always is a good chance that if you need a specific Java
+version that there is a package from Zulu.
+
+If you know that you would like to have a package from Liberica you simply add the url parameter distro=liberica to the call
+above and you will only get the packages from Liberica for the given parameters.
+
+As you can see there is no download link in the response and the reason for that is that we somehow need a way to create some
+kind of statistics. For this reason you have to do another request to the ephemeral_ids endpoint with the ephemeral_id of the
+package you would like to download.
+Please keep in mind that the ephemeral ids for each package will change every couple of minutes to avoid caching.
+To make it easier for you to get the download link you simply can call the url that is in the response in the "pkg_info_uri".
+
+So if we make the following request: https://api.foojay.io/disco/v2.0/ephemeral_ids/30dba32311753589fb67efb6222ec2e9b7635b68
+we will get this response back:
+```JSON
+{
+  "result":[
+  {
+    "filename":"zulu11.48.21-ca-fx-jdk11.0.11-macosx_x64.dmg",
+    "direct_download_uri":"https://cdn.azul.com/zulu/bin/zulu11.48.21-ca-fx-jdk11.0.11-macosx_x64.dmg",
+    "download_site_uri":"",
+    "signature_uri":""
+  }
+  ],
+  "message":""
+}
+```
+In this response you will now get the direct_download_uri which will let you download the package.
+
 ---
+### IDE Plugins
+There are several plugins and extensions available that already make use of the DiscoAPI and that can help you to get
+the JDK of your choice even faster.
+
+#### IntelliJ Idea plugin
+In the IntelliJ Idea Plugin marketplace you will find the [DiscoIdea](https://plugins.jetbrains.com/plugin/16787-discoidea) plugin.
+
+#### Eclipse plugin
+In Eclipse you can find the [DiscoEclipse](https://marketplace.eclipse.org/content/discoeclipse) plugin on the marketplace
+
+#### Visual Studio Code
+In Visual Studio Code you can find the [DiscoVSC](https://marketplace.visualstudio.com/items?itemName=GerritGrunwald.discovsc&ssr=false#overview) plugin on the marketplace
+
+---
+### Browser plugins
+More or less the same plugin that is available for the different IDE's is also available as a browser plugin.
+
+#### Chrome
+For Google Chrome please look for [DiscoChrome](https://chrome.google.com/webstore/detail/discochrome/cikmnphhlggceijbbdeohhlkbdagjjce) in the chrome web store
+
+#### Firefox
+For Firefox please look for [DiscoFox](https://addons.mozilla.org/addon/discofox/) on the firefox addons page
+
+#### Safari
+For Safari please look for [DiscoSafari](https://apps.apple.com/de/app/discosafari/id1571307341?mt=12) on the Mac app store
+
+#### Edge
+For Microsoft Edge please look for [DiscoEdge](https://microsoftedge.microsoft.com/addons/detail/efeaimfkdbolmkhafogcoocbidfhdkcm) on Edge plugins page
