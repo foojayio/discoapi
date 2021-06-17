@@ -37,6 +37,7 @@ import io.foojay.api.distribution.RedHat;
 import io.foojay.api.distribution.SAPMachine;
 import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
+import io.foojay.api.distribution.ZuluPrime;
 import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
@@ -50,6 +51,7 @@ import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
+import io.foojay.api.scopes.Scope;
 import io.foojay.api.scopes.YamlScopes;
 import io.micronaut.http.HttpHeaders;
 import org.slf4j.Logger;
@@ -172,6 +174,10 @@ public class Helper {
                     }
                     pkgs.addAll(pkgsToAdd);
                     break;
+            case ZULU_PRIME:
+                ZuluPrime zuluPrime = (ZuluPrime) distro.get();
+                pkgs.addAll(zuluPrime.getAllPkgs());
+                break;
             case ORACLE:
                 Oracle oracle = (Oracle) distro.get();
                 pkgs.addAll(oracle.getAllPkgs());
@@ -1087,14 +1093,17 @@ public class Helper {
     }
 
 
-    public static final String getAllPackagesV2Msg(final Boolean downloadable, final Boolean include_ea) {
+    public static final String getAllPackagesV2Msg(final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
         final List<Distro> publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
         final boolean gaOnly = null == include_ea || !include_ea;
         final StringBuilder msgBuilder = new StringBuilder();
+        final Scope         scopeToCheck = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
+
         msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                   .append(INDENTED_QUOTES).append(RESULT).append(QUOTES).append(COLON).append(NEW_LINE)
                   .append(INDENT).append(CacheManager.INSTANCE.pkgCache.getPkgs()
                                                                        .parallelStream()
+                                                                       .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
                                                                        .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
                                                                        .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
                                                                        .sorted(Comparator.comparing(Pkg::getDistributionName).reversed())

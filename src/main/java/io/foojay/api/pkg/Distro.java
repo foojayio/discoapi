@@ -40,6 +40,7 @@ import io.foojay.api.distribution.RedHat;
 import io.foojay.api.distribution.SAPMachine;
 import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
+import io.foojay.api.distribution.ZuluPrime;
 import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.scopes.UsageScope;
 import io.foojay.api.util.OutputFormat;
@@ -88,7 +89,7 @@ public enum Distro implements ApiFeature {
     TEMURIN("Temurin", "temurin", new Temurin(), 60),
     TRAVA("Trava", "trava", new Trava(), 1440),
     ZULU("Zulu", "zulu", new Zulu(), 15),
-    //ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), 15),
+    ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), 360),
     NONE("-", "", null, 0),
     NOT_FOUND("", "", null, 0);
 
@@ -147,7 +148,6 @@ public enum Distro implements ApiFeature {
             case "ZULU CORE":
             case "Zulu Core":
                 return ZULU;
-            /*
             case "zing":
             case "ZING":
             case "Zing":
@@ -163,7 +163,6 @@ public enum Distro implements ApiFeature {
             case "ZULU PRIME":
             case "Zulu Prime":
                 return ZULU_PRIME;
-            */
             case "aoj":
             case "AOJ":
                 return AOJ;

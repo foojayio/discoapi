@@ -26,6 +26,7 @@ import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
+import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.EphemeralIdCache;
 import io.foojay.api.util.Helper;
@@ -78,7 +79,6 @@ public enum CacheManager {
 
     private static final Logger                           LOGGER                             = LoggerFactory.getLogger(CacheManager.class);
     public final         PkgCache<String, Pkg>            pkgCache                           = new PkgCache<>();
-    public final         EphemeralIdCache<String, String> ephemeralIdCache                   = new EphemeralIdCache<>();
     public final         Map<Integer, Boolean>            maintainedMajorVersions            = new ConcurrentHashMap<>() {{
         put(1, false);
         put(2, false);
@@ -103,6 +103,17 @@ public enum CacheManager {
     public               AtomicReference<String>          publicPkgsIncldugingEa             = new AtomicReference<>();
     public               AtomicReference<String>          publicPkgsDownloadable             = new AtomicReference<>();
     public               AtomicReference<String>          publicPkgsIncldugingEaDownloadable = new AtomicReference<>();
+
+    public               AtomicReference<String>          publicPkgsOpenJDK                         = new AtomicReference<>();
+    public               AtomicReference<String>          publicPkgsOpenJDKIncldugingEa             = new AtomicReference<>();
+    public               AtomicReference<String>          publicPkgsOpenJDKDownloadable             = new AtomicReference<>();
+    public               AtomicReference<String>          publicPkgsOpenJDKIncldugingEaDownloadable = new AtomicReference<>();
+
+    public               AtomicReference<String>          publicPkgsGraalVM                         = new AtomicReference<>();
+    public               AtomicReference<String>          publicPkgsGraalVMIncldugingEa             = new AtomicReference<>();
+    public               AtomicReference<String>          publicPkgsGraalVMDownloadable             = new AtomicReference<>();
+    public               AtomicReference<String>          publicPkgsGraalVMIncldugingEaDownloadable = new AtomicReference<>();
+
     public               AtomicLong                       msToGetAllPkgsFromDB               = new AtomicLong(-1);
     public               AtomicReference<Duration>        durationToUpdateMongoDb            = new AtomicReference<>();
     public               AtomicReference<Duration>        durationForLastUpdateRun           = new AtomicReference();
@@ -127,7 +138,7 @@ public enum CacheManager {
         Distro.getAsListWithoutNoneAndNotFound().forEach(distro -> {
             final Instant lastUpdateForDistro = MongoDbManager.INSTANCE.getLastUpdateForDistro(distro);
             final double  delta               = (lastUpdateForDistro.until(Instant.now(), ChronoUnit.MINUTES));
-            if (delta > distro.getMinUpdateIntervalInMinutes()) {
+            if (delta > distro.getMinUpdateIntervalInMinutes() || forceUpdate) {
                 final Instant updateDistroStart = Instant.now();
                 pkgsFound.addAll(Helper.getPkgsOfDistro(distro));
                 distro.lastUpdateDuration.set(Duration.between(updateDistroStart, Instant.now()));
@@ -231,20 +242,17 @@ public enum CacheManager {
         distrosUpdatedInLastRun.set(counter.get());
         durationForLastUpdateRun.set(Duration.between(updateAllDistrosStart, now));
 
-        if (packagesAddedInUpdate.get() > 0 || null == publicPkgs.get() || null == publicPkgsIncldugingEa.get() || null == publicPkgsDownloadable.get() || null == publicPkgsIncldugingEaDownloadable.get()) {
+        if (packagesAddedInUpdate.get() > 0 || null == publicPkgs.get() || null == publicPkgsIncldugingEa.get() || null == publicPkgsDownloadable.get() || null == publicPkgsIncldugingEaDownloadable.get() ||
+            null == publicPkgsOpenJDK.get() || null == publicPkgsOpenJDKIncldugingEa.get() || null == publicPkgsOpenJDKDownloadable.get() || null == publicPkgsOpenJDKIncldugingEaDownloadable.get() ||
+            null == publicPkgsGraalVM.get() || null == publicPkgsGraalVMIncldugingEa.get() || null == publicPkgsGraalVMDownloadable.get() || null == publicPkgsGraalVMIncldugingEaDownloadable.get()) {
             updateAllPkgsMsgs();
         }
     }
 
     public void updateEphemeralIdCache() {
-        LOGGER.debug("Updating ephemeral id cache (every 10m)");
-        long startUpdating = System.currentTimeMillis();
         ephemeralIdCacheIsUpdating.set(true);
-        ephemeralIdCache.clear();
-        final long epoch = Instant.now().getEpochSecond();
-        pkgCache.getKeys().forEach(id -> ephemeralIdCache.add(Helper.createEphemeralId(epoch, id), id));
+        MongoDbManager.INSTANCE.updateEphemeralIds();
         ephemeralIdCacheIsUpdating.set(false);
-        LOGGER.debug("Finished updating EphemeralIDCache in {}ms", (System.currentTimeMillis() - startUpdating));
 
         // Update all available major versions
         updateMajorVersions();
@@ -269,6 +277,16 @@ public enum CacheManager {
                                      .map(majorVersion -> new MajorVersion(majorVersion))
                                      .sorted(Comparator.comparing(MajorVersion::getVersionNumber).reversed())
                                      .collect(Collectors.toList()));
+        // Validate major versions
+        final Optional<MajorVersion> largestFeatureVersion       = majorVersions.stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).limit(1).findFirst();
+        final Optional<MajorVersion> secondLargestFeatureVersion = majorVersions.stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).limit(2).skip(1).findFirst();
+        if (largestFeatureVersion.isPresent() && secondLargestFeatureVersion.isPresent()) {
+            final Integer largestFeatureVersionFound       = largestFeatureVersion.get().getAsInt();
+            final Integer secondLargestFeatureVersionFound = secondLargestFeatureVersion.get().getAsInt();
+            if (largestFeatureVersionFound - secondLargestFeatureVersionFound > 20) {
+                majorVersions.remove(largestFeatureVersion.get());
+            }
+        }
 
         if (!maintainedMajorVersions.isEmpty()) {
             Optional<Integer> maxMajorVersionInMaintainedMajorVersions = maintainedMajorVersions.keySet().stream().max(Comparator.comparingInt(Integer::intValue));
@@ -308,10 +326,20 @@ public enum CacheManager {
     }
 
     public void updateAllPkgsMsgs() {
-        publicPkgs.set(Helper.getAllPackagesV2Msg(false, false));
-        publicPkgsIncldugingEa.set(Helper.getAllPackagesV2Msg(false, true));
-        publicPkgsDownloadable.set(Helper.getAllPackagesV2Msg(true, false));
-        publicPkgsIncldugingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true));
+        publicPkgs.set(Helper.getAllPackagesV2Msg(false, false, null));
+        publicPkgsIncldugingEa.set(Helper.getAllPackagesV2Msg(false, true, null));
+        publicPkgsDownloadable.set(Helper.getAllPackagesV2Msg(true, false, null));
+        publicPkgsIncldugingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, null));
+
+        publicPkgsOpenJDK.set(Helper.getAllPackagesV2Msg(false, false, BuildScope.BUILD_OF_OPEN_JDK));
+        publicPkgsOpenJDKIncldugingEa.set(Helper.getAllPackagesV2Msg(false, true, BuildScope.BUILD_OF_OPEN_JDK));
+        publicPkgsOpenJDKDownloadable.set(Helper.getAllPackagesV2Msg(true, false, BuildScope.BUILD_OF_OPEN_JDK));
+        publicPkgsOpenJDKIncldugingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, BuildScope.BUILD_OF_OPEN_JDK));
+
+        publicPkgsGraalVM.set(Helper.getAllPackagesV2Msg(false, false, BuildScope.BUILD_OF_GRAALVM));
+        publicPkgsGraalVMIncldugingEa.set(Helper.getAllPackagesV2Msg(false, true, BuildScope.BUILD_OF_GRAALVM));
+        publicPkgsGraalVMDownloadable.set(Helper.getAllPackagesV2Msg(true, false, BuildScope.BUILD_OF_GRAALVM));
+        publicPkgsGraalVMIncldugingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, BuildScope.BUILD_OF_GRAALVM));
     }
 
     public void cleanupPkgCache() {
@@ -405,7 +433,7 @@ public enum CacheManager {
     }
 
     public String getEphemeralIdForPkg(final String pkgId) {
-        return ephemeralIdCache.getEphemeralIdForPkgId(pkgId);
+        return MongoDbManager.INSTANCE.ephemeralIdCache.getEphemeralIdForPkgId(pkgId);
     }
 
     public List<MajorVersion> getMajorVersions() {

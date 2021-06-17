@@ -35,6 +35,8 @@ import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Config;
 import io.foojay.api.util.Constants;
+import io.foojay.api.util.EphemeralIdCache;
+import io.foojay.api.util.Helper;
 import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.State;
 import org.bson.BsonDocument;
@@ -55,6 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 
 import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
@@ -75,24 +78,29 @@ import static io.foojay.api.util.Constants.SENTINEL_PKG_ID;
 public enum MongoDbManager {
     INSTANCE;
 
-    private static final Logger        LOGGER             = LoggerFactory.getLogger(MongoDbManager.class);
-    private static final String        FIELD_PACKAGE_ID   = "id";
-    private static final String        FIELD_EPHEMERAL_ID = "ephemeral_id";
-    private static final String        FIELD_DOWNLOADS    = "downloads";
-    private static final String        FIELD_ID           = "id";
-    private static final String        FIELD_DISTRO       = "distro";
-    private static final String        FIELD_TIMESTAMP    = "timestamp";
-    private static final String        FIELD_STATE        = "state";
-    private static final String        FIELD_TYPE         = "type";
-    private static final String        FIELD_REMOVED_AT   = "removedat";
-    private static final String        FIELD_USER_AGENT   = "useragent";
-    private              MongoClient   mongoClient;
-    private              boolean       connected;
-    private              MongoDatabase database;
+    private static final Logger                           LOGGER                         = LoggerFactory.getLogger(MongoDbManager.class);
+    private static final String                           FIELD_PACKAGE_ID               = "id";
+    private static final String                           FIELD_EPHEMERAL_ID             = "ephemeral_id";
+    private static final String                           FIELD_DOWNLOADS                = "downloads";
+    private static final String                           FIELD_ID                       = "id";
+    private static final String                           FIELD_DISTRO                   = "distro";
+    private static final String                           FIELD_TIMESTAMP                = "timestamp";
+    private static final String                           FIELD_STATE                    = "state";
+    private static final String                           FIELD_TYPE                     = "type";
+    private static final String                           FIELD_REMOVED_AT               = "removedat";
+    private static final String                           FIELD_USER_AGENT               = "useragent";
+    private static final String                           FIELD_LAST_EPHEMERAL_ID_UPDATE = "lastephemeralidupdate";
+    public final         EphemeralIdCache<String, String> ephemeralIdCache               = new EphemeralIdCache<>();
+    private              MongoClient                      mongoClient;
+    private              boolean                          connected;
+    private              MongoDatabase                    database;
 
 
     MongoDbManager() {
         connected = false;
+        // Set mongodb logger to SEVERE only.
+        java.util.logging.Logger mongoLogger = java.util.logging.Logger.getLogger("org.mongodb.driver");
+        mongoLogger.setLevel(Level.SEVERE);
     }
 
 
@@ -115,16 +123,16 @@ public enum MongoDbManager {
                 connected = true;
                 LOGGER.debug("Established connection to mongodb at {}:{}", Config.INSTANCE.getFoojayMongoDbUrl(), Config.INSTANCE.getFoojayMongoDbPort());
 
-                final MongoCollection pkgsCollection = database.getCollection(Constants.PACKAGES_COLLECTION);
-                if (null == pkgsCollection) {
-                    LOGGER.debug("Creating mongodb collection {}", Constants.PACKAGES_COLLECTION);
-                    database.createCollection(Constants.PACKAGES_COLLECTION, null);
-                }
-                MongoCollection downloadsCollection = database.getCollection(Constants.DOWNLOADS_COLLECTION);
-                if (null == downloadsCollection) {
-                    LOGGER.debug("Creating mongodb collection {}", Constants.DOWNLOADS_COLLECTION);
-                    database.createCollection(Constants.DOWNLOADS_COLLECTION, null);
-                }
+                if (!collectionExists(database, Constants.STATE_COLLECTION)) { database.createCollection(Constants.STATE_COLLECTION); }
+                if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
+                if (!collectionExists(database, Constants.EPHEMERAL_IDS_COLLECTION)) { database.createCollection(Constants.EPHEMERAL_IDS_COLLECTION); }
+                if (!collectionExists(database, Constants.DOWNLOADS_COLLECTION)) { database.createCollection(Constants.DOWNLOADS_COLLECTION); }
+                if (!collectionExists(database, Constants.DOWNLOADS_USER_AGENT_COLLECTION)) { database.createCollection(Constants.DOWNLOADS_USER_AGENT_COLLECTION); }
+                if (!collectionExists(database, Constants.DISTRO_UPDATES_COLLECTION)) { database.createCollection(Constants.DISTRO_UPDATES_COLLECTION); }
+                if (!collectionExists(database, Constants.SHEDLOCK_COLLECTION)) { database.createCollection(Constants.SHEDLOCK_COLLECTION); }
+
+                updateEphemeralIds();
+                setState(State.IDLE);
             } catch (MongoException e) {
                 connected = false;
                 LOGGER.debug("Error connecting to mongodb at {}:{}. {}", Config.INSTANCE.getFoojayMongoDbUrl(), Config.INSTANCE.getFoojayMongoDbPort(), e.getMessage());
@@ -750,6 +758,77 @@ public enum MongoDbManager {
 
         LOGGER.debug("Successfully deleted all last update entries from mongodb.");
         return true;
+    }
+
+    public void updateEphemeralIds() {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, no packages updated");
+            return;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Could not update latest build available because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.STATE_COLLECTION) {
+            LOGGER.error("Constants.UPDATES_COLLECTION not set.");
+            return;
+        }
+        if (null == Constants.PACKAGES_COLLECTION) {
+            LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
+            return;
+        }
+        if (null == Constants.EPHEMERAL_IDS_COLLECTION) {
+            LOGGER.error("Constants.EPHEMERAL_IDS_COLLECTION not set.");
+            return;
+        }
+
+        if (!collectionExists(database, Constants.STATE_COLLECTION))         { database.createCollection(Constants.STATE_COLLECTION); }
+        if (!collectionExists(database, Constants.PACKAGES_COLLECTION))      { database.createCollection(Constants.PACKAGES_COLLECTION); }
+        if (!collectionExists(database, Constants.EPHEMERAL_IDS_COLLECTION)) { database.createCollection(Constants.EPHEMERAL_IDS_COLLECTION); }
+
+        final long                      start                  = System.currentTimeMillis();
+        final MongoCollection<Document> stateCollection        = database.getCollection(Constants.STATE_COLLECTION);
+        final MongoCollection<Document> pkgsCollection         = database.getCollection(Constants.PACKAGES_COLLECTION);
+        final MongoCollection<Document> ephemeralIdsCollection = database.getCollection(Constants.EPHEMERAL_IDS_COLLECTION);
+        final Instant                   now                    = Instant.now();
+        final boolean doUpdate;
+        // Check for last update of ephemeral ids
+        Document lastEphemeralIdUpdateDocument = stateCollection.find(eq(FIELD_TYPE, FIELD_LAST_EPHEMERAL_ID_UPDATE)).first();
+        if (null == lastEphemeralIdUpdateDocument) {
+            doUpdate = true;
+        } else {
+            final Instant timestamp = Instant.ofEpochSecond(lastEphemeralIdUpdateDocument.getLong(FIELD_TIMESTAMP));
+            doUpdate = (Duration.between(timestamp, now).toMinutes() > 10);
+        }
+
+        final Map<String, String> tmpEphemeralIdCache = new HashMap<>();
+        if (doUpdate) {
+            final List<Document> ephemeralIdDocuments = new ArrayList<>();
+            final long epoch = now.getEpochSecond();
+            pkgsCollection.find().forEach(document -> {
+                final String pkgId       = document.get(FIELD_PACKAGE_ID).toString();
+                final String ephemeralId = Helper.createEphemeralId(epoch, pkgId);
+                ephemeralIdDocuments.add(new Document().append(FIELD_EPHEMERAL_ID, ephemeralId).append(FIELD_PACKAGE_ID, pkgId));
+                tmpEphemeralIdCache.put(ephemeralId, pkgId);
+            });
+            // Clear ephemeralIdsCollection
+            ephemeralIdsCollection.deleteMany(new Document());
+            // Insert updated ephemeral ids
+            ephemeralIdsCollection.insertMany(ephemeralIdDocuments);
+
+            // Update last ephemeral id update
+            stateCollection.updateOne(eq(FIELD_TYPE, FIELD_LAST_EPHEMERAL_ID_UPDATE), combine(set(FIELD_TYPE, FIELD_LAST_EPHEMERAL_ID_UPDATE), set(FIELD_TIMESTAMP, epoch)), new UpdateOptions().upsert(true));
+        } else {
+            ephemeralIdsCollection.find().forEach(document -> tmpEphemeralIdCache.put(document.getString(FIELD_EPHEMERAL_ID), document.getString(FIELD_PACKAGE_ID)));
+        }
+        ephemeralIdCache.clear();
+        ephemeralIdCache.addAll(tmpEphemeralIdCache);
+        LOGGER.debug("Successfully updated ephemeral id cache in {} ms", (System.currentTimeMillis() - start));
     }
 
     public boolean removeSentinelPackage() {
