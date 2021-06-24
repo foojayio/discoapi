@@ -124,7 +124,7 @@ public enum CacheManager {
 
 
 
-    public void updateAllDistros() {
+    public void updateAllDistros(final boolean forceUpdate) {
         final State state = MongoDbManager.INSTANCE.getState();
         if (State.IDLE != state) { return; }
 

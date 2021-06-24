@@ -89,6 +89,7 @@ public enum MongoDbManager {
     private static final String                           FIELD_TYPE                     = "type";
     private static final String                           FIELD_REMOVED_AT               = "removedat";
     private static final String                           FIELD_USER_AGENT               = "useragent";
+    private static final String                           FIELD_COUNTRY_CODE             = "countrycode";
     private static final String                           FIELD_LAST_EPHEMERAL_ID_UPDATE = "lastephemeralidupdate";
     public final         EphemeralIdCache<String, String> ephemeralIdCache               = new EphemeralIdCache<>();
     private              MongoClient                      mongoClient;
@@ -619,7 +620,8 @@ public enum MongoDbManager {
         LOGGER.debug("Successfully updated no of downloads for id {}", pkgId);
     }
 
-    public void addDownloadFromUserAgent(final String pkgId, final String userAgent) {
+    public void addDownloadFromUserAgent(final String pkgId, final String userAgent, final String ipAddress) {
+        String countryCode = Helper.getCountryCode(ipAddress);
         connect();
         if (!connected) {
             LOGGER.debug("MongoDB not connected, no packages updated");
@@ -642,6 +644,7 @@ public enum MongoDbManager {
         Document document = new Document();
         document.append(FIELD_PACKAGE_ID, pkgId);
         document.append(FIELD_USER_AGENT, userAgent);
+        document.append(FIELD_COUNTRY_CODE, countryCode);
         document.append(FIELD_TIMESTAMP, Instant.now().getEpochSecond());
 
         database.getCollection(Constants.DOWNLOADS_USER_AGENT_COLLECTION).insertOne(document);

@@ -104,6 +104,8 @@ public class Zulu implements Distribution {
     private static final String                       TERM_OF_SUPPORT_PARAM      = "support_term";
     private static final String                       BITNESS_PARAM              = "hw_bitness";
     private static final String                       JAVAFX_PARAM               = "javafx";
+    private static final String                       INCLUDE_FIELDS_PARAM       = "include_fields";
+    private static final String                       SIGNATURES_PARAM           = "signatures";
 
     // Mappings for url parameters
     private static final Map<Architecture, String>    ARCHITECTURE_MAP           = Map.of(ARM, "arm", MIPS, "mips", PPC, "ppc", SPARCV9, "sparcv9", X86, "x86", X64, "x86");
@@ -122,6 +124,8 @@ public class Zulu implements Distribution {
     private static final String                       FIELD_JAVA_VERSION         = "java_version";
     private static final String                       FIELD_ZULU_VERSION         = "zulu_version";
     private static final String                       FIELD_SHA_256_HASH         = "sha256_hash";
+    private static final String                       FIELD_SIGNATURES           = "signatures";
+    private static final String                       FIELD_TYPE                 = "type";
 
     private static final HashAlgorithm                HASH_ALGORITHM             = HashAlgorithm.NONE;
     private static final String                       HASH_URI                   = "";
@@ -224,7 +228,10 @@ public class Zulu implements Distribution {
             queryBuilder.append(TERM_OF_SUPPORT_PARAM).append("=").append(TERMS_OF_SUPPORT_MAP.get(termOfSupport));
         }
 
-        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder.toString());
+        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+        queryBuilder.append(INCLUDE_FIELDS_PARAM).append("=").append(SIGNATURES_PARAM);
+
+        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
         return queryBuilder.toString();
     }
 
@@ -264,6 +271,23 @@ public class Zulu implements Distribution {
         pkg.setDistributionVersion(dNumber);
         pkg.setFileName(fileName);
         pkg.setDirectDownloadUri(downloadLink);
+
+        if (jsonObj.has(FIELD_SIGNATURES)) {
+            JsonArray signaturesArray = jsonObj.get(FIELD_SIGNATURES).getAsJsonArray();
+            if (signaturesArray.size() > 0) {
+                for (int i = 0 ; i < signaturesArray.size() ; i++) {
+                    JsonObject signatureJson = signaturesArray.get(i).getAsJsonObject();
+                    if (signatureJson.has(FIELD_TYPE)) {
+                        if (signatureJson.get(FIELD_TYPE).getAsString().equals("openpgp")) {
+                            if (signatureJson.has(FIELD_URL)) {
+                                String signatureUri = signatureJson.get(FIELD_URL).getAsString();
+                                pkg.setSignatureUri(signatureUri);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
 

@@ -47,7 +47,9 @@ import org.slf4j.LoggerFactory;
 import java.io.StringReader;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -508,20 +510,23 @@ public class OracleOpenJDK implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs() {
-        List<Pkg> pkgs = new ArrayList<>();
+    public Collection<Pkg> getAllPkgs() {
+        Map<String, Pkg> pkgMap = new HashMap<>();
+
+        // Get all pkgs from jdk.java.not and jdk.java.net/archive
+        getAllPkgsFromJavaDotNet().forEach(pkg -> pkgMap.put(pkg.getId(), pkg));
 
         // Reload openjdk properties
         try {
             final HttpResponse<String> response = Helper.get(PKGS_PROPERTIES);
             if (null == response) {
                 LOGGER.debug("No jdk properties found for {}", getName());
-                return pkgs;
+                return pkgMap.values();
             }
             final String propertiesText = response.body();
             if (propertiesText.isEmpty()) {
                 LOGGER.debug("jdk properties are empty for {}", getName());
-                return pkgs;
+                return pkgMap.values();
             }
             propertiesPkgs.load(new StringReader(propertiesText));
         } catch (Exception e) {
@@ -589,7 +594,6 @@ public class OracleOpenJDK implements Distribution {
 
                 pkg.setReleaseStatus(rs);
 
-
                 OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
                                                                       .filter(entry -> fileName.contains(entry.getKey()))
                                                                       .findFirst()
@@ -597,17 +601,10 @@ public class OracleOpenJDK implements Distribution {
                                                                       .orElse(OperatingSystem.NONE);
                 pkg.setOperatingSystem(os);
                     switch (os) {
-                        case WINDOWS:
-                            pkg.setLibCType(LibCType.C_STD_LIB);
-                            break;
-                        case LINUX:
-                            pkg.setLibCType(LibCType.GLIBC);
-                            break;
-                        case MACOS:
-                            pkg.setLibCType(LibCType.LIBC);
-                            break;
+                    case WINDOWS: pkg.setLibCType(LibCType.C_STD_LIB); break;
+                    case LINUX  : pkg.setLibCType(isMusl ? LibCType.MUSL : LibCType.GLIBC); break;
+                    case MACOS  : pkg.setLibCType(LibCType.LIBC); break;
                     }
-                    if (isMusl) { pkg.setLibCType(LibCType.MUSL); }
 
                 String[] fileNameParts = fileName.split("_");
                 if (fileNameParts.length > 1) {
@@ -622,11 +619,11 @@ public class OracleOpenJDK implements Distribution {
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
 
-                pkgs.add(pkg);
+                if (!pkgMap.containsKey(pkg)) { pkgMap.put(pkg.getId(), pkg); }
             }
         });
 
-        return pkgs;
+        return pkgMap.values();
     }
 
     private Pkg getPkgForOperatingSystem(final VersionNumber versionNumber, final OperatingSystem operatingSystem,
@@ -713,6 +710,7 @@ public class OracleOpenJDK implements Distribution {
             String[]        osArchParts     = nameParts[1].split("-");
             OperatingSystem operatingSystem = OperatingSystem.fromText(osArchParts[0]);
             Architecture    architecture    = Architecture.fromText(osArchParts[1]);
+            boolean         isMusl          = (osArchParts.length > 2 && osArchParts[2].equals("musl"));
             Bitness         bitness         = architecture.getBitness();
             ArchiveType     archiveType     = Helper.getFileEnding(filename);
             TermOfSupport   termOfSupport   = Helper.getTermOfSupport(versionNumber);
@@ -728,6 +726,11 @@ public class OracleOpenJDK implements Distribution {
             pkg.setArchitecture(architecture);
             pkg.setBitness(bitness);
             pkg.setOperatingSystem(operatingSystem);
+            switch (operatingSystem) {
+                case WINDOWS: pkg.setLibCType(LibCType.C_STD_LIB); break;
+                case LINUX  : pkg.setLibCType(isMusl ? LibCType.MUSL : LibCType.GLIBC); break;
+                case MACOS  : pkg.setLibCType(LibCType.LIBC); break;
+            }
             pkg.setReleaseStatus(releaseStatus);
             pkg.setTermOfSupport(termOfSupport);
             pkg.setFileName(filename);

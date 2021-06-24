@@ -5,6 +5,8 @@
 
 The foojay Disco API is a general purpose API to discover builds of OpenJDK from different distributions
 
+Presentation about the [Disco API](https://de.slideshare.net/han_solo/disco-api-openjdk-distributions-as-a-service).
+
 #### At the moment the following distributions are supported by the API:
 * AdoptOpenJDK
 * AdoptOpenJDK OpenJ9

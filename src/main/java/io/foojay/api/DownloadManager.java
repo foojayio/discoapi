@@ -49,7 +49,7 @@ public enum DownloadManager {
         }
     }
 
-    public void addDownload(final String pkgId, final String userAgent) {
+    public void addDownload(final String pkgId, final String userAgent, final String ipAddress) {
         if (downloads.isEmpty()) { preloadDownloads(); }
 
         if (!CacheManager.INSTANCE.pkgCache.getKeys().contains(pkgId)) { return; }
@@ -60,7 +60,7 @@ public enum DownloadManager {
         // Store package id and no of downloads for this package
         try {
             MongoDbManager.INSTANCE.upsertDownloadForId(pkgId, noOfDownloads);
-            MongoDbManager.INSTANCE.addDownloadFromUserAgent(pkgId, userAgent);
+            MongoDbManager.INSTANCE.addDownloadFromUserAgent(pkgId, userAgent, ipAddress);
             LOGGER.debug("Successfully stored download for package id {} to mongodb.", pkgId);
         } catch (Exception e) {
             LOGGER.error("Error storing download download for package id {} to mongodb. {}", pkgId, e);

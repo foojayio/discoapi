@@ -36,7 +36,7 @@ import java.util.Objects;
 import java.util.OptionalInt;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.util.Constants.API_VERSION_V1;
+import static io.foojay.api.util.Constants.API_VERSION_V2;
 import static io.foojay.api.util.Constants.BASE_URL;
 import static io.foojay.api.util.Constants.COLON;
 import static io.foojay.api.util.Constants.COMMA;
@@ -314,7 +314,7 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                           .append(CURLY_BRACKET_CLOSE)
-                                          .toString();
+                                          .toString().replaceAll("\\\\", "");
             case REDUCED:
                 return new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
@@ -340,7 +340,7 @@ public class Pkg {
                                           .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                           .append(CURLY_BRACKET_CLOSE)
-                                          .toString();
+                                          .toString().replaceAll("\\\\", "");
             case FULL_COMPRESSED:
                 return new StringBuilder().append(CURLY_BRACKET_OPEN)
                                           .append(QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
@@ -365,7 +365,7 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
                                           .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                           .append(CURLY_BRACKET_CLOSE)
-                                          .toString();
+                                          .toString().replaceAll("\\\\", "");
             case REDUCED_COMPRESSED:
             default:
                 return new StringBuilder().append(CURLY_BRACKET_OPEN)
@@ -391,7 +391,7 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
                                           .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                           .append(CURLY_BRACKET_CLOSE)
-                                          .toString();
+                                          .toString().replaceAll("\\\\", "");
         }
     }
 
@@ -441,6 +441,6 @@ public class Pkg {
     }
 
     @Override public String toString() {
-        return toString(OutputFormat.REDUCED_COMPRESSED, API_VERSION_V1);
+        return toString(OutputFormat.REDUCED_COMPRESSED, API_VERSION_V2);
     }
 }

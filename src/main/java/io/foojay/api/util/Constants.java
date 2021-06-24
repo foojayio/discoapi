@@ -29,6 +29,7 @@ import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.scopes.DownloadScope;
+import io.foojay.api.scopes.IDEScope;
 import io.foojay.api.scopes.BasicScope;
 import io.foojay.api.scopes.Scope;
 import io.foojay.api.scopes.UsageScope;
@@ -78,6 +79,9 @@ public class Constants {
     public static final String        ENDPOINT_PACKAGES                = "packages";
     public static final String        ENDPOINT_EPHEMERAL_IDS           = "ephemeral_ids";
     public static final String        SWAGGER_UI_URL                   = "https://api.foojay.io/swagger-ui/";
+
+    public static final String            IP_LOCATION_URL                  = "https://api.iplocation.net/";
+    public static final String            COUNTRY_CODE2_FIELD              = "country_code2";
 
     public static final String        FILE_ENDING_JAR                  = "jar";
     public static final String        FILE_ENDING_TXT                  = "txt";
@@ -245,21 +249,21 @@ public class Constants {
 
     public static final ConcurrentHashMap<Distro, List<Scope>> SCOPE_LOOKUP = new ConcurrentHashMap<>() {{
         // Builds of OpenJDK
-        put(Distro.AOJ, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
-        put(Distro.AOJ_OPENJ9, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
-        put(Distro.CORRETTO, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
-        put(Distro.DRAGONWELL, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
-        put(Distro.LIBERICA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
-        put(Distro.MICROSOFT, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.AOJ, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.AOJ_OPENJ9, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.CORRETTO, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.DRAGONWELL, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.LIBERICA, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.MICROSOFT, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
         put(Distro.OJDK_BUILD, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
         put(Distro.OPEN_LOGIC, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
-        put(Distro.ORACLE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY, UsageScope.LICENSE_NEEDED_FOR_PRODUCTION));
-        put(Distro.ORACLE_OPEN_JDK, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
-        put(Distro.RED_HAT, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY, UsageScope.LICENSE_NEEDED_FOR_PRODUCTION));
-        put(Distro.SAP_MACHINE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.ORACLE, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY, UsageScope.LICENSE_NEEDED_FOR_PRODUCTION));
+        put(Distro.ORACLE_OPEN_JDK, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.RED_HAT, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.NOT_DIRECTLY, UsageScope.LICENSE_NEEDED_FOR_PRODUCTION));
+        put(Distro.SAP_MACHINE, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
         put(Distro.TEMURIN, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
         put(Distro.TRAVA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
-        put(Distro.ZULU, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.ZULU, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
         put(Distro.ZULU_PRIME, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.LICENSE_NEEDED_FOR_PRODUCTION));
         // Builds of GraalVM
         put(Distro.GRAALVM_CE8, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_GRAALVM, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
@@ -275,6 +279,7 @@ public class Constants {
         put(DownloadScope.NOT_DIRECTLY, List.of(Distro.ORACLE, Distro.RED_HAT));
         put(BuildScope.BUILD_OF_OPEN_JDK, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.LIBERICA, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU, Distro.ZULU_PRIME));
         put(BuildScope.BUILD_OF_GRAALVM, List.of(Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.LIBERICA_NATIVE, Distro.MANDREL));
+        put(IDEScope.VISUAL_STUDIO_CODE, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.LIBERICA, Distro.MICROSOFT, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.ZULU));
         put(UsageScope.FREE_TO_USE_IN_PRODUCTION, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE_OPEN_JDK, Distro.SAP_MACHINE, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU));
         put(UsageScope.LICENSE_NEEDED_FOR_PRODUCTION, List.of(Distro.ORACLE, Distro.RED_HAT, Distro.ZULU_PRIME));
     }};

@@ -51,7 +51,13 @@ import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
+import io.foojay.api.scopes.BasicScope;
+import io.foojay.api.scopes.BuildScope;
+import io.foojay.api.scopes.DownloadScope;
+import io.foojay.api.scopes.IDEScope;
 import io.foojay.api.scopes.Scope;
+import io.foojay.api.scopes.SignatureScope;
+import io.foojay.api.scopes.UsageScope;
 import io.foojay.api.scopes.YamlScopes;
 import io.micronaut.http.HttpHeaders;
 import org.slf4j.Logger;
@@ -148,11 +154,11 @@ public class Helper {
     private static       HttpClient httpClientAsync;
 
 
-    public static Callable<List<Pkg>> createTask(final Distro distro) {
+    public static final Callable<List<Pkg>> createTask(final Distro distro) {
         return () -> getPkgsOfDistro(distro);
     }
 
-    public static List<Pkg> getPkgsOfDistro(final Distro distro) {
+    public static final List<Pkg> getPkgsOfDistro(final Distro distro) {
         final List<Pkg> pkgs = new LinkedList<>();
         try {
             switch (distro) {
@@ -313,7 +319,7 @@ public class Helper {
         return new LinkedList<>(unique);
     }
 
-    private static List<Pkg> getPkgs(final Distribution distribution, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
+    private static final List<Pkg> getPkgs(final Distribution distribution, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                      final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                                      final Boolean fx, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         String query = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
@@ -376,7 +382,7 @@ public class Helper {
         }
     }
 
-    private static List<Pkg> getPkgsAsync(final Distribution distribution, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
+    private static final List<Pkg> getPkgsAsync(final Distribution distribution, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                           final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                                           final Boolean fx, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         String query = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
@@ -441,7 +447,7 @@ public class Helper {
         }
     }
 
-    private static boolean isVersionNumberInPkg(final VersionNumber versionNumber, final Pkg pkg) {
+    private static final boolean isVersionNumberInPkg(final VersionNumber versionNumber, final Pkg pkg) {
         if (pkg.getVersionNumber().getFeature().isEmpty() || versionNumber.getFeature().isEmpty()) {
             throw new IllegalArgumentException("Version number must have feature number");
         }
@@ -470,7 +476,7 @@ public class Helper {
         return featureFound;
     }
 
-    public static ArchiveType getFileEnding(final String fileName) {
+    public static final ArchiveType getFileEnding(final String fileName) {
         if (null == fileName || fileName.isEmpty()) { return ArchiveType.NONE; }
         for (ArchiveType archiveType : ArchiveType.values()) {
             for (String ending : archiveType.getFileEndings()) {
@@ -480,7 +486,7 @@ public class Helper {
         return ArchiveType.NONE;
     }
 
-    public static Set<String> getFileUrlsFromString(final String text) {
+    public static final Set<String> getFileUrlsFromString(final String text) {
         Set<String> urlsFound = new HashSet<>();
         FILE_URL_MATCHER.reset(text);
         while (FILE_URL_MATCHER.find()) {
@@ -491,7 +497,7 @@ public class Helper {
         return urlsFound;
     }
 
-    public static Set<Pair<String,String>> getPackageTypeAndFileUrlFromString(final String text) {
+    public static final Set<Pair<String,String>> getPackageTypeAndFileUrlFromString(final String text) {
         Set<Pair<String,String>> pairsFound = new HashSet<>();
         FILE_URL_MATCHER.reset(text);
         while (FILE_URL_MATCHER.find()) {
@@ -500,7 +506,7 @@ public class Helper {
         return pairsFound;
     }
 
-    public static Set<Pair<String,String>> getFileUrlsAndMd5sFromString(final String text) {
+    public static final Set<Pair<String,String>> getFileUrlsAndMd5sFromString(final String text) {
         Set<Pair<String,String>> pairsFound = new HashSet<>();
         FILE_URL_MD5_MATCHER.reset(text);
         while(FILE_URL_MD5_MATCHER.find()) {
@@ -509,7 +515,7 @@ public class Helper {
         return pairsFound;
     }
 
-    public static Set<Pair<String,String>> getFileNameAndSha256FromStringDragonwell8(final String text) {
+    public static final Set<Pair<String,String>> getFileNameAndSha256FromStringDragonwell8(final String text) {
         Set<Pair<String,String>> pairsFound = new HashSet<>();
         DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.reset(text);
         while(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.find()) {
@@ -518,7 +524,7 @@ public class Helper {
         return pairsFound;
     }
 
-    public static Set<Pair<String,String>> getDragonwell11FileNameAndSha256FromString(final String text) {
+    public static final Set<Pair<String,String>> getDragonwell11FileNameAndSha256FromString(final String text) {
         Set<Pair<String,String>> pairsFound = new HashSet<>();
         DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.reset(text);
         while(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.find()) {
@@ -527,7 +533,7 @@ public class Helper {
         return pairsFound;
     }
 
-    public static Set<Pair<String,String>> getDragonwell8FileNameAndSha256FromString(final String text) {
+    public static final Set<Pair<String,String>> getDragonwell8FileNameAndSha256FromString(final String text) {
         Set<Pair<String,String>> pairsFound = new HashSet<>();
         DRAGONWELL_8_FILE_NAME_SHA256_MATCHER.reset(text);
         final List<MatchResult> results = DRAGONWELL_8_FILE_NAME_SHA256_MATCHER.results().collect(Collectors.toList());
@@ -564,7 +570,7 @@ public class Helper {
         return pairsFound;
     }
 
-    public static Map<String,String> getCorrettoSignatureUris(final String text) {
+    public static final Map<String,String> getCorrettoSignatureUris(final String text) {
         Map signatureUrisFound = new HashMap<>();
         CORRETTO_SIG_URI_MATCHER.reset(text);
         while(CORRETTO_SIG_URI_MATCHER.find()) {
@@ -575,7 +581,7 @@ public class Helper {
         return signatureUrisFound;
     }
 
-    public static Set<String> getFileHrefsFromString(final String text) {
+    public static final Set<String> getFileHrefsFromString(final String text) {
         Set<String> hrefsFound = new HashSet<>();
         HREF_FILE_MATCHER.reset(text);
         while (HREF_FILE_MATCHER.find()) {
@@ -584,7 +590,7 @@ public class Helper {
         return hrefsFound;
     }
 
-    public static Set<String> getSigFileHrefsFromString(final String text) {
+    public static final Set<String> getSigFileHrefsFromString(final String text) {
         Set<String> sigHrefsFound = new HashSet<>();
         HREF_SIG_FILE_MATCHER.reset(text);
         while (HREF_SIG_FILE_MATCHER.find()) {
@@ -593,7 +599,7 @@ public class Helper {
         return sigHrefsFound;
     }
 
-    public static Set<String> getDownloadHrefsFromString(final String text) {
+    public static final Set<String> getDownloadHrefsFromString(final String text) {
         Set<String> hrefsFound = new HashSet<>();
         HREF_DOWNLOAD_MATCHER.reset(text);
         while (HREF_DOWNLOAD_MATCHER.find()) {
@@ -602,7 +608,7 @@ public class Helper {
         return hrefsFound;
     }
 
-    public static String getFileNameFromText(final String text) {
+    public static final String getFileNameFromText(final String text) {
         ArchiveType archiveTypeFound = getFileEnding(text);
         if (ArchiveType.NONE == archiveTypeFound || ArchiveType.NOT_FOUND == archiveTypeFound) { return ""; }
         int    lastSlash = text.lastIndexOf("/") + 1;
@@ -610,7 +616,7 @@ public class Helper {
         return fileName;
     }
 
-    public static boolean isReleaseTermOfSupport(final int featureVersion, final TermOfSupport termOfSupport) {
+    public static final boolean isReleaseTermOfSupport(final int featureVersion, final TermOfSupport termOfSupport) {
         switch(termOfSupport) {
             case LTS: return isLTS(featureVersion);
             case MTS: return isMTS(featureVersion);
@@ -619,7 +625,7 @@ public class Helper {
         }
     }
 
-    public static boolean isSTS(final int featureVersion) {
+    public static final boolean isSTS(final int featureVersion) {
         if (featureVersion < 9) { return false; }
         switch(featureVersion) {
             case 9 :
@@ -628,19 +634,19 @@ public class Helper {
         }
     }
 
-    public static boolean isMTS(final int featureVersion) {
+    public static final boolean isMTS(final int featureVersion) {
         if (featureVersion < 13) { return false; }
         return (!isLTS(featureVersion)) && featureVersion % 2 != 0;
     }
 
-    public static boolean isLTS(final int featureVersion) {
+    public static final boolean isLTS(final int featureVersion) {
         if (featureVersion < 1) { throw new IllegalArgumentException("Feature version number cannot be smaller than 1"); }
         if (featureVersion <= 8) { return true; }
         if (featureVersion < 11) { return false; }
         return ((featureVersion - 11.0) / 6.0) % 1 == 0;
     }
 
-    public static TermOfSupport getTermOfSupport(final VersionNumber versionNumber, final Distro distribution) {
+    public static final TermOfSupport getTermOfSupport(final VersionNumber versionNumber, final Distro distribution) {
         TermOfSupport termOfSupport = getTermOfSupport(versionNumber);
         switch(termOfSupport) {
             case LTS:
@@ -649,13 +655,13 @@ public class Helper {
             default : return TermOfSupport.NOT_FOUND;
         }
     }
-    public static TermOfSupport getTermOfSupport(final VersionNumber versionNumber) {
+    public static final TermOfSupport getTermOfSupport(final VersionNumber versionNumber) {
         if (!versionNumber.getFeature().isPresent() || versionNumber.getFeature().isEmpty()) {
             throw new IllegalArgumentException("VersionNumber need to have a feature version");
         }
         return getTermOfSupport(versionNumber.getFeature().getAsInt());
     }
-    public static TermOfSupport getTermOfSupport(final int featureVersion) {
+    public static final TermOfSupport getTermOfSupport(final int featureVersion) {
         if (featureVersion < 1) { throw new IllegalArgumentException("Feature version number cannot be smaller than 1"); }
         if (isLTS(featureVersion)) {
             return TermOfSupport.LTS;
@@ -668,7 +674,7 @@ public class Helper {
         }
     }
 
-    public static void setTermOfSupport(final VersionNumber versionNumber, final Pkg pkg) {
+    public static final void setTermOfSupport(final VersionNumber versionNumber, final Pkg pkg) {
         int     featureVersion = versionNumber.getFeature().getAsInt();
         boolean isZulu         = pkg.getDistribution() instanceof Zulu;
 
@@ -685,7 +691,7 @@ public class Helper {
         }
     }
 
-    public static String getTextFromUrl(final String uri) throws Exception {
+    public static final String getTextFromUrl(final String uri) throws Exception {
         try (var stream = URI.create(uri).toURL().openStream()) {
             return new String(stream.readAllBytes(), UTF_8);
         } catch(Exception e) {
@@ -694,7 +700,7 @@ public class Helper {
         }
     }
 
-    public static YamlScopes loadYamlScopes(final String uri) {
+    public static final YamlScopes loadYamlScopes(final String uri) {
         Constructor constructor = new Constructor(YamlScopes.class);
         Yaml        yaml        = new Yaml(constructor );
         HttpResponse<String> response = get(uri);
@@ -703,7 +709,7 @@ public class Helper {
         return yaml.loadAs(response.body(), YamlScopes.class);
     }
 
-    public static int getLeadingNumbers(final String text) {
+    public static final int getLeadingNumbers(final String text) {
         String[]      parts = text.split("");
         StringBuilder numberBuilder = new StringBuilder();
         for (int i = 0; i < parts.length; i++) {
@@ -716,7 +722,7 @@ public class Helper {
         return 0;
     }
 
-    public static String readFromInputStream(final InputStream inputStream) throws IOException {
+    public static final String readFromInputStream(final InputStream inputStream) throws IOException {
         StringBuilder resultStringBuilder = new StringBuilder();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
             String line;
@@ -727,24 +733,24 @@ public class Helper {
         return resultStringBuilder.toString();
     }
 
-    public static boolean isPositiveInteger(final String text) {
+    public static final boolean isPositiveInteger(final String text) {
         if (null == text || text.isEmpty()) { return false; }
         return Constants.POSITIVE_INTEGER_PATTERN.matcher(text).matches();
     }
 
-    public static void removeEmptyItems(final List<String> list) {
+    public static final void removeEmptyItems(final List<String> list) {
         if (null == list) { return; }
         list.removeIf(item -> item == null || "".equals(item));
     }
 
-    public static long getCRC32Checksum(final byte[] bytes) {
+    public static final long getCRC32Checksum(final byte[] bytes) {
         Checksum crc32 = new CRC32();
 
         crc32.update(bytes, 0, bytes.length);
         return crc32.getValue();
     }
 
-    public static String getHash(final HashAlgorithm hashAlgorithm, final String text) {
+    public static final String getHash(final HashAlgorithm hashAlgorithm, final String text) {
         switch (hashAlgorithm) {
             case MD5     : return getMD5(text);
             case SHA1    : return getSHA1(text);
@@ -754,11 +760,11 @@ public class Helper {
         }
     }
 
-    public static String getMD5(final String text) { return bytesToHex(getMD5Bytes(text.getBytes(UTF_8))); }
-    public static String getMD5(final byte[] bytes) {
+    public static final String getMD5(final String text) { return bytesToHex(getMD5Bytes(text.getBytes(UTF_8))); }
+    public static final String getMD5(final byte[] bytes) {
         return bytesToHex(getMD5Bytes(bytes));
     }
-    public static byte[] getMD5Bytes(final byte[] bytes) {
+    public static final byte[] getMD5Bytes(final byte[] bytes) {
         final MessageDigest md;
         try {
             md = MessageDigest.getInstance("MD5");
@@ -769,7 +775,7 @@ public class Helper {
         final byte[] result = md.digest(bytes);
         return result;
     }
-    public static String getMD5ForFile(final File file) throws Exception {
+    public static final String getMD5ForFile(final File file) throws Exception {
         final MessageDigest md  = MessageDigest.getInstance("MD5");
         final InputStream   fis = new FileInputStream(file);
         try {
@@ -788,11 +794,11 @@ public class Helper {
         return getMD5(bytesToHex(byteData));
     }
 
-    public static String getSHA1(final String text) { return bytesToHex(getSHA1Bytes(text.getBytes(UTF_8))); }
-    public static String getSHA1(final byte[] bytes) {
+    public static final String getSHA1(final String text) { return bytesToHex(getSHA1Bytes(text.getBytes(UTF_8))); }
+    public static final String getSHA1(final byte[] bytes) {
         return bytesToHex(getSHA1Bytes(bytes));
     }
-    public static byte[] getSHA1Bytes(final byte[] bytes) {
+    public static final byte[] getSHA1Bytes(final byte[] bytes) {
         final MessageDigest md;
         try {
             md = MessageDigest.getInstance("SHA-1");
@@ -803,7 +809,7 @@ public class Helper {
         final byte[] result = md.digest(bytes);
         return result;
     }
-    public static String getSHA1ForFile(final File file) throws Exception {
+    public static final String getSHA1ForFile(final File file) throws Exception {
         final MessageDigest md  = MessageDigest.getInstance("SHA-1");
         final InputStream   fis = new FileInputStream(file);
         try {
@@ -822,11 +828,11 @@ public class Helper {
         return getSHA1(bytesToHex(byteData));
     }
 
-    public static String getSHA256(final String text) { return bytesToHex(getSHA256Bytes(text.getBytes(UTF_8))); }
-    public static String getSHA256(final byte[] bytes) {
+    public static final String getSHA256(final String text) { return bytesToHex(getSHA256Bytes(text.getBytes(UTF_8))); }
+    public static final String getSHA256(final byte[] bytes) {
         return bytesToHex(getSHA256Bytes(bytes));
     }
-    public static byte[] getSHA256Bytes(final byte[] bytes) {
+    public static final byte[] getSHA256Bytes(final byte[] bytes) {
         final MessageDigest md;
         try {
             md = MessageDigest.getInstance("SHA-256");
@@ -837,7 +843,7 @@ public class Helper {
         final byte[] result = md.digest(bytes);
         return result;
     }
-    public static String getSHA256ForFile(final File file) throws Exception {
+    public static final String getSHA256ForFile(final File file) throws Exception {
         final MessageDigest md  = MessageDigest.getInstance("SHA-256");
         final InputStream   fis = new FileInputStream(file);
         try {
@@ -856,11 +862,11 @@ public class Helper {
         return getSHA256(bytesToHex(byteData));
     }
 
-    public static String getSHA3_256(final String text) { return bytesToHex(getSHA3_256Bytes(text.getBytes(UTF_8))); }
-    public static String getSHA3_256(final byte[] bytes) {
+    public static final String getSHA3_256(final String text) { return bytesToHex(getSHA3_256Bytes(text.getBytes(UTF_8))); }
+    public static final String getSHA3_256(final byte[] bytes) {
         return bytesToHex(getSHA3_256Bytes(bytes));
     }
-    public static byte[] getSHA3_256Bytes(final byte[] bytes) {
+    public static final byte[] getSHA3_256Bytes(final byte[] bytes) {
         final MessageDigest md;
         try {
             md = MessageDigest.getInstance("SHA3-256");
@@ -871,7 +877,7 @@ public class Helper {
         final byte[] result = md.digest(bytes);
         return result;
     }
-    public static String getSHA3_256ForFile(final File file) throws Exception {
+    public static final String getSHA3_256ForFile(final File file) throws Exception {
         final MessageDigest md  = MessageDigest.getInstance("SHA3-256");
         final InputStream   fis = new FileInputStream(file);
         try {
@@ -890,21 +896,21 @@ public class Helper {
         return getSHA3_256(bytesToHex(byteData));
     }
 
-    public static String bytesToHex(final byte[] bytes) {
+    public static final String bytesToHex(final byte[] bytes) {
         final StringBuilder builder = new StringBuilder();
         for (byte b : bytes) { builder.append(String.format("%02x", b)); }
         return builder.toString();
     }
 
-    public static String createEphemeralId(final long number, final String  id) {
+    public static final String createEphemeralId(final long number, final String id) {
         return getSHA1(number + id);
     }
 
-    public static String trimPrefix(final String text, final String prefix) {
+    public static final String trimPrefix(final String text, final String prefix) {
         return text.replaceFirst(prefix, "");
     }
 
-    public static boolean isDifferentBuild(final Pkg pkg1, final Pkg pkg2) {
+    public static final boolean isDifferentBuild(final Pkg pkg1, final Pkg pkg2) {
         return !pkg1.getDistribution().equals(pkg2.getDistribution())           ||
                 pkg1.getVersionNumber().compareTo(pkg2.getVersionNumber()) !=0  ||
                 pkg1.getArchitecture()    != pkg2.getArchitecture()             ||
@@ -918,7 +924,7 @@ public class Helper {
                 pkg1.getTermOfSupport()   != pkg2.getTermOfSupport();
     }
 
-    public static List<Pkg> getAllBuildsOfPackage(final Pkg pkg) {
+    public static final List<Pkg> getAllBuildsOfPackage(final Pkg pkg) {
         List<Pkg> differentBuilds = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                                   .stream()
                                                                   .filter(p -> p.getDistribution().equals(pkg.getDistribution()))
@@ -938,7 +944,7 @@ public class Helper {
         return differentBuilds;
     }
 
-    public static List<Pkg> getAllBuildsOfPackageInList(final Collection<Pkg> packages, final Pkg pkg) {
+    public static final List<Pkg> getAllBuildsOfPackageInList(final Collection<Pkg> packages, final Pkg pkg) {
         List<Pkg> differentBuilds = packages.stream()
                                             .filter(p -> p.getDistribution().equals(pkg.getDistribution()))
                                             .filter(p -> p.getVersionNumber().compareTo(pkg.getVersionNumber()) == 0)
@@ -956,7 +962,7 @@ public class Helper {
         return differentBuilds;
     }
 
-    public static Optional<Pkg> getPkgWithMaxVersionForGivenPackage(final Pkg pkg) {
+    public static final Optional<Pkg> getPkgWithMaxVersionForGivenPackage(final Pkg pkg) {
         int             featureVersion          = pkg.getVersionNumber().getFeature().getAsInt();
         Optional<Pkg>   pkgWithMaxVersionNumber = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                                                 .stream()
@@ -975,7 +981,7 @@ public class Helper {
         return pkgWithMaxVersionNumber;
     }
 
-    public static List<Pkg> getPkgsWithLatestBuild(final List<Pkg> pkgs, final ReleaseStatus releaseStatus) {
+    public static final List<Pkg> getPkgsWithLatestBuild(final List<Pkg> pkgs, final ReleaseStatus releaseStatus) {
         List<Pkg> pkgsWithLatestBuild = new ArrayList<>();
         Distro.getDistrosWithJavaVersioning()
               .stream()
@@ -997,7 +1003,7 @@ public class Helper {
         return pkgsWithLatestBuild;
     }
 
-    public static Integer getPositiveIntFromText(final String text) {
+    public static final Integer getPositiveIntFromText(final String text) {
         if (Helper.isPositiveInteger(text)) {
             return Integer.valueOf(text);
         } else {
@@ -1155,6 +1161,101 @@ public class Helper {
 
         return pkgs;
     }
+
+    public static final String getUserAgent(final io.micronaut.http.HttpRequest request) {
+        String      userAgent = "unknown";
+        HttpHeaders headers   = request.getHeaders();
+        if (null != headers) {
+            Optional<String> optUserAgent = headers.findFirst("User-Agent");
+            if (optUserAgent.isPresent()) { userAgent = optUserAgent.get(); }
+            Optional<String> optUserInfo = headers.findFirst("Disco-User-Info");
+            if (optUserInfo.isPresent()) { userAgent = optUserInfo.get(); }
+
+        }
+        return userAgent;
+    }
+
+    public static final List<Scope> getDistributionScopes(final List<String> discovery_scope_id) {
+        Helper.removeEmptyItems(discovery_scope_id);
+        Set<String> disco_scope_ids = (null == discovery_scope_id || discovery_scope_id.isEmpty()) ? new HashSet<>() : new HashSet<>(discovery_scope_id);
+
+        // Extract scopes
+        List<Scope> scopes;
+        if (disco_scope_ids.isEmpty()) {
+            scopes = List.of(BasicScope.PUBLIC);
+        } else {
+            Set<Scope> scopesFound = new HashSet<>();
+            for (String scopeString : disco_scope_ids) {
+                Scope basicScope = BasicScope.fromText(scopeString);
+                if (BasicScope.NOT_FOUND != basicScope && BasicScope.NONE != basicScope) { scopesFound.add(basicScope); }
+
+                Scope ideScope = IDEScope.fromText(scopeString);
+                if (Scope.NOT_FOUND != ideScope) { scopesFound.add(ideScope); }
+
+                Scope buildScope = BuildScope.fromText(scopeString);
+                if (Scope.NOT_FOUND != buildScope) { scopesFound.add(buildScope); }
+
+                Scope downloadScope = DownloadScope.fromText(scopeString);
+                if (Scope.NOT_FOUND != downloadScope) { scopesFound.add(downloadScope); }
+
+                Scope usageScope = UsageScope.fromText(scopeString);
+                if (Scope.NOT_FOUND != usageScope) { scopesFound.add(usageScope); }
+            }
+            if (scopesFound.isEmpty()) {
+                scopes = List.of(BasicScope.PUBLIC);
+            } else {
+                if (scopesFound.size() != 1 || !scopesFound.contains(IDEScope.VISUAL_STUDIO_CODE)) {
+                    if (!scopesFound.contains(BasicScope.PUBLIC)) {
+                        scopesFound.add(BasicScope.PUBLIC);
+                    }
+                }
+                scopes = new ArrayList<>(scopesFound);
+            }
+        }
+        return scopes;
+    }
+
+    public static final List<Scope> getPackageScopes(final List<String> discovery_scope_id) {
+        Helper.removeEmptyItems(discovery_scope_id);
+        Set<String> disco_scope_ids = (null == discovery_scope_id || discovery_scope_id.isEmpty()) ? new HashSet<>() : new HashSet<>(discovery_scope_id);
+
+        // Extract package related scopes
+        List<Scope> scopes = new ArrayList<>();
+        if (!disco_scope_ids.isEmpty()) {
+            Set<Scope> scopesFound = new HashSet<>();
+            for (String scopeString : disco_scope_ids) {
+                Scope signatureScope = SignatureScope.fromText(scopeString);
+                if (Scope.NOT_FOUND != signatureScope) { scopesFound.add(signatureScope); }
+            }
+            scopes.addAll(scopesFound);
+        }
+        return scopes;
+    }
+
+    public static final String getCountryCode(final String ipAddress) {
+        if (null == ipAddress || ipAddress.isEmpty()) { return ""; }
+        HttpResponse<String> response = get(Constants.IP_LOCATION_URL + "?ip=" + ipAddress);
+        if (null == response) {
+            return "";
+        } else {
+            if (response.statusCode() == 200) {
+                String      bodyText = response.body();
+                Gson        gson     = new Gson();
+                JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
+                if (element instanceof JsonObject) {
+                    JsonObject json = element.getAsJsonObject();
+                    if (json.has(Constants.COUNTRY_CODE2_FIELD)) {
+                      return json.get(Constants.COUNTRY_CODE2_FIELD).getAsString().toLowerCase();
+                    }
+                }
+            } else {
+                // Problem with url request
+                LOGGER.debug("Response (Status Code {}) {} ", response.statusCode(), response.body());
+            }
+        }
+        return "";
+    }
+
 
     // ******************** REST calls ****************************************
     private static HttpClient createHttpClient() {
