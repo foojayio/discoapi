@@ -21,6 +21,7 @@ package io.foojay.api.pkg;
 
 import io.foojay.api.distribution.AOJ;
 import io.foojay.api.distribution.AOJ_OPENJ9;
+import io.foojay.api.distribution.JetBrains;
 import io.foojay.api.distribution.Temurin;
 import io.foojay.api.distribution.Corretto;
 import io.foojay.api.distribution.Distribution;
@@ -76,13 +77,14 @@ public enum Distro implements ApiFeature {
     GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 720),
     GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 720),
     GRAALVM_CE16("Graal VM CE 16", "graalvm_ce16", new GraalVMCE16(), 725),
+    JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 360),
     LIBERICA("Liberica", "liberica", new Liberica(), 60),
     LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 720),
     MANDREL("Mandrel", "mandrel", new Mandrel(), 1440),
     MICROSOFT("Microsoft OpenJDK", "microsoft", new Microsoft(), 720),
     OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 1440),
     OPEN_LOGIC("OpenLogic", "openlogic", new OpenLogic(), 1440),
-    ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 360),
+    ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 180),
     ORACLE("Oracle", "oracle", new Oracle(), 720),
     RED_HAT("Red Hat", "redhat", new RedHat(), 720),
     SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 720),
@@ -199,6 +201,10 @@ public enum Distro implements ApiFeature {
             case "GraalVMCE16":
             case "GraalVM_CE16":
                 return GRAALVM_CE16;
+            case "jetbrains":
+            case "JetBrains":
+            case "JETBRAINS":
+                return JETBRAINS;
             case "liberica":
             case "LIBERICA":
             case "Liberica":

@@ -763,6 +763,61 @@ public enum MongoDbManager {
         return true;
     }
 
+    public boolean removeDownloads() {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, no locks have been removed");
+            return false;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Locks have not been removed because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return false;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.DOWNLOADS_COLLECTION) {
+            LOGGER.error("Constants.DOWNLOADS_COLLECTION not set.");
+            return false;
+        };
+        if (!collectionExists(database, Constants.DOWNLOADS_COLLECTION)) { database.createCollection(Constants.DOWNLOADS_COLLECTION); }
+
+        MongoCollection<Document> collection = database.getCollection(Constants.DOWNLOADS_COLLECTION);
+        collection.deleteMany(new Document());
+
+        LOGGER.debug("Successfully deleted all downloads from mongodb.");
+        return true;
+    }
+
+    public boolean removeDownloadsPerPkg() {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, no locks have been removed");
+            return false;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Locks have not been removed because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return false;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.DOWNLOADS_USER_AGENT_COLLECTION) {
+            LOGGER.error("Constants.DOWNLOADS_USER_AGENT_COLLECTION not set.");
+            return false;
+        };
+        if (!collectionExists(database, Constants.DOWNLOADS_USER_AGENT_COLLECTION)) { database.createCollection(Constants.DOWNLOADS_USER_AGENT_COLLECTION); }
+
+        MongoCollection<Document> collection = database.getCollection(Constants.DOWNLOADS_USER_AGENT_COLLECTION);
+        collection.deleteMany(new Document());
+
+        LOGGER.debug("Successfully deleted all downloads per pkg from mongodb.");
+        return true;
+    }
+
+
     public void updateEphemeralIds() {
         connect();
         if (!connected) {

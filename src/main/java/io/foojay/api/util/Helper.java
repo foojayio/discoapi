@@ -27,6 +27,7 @@ import io.foojay.api.CacheManager;
 import io.foojay.api.distribution.AOJ;
 import io.foojay.api.distribution.AOJ_OPENJ9;
 import io.foojay.api.distribution.Distribution;
+import io.foojay.api.distribution.JetBrains;
 import io.foojay.api.distribution.LibericaNative;
 import io.foojay.api.distribution.Microsoft;
 import io.foojay.api.distribution.OJDKBuild;
@@ -296,6 +297,10 @@ public class Helper {
                 Microsoft microsoft = (Microsoft) distro.get();
                 pkgs.addAll(microsoft.getAllPkgs());
                 break;
+                case JETBRAINS:
+                    JetBrains jetbrains = (JetBrains) distro.get();
+                    pkgs.addAll(jetbrains.getAllPkgs());
+                    break;
             case LIBERICA_NATIVE:
                 LibericaNative libericaNative = (LibericaNative) distro.get();
                 pkgs.addAll(libericaNative.getAllPkgs());
@@ -1234,7 +1239,7 @@ public class Helper {
 
     public static final String getCountryCode(final String ipAddress) {
         if (null == ipAddress || ipAddress.isEmpty()) { return ""; }
-        HttpResponse<String> response = get(Constants.IP_LOCATION_URL + "?ip=" + ipAddress);
+        HttpResponse<String> response = get(Constants.IP_LOCATION_URL + ipAddress);
         if (null == response) {
             return "";
         } else {
@@ -1244,8 +1249,8 @@ public class Helper {
                 JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
                 if (element instanceof JsonObject) {
                     JsonObject json = element.getAsJsonObject();
-                    if (json.has(Constants.COUNTRY_CODE2_FIELD)) {
-                      return json.get(Constants.COUNTRY_CODE2_FIELD).getAsString().toLowerCase();
+                    if (json.has(Constants.COUNTRY_CODE_FIELD)) {
+                        return json.get(Constants.COUNTRY_CODE_FIELD).getAsString().toLowerCase();
                     }
                 }
             } else {
