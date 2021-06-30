@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.distribution;
@@ -72,9 +72,9 @@ import static io.foojay.api.pkg.TermOfSupport.STS;
 
 
 public class AOJ_OPENJ9 implements Distribution {
-    private static final Logger LOGGER = LoggerFactory.getLogger(AOJ_OPENJ9.class);
+    private static final Logger                       LOGGER                 = LoggerFactory.getLogger(AOJ_OPENJ9.class);
 
-    private static final String                PACKAGE_URL          = "https://api.adoptopenjdk.net/v3/assets/feature_releases/";
+    private static final String                       PACKAGE_URL            = "https://api.adoptopenjdk.net/v3/assets/feature_releases/";
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM     = "architecture";
@@ -147,6 +147,9 @@ public class AOJ_OPENJ9 implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("aoj_openj9", "AOJ_OpenJ9", "AOJ_OPENJ9", "AOJ OpenJ9", "AOJ OPENJ9", "aoj openj9");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()

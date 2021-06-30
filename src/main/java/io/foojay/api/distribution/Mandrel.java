@@ -113,6 +113,9 @@ public class Mandrel implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("mandrel", "MANDREL", "Mandrel");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()

@@ -114,6 +114,9 @@ public class RedHat implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("RedHat", "redhat", "REDHAT", "Red Hat", "red hat", "RED HAT", "Red_Hat", "red_hat", "red-hat", "Red-Hat", "RED-HAT");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
@@ -161,7 +164,7 @@ public class RedHat implements Distribution {
             if (null == response) { return pkgs; }
             final String htmlAllJDKs  = response.body();
             if (!htmlAllJDKs.isEmpty()) {
-            pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs));
+                pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs));
             }
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from RedHat. {}", e);

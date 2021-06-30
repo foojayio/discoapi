@@ -147,6 +147,9 @@ public class AOJ implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("aoj", "AOJ");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()

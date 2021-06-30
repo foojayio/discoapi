@@ -106,6 +106,9 @@ public class Microsoft implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("microsoft", "Microsoft", "MICROSOFT", "Microsoft OpenJDK", "Microsoft Build of OpenJDK");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
@@ -150,10 +153,10 @@ public class Microsoft implements Distribution {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
 
-        List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
+        List<String> fileHrefs    = new ArrayList<>(Helper.getFileHrefsFromString(html));
         List<String> sigFileHrefs = new ArrayList<>(Helper.getSigFileHrefsFromString(html));
         for (String href : fileHrefs) {
-            final String          filename        = Helper.getFileNameFromText(href);
+            final String filename = Helper.getFileNameFromText(href);
             if (filename.contains("debugsymbols") || filename.startsWith("jdk")) { continue; }
 
             final String          withoutPrefix   = filename.replace("microsoft-", "");

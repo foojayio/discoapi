@@ -70,6 +70,8 @@ public interface Distribution {
 
     String getSignatureUri();
 
+    List<String> getSynonyms();
+
     List<SemVer> getVersions();
 
     String getUrlForAvailablePkgs(VersionNumber versionNumber, boolean latest, OperatingSystem operatingSystem,

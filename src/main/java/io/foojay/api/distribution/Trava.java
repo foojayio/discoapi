@@ -121,6 +121,9 @@ public class Trava implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("trava", "TRAVA", "Trava", "trava_openjdk", "TRAVA_OPENJDK", "trava openjdk", "TRAVA OPENJDK");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()

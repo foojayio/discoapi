@@ -113,6 +113,9 @@ public class GraalVMCE8 implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("graalvm_ce8", "graalvmce8", "GraalVM CE 8", "GraalVMCE8", "GraalVM_CE8");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()

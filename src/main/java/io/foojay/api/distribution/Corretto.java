@@ -110,6 +110,9 @@ public class Corretto implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("corretto", "CORRETTO", "Corretto");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
@@ -154,9 +157,9 @@ public class Corretto implements Distribution {
             LOGGER.debug("Github rate limit reached when trying to get packages for Corretto {}", versionNumber);
             return pkgs;
         }
-        String       bodyText      = jsonObj.get("body").getAsString();
+        String bodyText = jsonObj.get("body").getAsString();
 
-        Set<Pair<String,String>> pairsFound = Helper.getPackageTypeAndFileUrlFromString(bodyText);
+        Set<Pair<String,String>> pairsFound         = Helper.getPackageTypeAndFileUrlFromString(bodyText);
         Map<String,String>       signatureUrisFound = Helper.getCorrettoSignatureUris(bodyText);
 
         for (Pair<String, String> pair : pairsFound) {

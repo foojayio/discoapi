@@ -126,6 +126,9 @@ public class OJDKBuild implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("ojdk_build", "OJDK_BUILD", "OJDK Build", "ojdk build", "ojdkbuild", "OJDKBuild");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()

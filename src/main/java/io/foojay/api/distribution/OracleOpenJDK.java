@@ -158,6 +158,10 @@ public class OracleOpenJDK implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("oracle_open_jdk", "ORACLE_OPEN_JDK", "oracle_openjdk", "ORACLE_OPENJDK", "Oracle_OpenJDK", "Oracle OpenJDK", "oracle openjdk", "ORACLE OPENJDK", "open_jdk",
+                       "openjdk", "OpenJDK", "Open JDK", "OPEN_JDK", "open-jdk", "OPEN-JDK", "Oracle-OpenJDK", "oracle-openjdk", "ORACLE-OPENJDK", "oracle-open-jdk", "ORACLE-OPEN-JDK");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()

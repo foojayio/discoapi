@@ -135,6 +135,9 @@ public class SAPMachine implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("sap_machine", "sapmachine", "SAPMACHINE", "SAP_MACHINE", "SAPMachine", "SAP Machine", "sap-machine", "SAP-Machine", "SAP-MACHINE");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
@@ -428,7 +431,7 @@ public class SAPMachine implements Distribution {
 
                     JsonObject assets = jsonObject.get("assets").getAsJsonObject();
                     for (String majorRelease : majorReleases) {
-                        JsonObject    majorArray = assets.get(majorRelease).getAsJsonObject();
+                        JsonObject         majorArray   = assets.get(majorRelease).getAsJsonObject();
                         JsonArray          releases     = majorArray.get("releases").getAsJsonArray();
                         final MajorVersion majorVersion = new MajorVersion(Integer.valueOf(majorRelease));
                         for (int i = 0; i < releases.size(); i++) {
@@ -443,7 +446,7 @@ public class SAPMachine implements Distribution {
                                         final String downloadLink = imageTypeObj.get(os).getAsString();
                                         final String filename     = Helper.getFileNameFromText(downloadLink);
                                         if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) { continue; }
-                                        Pkg          pkg      = new Pkg();
+                                        Pkg          pkg          = new Pkg();
                                         pkg.setDistribution(Distro.SAP_MACHINE.get());
                                         pkg.setBitness(BIT_64);
                                         pkg.setVersionNumber(versionNumber);
@@ -531,7 +534,7 @@ public class SAPMachine implements Distribution {
 
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
         for (String href : fileHrefs) {
-            final String          filename        = Helper.getFileNameFromText(href);
+            final String filename = Helper.getFileNameFromText(href);
             if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) { continue; }
 
             final String          withoutPrefix   = filename.replace("sapmachine-", "");
@@ -552,9 +555,9 @@ public class SAPMachine implements Distribution {
 
             final Architecture architecture = Constants.ARCHITECTURE_LOOKUP.entrySet()
                                                                            .stream()
-                                                                                            .filter(entry -> withoutPrefix.contains(entry.getKey()))
-                                                                                            .findFirst()
-                                                                                            .map(Entry::getValue)
+                                                                           .filter(entry -> withoutPrefix.contains(entry.getKey()))
+                                                                           .findFirst()
+                                                                           .map(Entry::getValue)
                                                                            .orElse(Architecture.NOT_FOUND);
             if (Architecture.NOT_FOUND == architecture) {
                 LOGGER.debug("Architecture not found in SAP Machine for filename: {}", filename);

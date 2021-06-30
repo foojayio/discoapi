@@ -91,7 +91,7 @@ public enum Distro implements ApiFeature {
     TEMURIN("Temurin", "temurin", new Temurin(), 60),
     TRAVA("Trava", "trava", new Trava(), 1440),
     ZULU("Zulu", "zulu", new Zulu(), 15),
-    ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), 360),
+    ZULU_PRIME("Zulu Prime", "zulu_prime", new ZuluPrime(), 360),
     NONE("-", "", null, 0),
     NOT_FOUND("", "", null, 0);
 
@@ -102,6 +102,7 @@ public enum Distro implements ApiFeature {
     public  static final String       FIELD_SIGNATURE_TYPE      = "signature_type";
     public  static final String       FIELD_SIGNATURE_ALGORITHM = "signature_algorithm";
     public  static final String       FIELD_SIGNATURE_URI       = "signature_uri";
+    public  static final String       FIELD_SYNONYMS            = "synonyms";
     public  static final String       FIELD_VERSIONS            = "versions";
     private        final String       uiString;
     private        final String       apiString;
@@ -141,8 +142,9 @@ public enum Distro implements ApiFeature {
             case "zulu":
             case "ZULU":
             case "Zulu":
-            case "ZuluCore":
             case "zulucore":
+            case "ZULUCORE":
+            case "ZuluCore":
             case "zulu_core":
             case "ZULU_CORE":
             case "Zulu_Core":
@@ -156,8 +158,9 @@ public enum Distro implements ApiFeature {
             case "prime":
             case "PRIME":
             case "Prime":
-            case "ZuluPrime":
             case "zuluprime":
+            case "ZULUPRIME":
+            case "ZuluPrime":
             case "zulu_prime":
             case "ZULU_PRIME":
             case "Zulu_Prime":
@@ -224,6 +227,7 @@ public enum Distro implements ApiFeature {
             case "microsoft":
             case "Microsoft":
             case "MICROSOFT":
+            case "Microsoft OpenJDK":
             case "Microsoft Build of OpenJDK":
                 return MICROSOFT;
             case "ojdk_build":
@@ -347,10 +351,10 @@ public enum Distro implements ApiFeature {
         return Arrays.stream(values())
                      .filter(distro -> Distro.NONE         != distro)
                      .filter(distro -> Distro.NOT_FOUND    != distro)
-                     .filter(distro -> Distro.GRAALVM_CE16 == distro)
+                     .filter(distro -> Distro.GRAALVM_CE16 != distro)
                      .filter(distro -> Distro.GRAALVM_CE11 != distro)
                      .filter(distro -> Distro.GRAALVM_CE8  != distro)
-                     .filter(distro -> Distro.MANDREL != distro)
+                     .filter(distro -> Distro.MANDREL      != distro)
                      .collect(Collectors.toList());
     }
 
@@ -394,6 +398,8 @@ public enum Distro implements ApiFeature {
             versions = get().getVersions();
         }
 
+        List<String> synonyms = get().getSynonyms();
+
         switch(outputFormat) {
             case FULL:
                 msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)
@@ -404,7 +410,17 @@ public enum Distro implements ApiFeature {
                           .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA_NEW_LINE)
-                          .append(INDENTED_QUOTES).append(FIELD_VERSIONS).append(QUOTES).append(COLON).append(" ").append(SQUARE_BRACKET_OPEN).append(versions.isEmpty() ? "" : NEW_LINE);
+                          .append(INDENTED_QUOTES).append(FIELD_SYNONYMS).append(QUOTES).append(COLON).append(" ").append(SQUARE_BRACKET_OPEN).append(synonyms.isEmpty() ? "" : NEW_LINE);
+                synonyms.forEach(synonym -> msgBuilder.append(INDENT).append(INDENTED_QUOTES).append(synonym).append(QUOTES).append(COMMA_NEW_LINE));
+                if (!synonyms.isEmpty()) {
+                    msgBuilder.setLength(msgBuilder.length() - 2);
+                    msgBuilder.append(NEW_LINE)
+                              .append(INDENT).append(SQUARE_BRACKET_CLOSE).append(COMMA_NEW_LINE);
+                } else {
+                    msgBuilder.append(SQUARE_BRACKET_CLOSE).append(COMMA_NEW_LINE);
+                }
+
+                msgBuilder.append(INDENTED_QUOTES).append(FIELD_VERSIONS).append(QUOTES).append(COLON).append(" ").append(SQUARE_BRACKET_OPEN).append(versions.isEmpty() ? "" : NEW_LINE);
                 versions.forEach(versionNumber -> msgBuilder.append(INDENT).append(INDENTED_QUOTES).append(versionNumber).append(QUOTES).append(COMMA_NEW_LINE));
         if (!versions.isEmpty()) {
                     msgBuilder.setLength(msgBuilder.length() - 2);
@@ -423,15 +439,19 @@ public enum Distro implements ApiFeature {
                           .append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA)
-                          .append(QUOTES).append(FIELD_VERSIONS).append(QUOTES).append(COLON).append(" ").append(SQUARE_BRACKET_OPEN);
-                versions.forEach(versionNumber -> msgBuilder.append(INDENT).append(INDENTED_QUOTES).append(versionNumber).append(QUOTES).append(COMMA));
-                if (!versions.isEmpty()) {
-                    msgBuilder.setLength(msgBuilder.length() - 2);
-                    msgBuilder.append(NEW_LINE)
-                              .append(INDENT).append(SQUARE_BRACKET_CLOSE);
-                } else {
-                    msgBuilder.append(SQUARE_BRACKET_CLOSE);
+                          .append(QUOTES).append(FIELD_SYNONYMS).append(QUOTES).append(COLON).append(SQUARE_BRACKET_OPEN);
+                synonyms.forEach(synonym -> msgBuilder.append(QUOTES).append(synonym).append(QUOTES).append(COMMA));
+                if (!synonyms.isEmpty()) {
+                    msgBuilder.setLength(msgBuilder.length() - 1);
                 }
+                msgBuilder.append(SQUARE_BRACKET_CLOSE).append(COMMA);
+
+                msgBuilder.append(QUOTES).append(FIELD_VERSIONS).append(QUOTES).append(COLON).append(SQUARE_BRACKET_OPEN);
+                versions.forEach(versionNumber -> msgBuilder.append(QUOTES).append(versionNumber).append(QUOTES).append(COMMA));
+                if (!versions.isEmpty()) {
+                    msgBuilder.setLength(msgBuilder.length() - 1);
+                }
+                    msgBuilder.append(SQUARE_BRACKET_CLOSE);
                 return msgBuilder.append(CURLY_BRACKET_CLOSE).toString();
             case REDUCED:
                 msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)

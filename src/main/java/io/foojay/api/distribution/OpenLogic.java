@@ -116,6 +116,9 @@ public class OpenLogic implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("openlogic", "OPENLOGIC", "OpenLogic", "open_logic", "OPEN_LOGIC", "Open Logic", "OPEN LOGIC", "open logic");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
@@ -185,14 +188,14 @@ public class OpenLogic implements Distribution {
         }
 
         for (String pkgUrl : pkgUrls) {
-        try {
+            try {
                 final HttpResponse<String> response = Helper.get(pkgUrl);
-            if (null == response) { return pkgs; }
-            final String htmlAllJDKs  = response.body();
-            if (!htmlAllJDKs.isEmpty()) {
-                pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs));
-            }
-        } catch (Exception e) {
+                if (null == response) { return pkgs; }
+                final String htmlAllJDKs  = response.body();
+                if (!htmlAllJDKs.isEmpty()) {
+                    pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs));
+                }
+            } catch (Exception e) {
                 LOGGER.error("Error fetching all packages from {}. {}", getName(), e);
             }
         }

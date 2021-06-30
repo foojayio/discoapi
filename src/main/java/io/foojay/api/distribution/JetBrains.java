@@ -73,10 +73,10 @@ public class JetBrains implements Distribution {
     private static final String        SUPPORT_TERM_PARAM     = "";
     private static final String        BITNESS_PARAM          = "";
 
-    private static final HashAlgorithm HASH_ALGORITHM         = HashAlgorithm.NONE;
-    private static final String        HASH_URI               = "";
-    private static final SignatureType SIGNATURE_TYPE         = SignatureType.NONE;
-    private static final HashAlgorithm SIGNATURE_ALGORITHM    = HashAlgorithm.NONE;
+    private static final HashAlgorithm HASH_ALGORITHM      = HashAlgorithm.NONE;
+    private static final String        HASH_URI            = "";
+    private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
+    private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
     private static final String        SIGNATURE_URI          = "";
 
 
@@ -110,6 +110,9 @@ public class JetBrains implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public List<String> getSynonyms() {
+        return List.of("jetbrains", "JetBrains", "JETBRAINS");
+    }
 
     @Override public List<SemVer> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
