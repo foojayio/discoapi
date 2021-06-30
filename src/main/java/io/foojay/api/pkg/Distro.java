@@ -91,7 +91,7 @@ public enum Distro implements ApiFeature {
     TEMURIN("Temurin", "temurin", new Temurin(), 60),
     TRAVA("Trava", "trava", new Trava(), 1440),
     ZULU("Zulu", "zulu", new Zulu(), 15),
-    ZULU_PRIME("Zulu Prime", "zulu_prime", new ZuluPrime(), 360),
+    ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), 360),
     NONE("-", "", null, 0),
     NOT_FOUND("", "", null, 0);
 
