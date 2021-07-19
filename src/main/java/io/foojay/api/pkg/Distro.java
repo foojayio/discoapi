@@ -81,7 +81,7 @@ public enum Distro implements ApiFeature {
     LIBERICA("Liberica", "liberica", new Liberica(), 60),
     LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 720),
     MANDREL("Mandrel", "mandrel", new Mandrel(), 1440),
-    MICROSOFT("Microsoft OpenJDK", "microsoft", new Microsoft(), 720),
+    MICROSOFT("Microsoft", "microsoft", new Microsoft(), 720),
     OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 1440),
     OPEN_LOGIC("OpenLogic", "openlogic", new OpenLogic(), 1440),
     ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 180),
