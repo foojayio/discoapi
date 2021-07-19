@@ -27,6 +27,7 @@ import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.LibCType;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
@@ -55,6 +56,7 @@ import static io.foojay.api.pkg.OperatingSystem.LINUX;
 import static io.foojay.api.pkg.OperatingSystem.MACOS;
 import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
 import static io.foojay.api.pkg.PackageType.JDK;
+import static io.foojay.api.pkg.ReleaseStatus.EA;
 import static io.foojay.api.pkg.ReleaseStatus.GA;
 
 
@@ -63,6 +65,12 @@ public class JetBrains implements Distribution {
 
     private static final String        PACKAGE_URL            = "https://cache-redirector.jetbrains.com/intellij-jbr/";
     public  static final String        PKGS_PROPERTIES        = "https://github.com/foojay2020/openjdk_releases/raw/main/jetbrains.properties";
+    public  static final String        GITHUB_RELEASES        = "https://github.com/JetBrains/JetBrainsRuntime/releases";
+    private static final String        GITHUB_USER            = "JetBrains";
+    private static final String        GITHUB_REPOSITORY      = "JetBrainsRuntime";
+    private static final String        GITHUB_RELEASES_URL    = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases";
+
+
 
     // URL parameters
     private static final String        ARCHITECTURE_PARAM     = "";
@@ -236,6 +244,79 @@ public class JetBrains implements Distribution {
             pkgs.add(pkg);
         }
 
+        return pkgs;
+    }
+
+    public List<Pkg> getAllPkgsFromHtml(final String html) {
+        List<Pkg> pkgs = new ArrayList<>();
+        if (null == html || html.isEmpty()) { return pkgs; }
+
+        List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
+        for (String href : fileHrefs) {
+            final String filename = Helper.getFileNameFromText(href);
+            if (null == filename || !filename.startsWith("jbrsdk")) { continue; }
+
+            final String        withoutPrefix = filename.replace("jbrsdk-", "");
+            final String        withoutSuffix = withoutPrefix.replace(".tar.gz", "");
+            final String[]      filenameParts = withoutSuffix.split("-");
+            final String        versionString = filenameParts[0].replaceAll("_", "\\.") + (filenameParts.length == 4 ? "+" + filenameParts[3] : "");
+            final SemVer        semver        = SemVer.fromText(filenameParts[0].replaceAll("_", "\\.") +(filenameParts.length == 4 ? "+" + filenameParts[3] : "")).getSemVer1();
+            final VersionNumber versionNumber = VersionNumber.fromText(versionString);
+            final MajorVersion  majorVersion  = versionNumber.getMajorVersion();
+            final PackageType   packageType   = JDK;
+
+            OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
+                                                                               .stream()
+                                                                               .filter(entry -> withoutPrefix.contains(entry.getKey()))
+                                                                               .findFirst()
+                                                                               .map(Entry::getValue)
+                                                                               .orElse(OperatingSystem.NOT_FOUND);
+            if (OperatingSystem.NOT_FOUND == operatingSystem) {
+                System.out.println("Operating System not found in JetBrains for filename: " + filename);
+                continue;
+            }
+
+            final Architecture architecture = Constants.ARCHITECTURE_LOOKUP.entrySet()
+                                                                           .stream()
+                                                                           .filter(entry -> withoutPrefix.contains(entry.getKey()))
+                                                                           .findFirst()
+                                                                           .map(Entry::getValue)
+                                                                           .orElse(Architecture.NOT_FOUND);
+            if (Architecture.NOT_FOUND == architecture) {
+                System.out.println("Architecture not found in JetBrains for filename: " + filename);
+                continue;
+            }
+
+            ArchiveType archiveType = ArchiveType.getFromFileName(filename);
+            if (OperatingSystem.MACOS == operatingSystem) {
+                switch(archiveType) {
+                    case DEB:
+                    case RPM: operatingSystem = OperatingSystem.LINUX; break;
+                    case CAB:
+                    case MSI:
+                    case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
+                }
+            }
+
+            Pkg pkg = new Pkg();
+            pkg.setDistribution(Distro.JETBRAINS.get());
+            pkg.setArchitecture(architecture);
+            pkg.setBitness(architecture.getBitness());
+            pkg.setVersionNumber(versionNumber);
+            pkg.setJavaVersion(versionNumber);
+            pkg.setDistributionVersion(versionNumber);
+            pkg.setDirectDownloadUri(href);
+            pkg.setFileName(filename);
+            pkg.setArchiveType(archiveType);
+            pkg.setJavaFXBundled(false);
+            pkg.setTermOfSupport(majorVersion.getTermOfSupport());
+            pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+            pkg.getSemver().setMetadata(semver.getMetadata());
+            pkg.setPackageType(packageType);
+            pkg.setOperatingSystem(operatingSystem);
+            pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkgs.add(pkg);
+        }
         return pkgs;
     }
 }
