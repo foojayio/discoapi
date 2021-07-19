@@ -179,7 +179,7 @@ public class RedHat implements Distribution {
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
         for (String fileHref : fileHrefs) {
             String filename = Helper.getFileNameFromText(fileHref.replaceAll("\"", ""));
-            if (filename.endsWith("sources.zip") || filename.endsWith("src.zip")) { continue; }
+            if (null == filename || filename.isEmpty() || filename.startsWith("openjfx") || filename.endsWith("sources.zip") || filename.endsWith("src.zip")) { continue; }
 
             Pkg pkg = new Pkg();
             pkg.setDistribution(Distro.RED_HAT.get());

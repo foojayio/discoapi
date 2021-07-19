@@ -335,12 +335,12 @@ public class OJDKBuild implements Distribution {
             JsonArray assets = jsonObj.getAsJsonArray("assets");
             for (JsonElement element : assets) {
                 JsonObject assetJsonObj = element.getAsJsonObject();
-                String     fileName     = assetJsonObj.get("name").getAsString();
+                String     filename     = assetJsonObj.get("name").getAsString();
 
-                if (null == fileName || fileName.isEmpty() || fileName.endsWith("txt") || fileName.endsWith("debuginfo.zip") || fileName.endsWith("sha256")) { continue; }
-                if (fileName.contains("-debug-")) { continue; }
+                if (null == filename || filename.isEmpty() || filename.startsWith("openjfx") || filename.endsWith("txt") || filename.endsWith("debuginfo.zip") || filename.endsWith("sha256")) { continue; }
+                if (filename.contains("-debug-")) { continue; }
 
-                String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
+                String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
 
                 VersionNumber numberFound = VersionNumber.fromText(withoutPrefix);
                 VersionNumber vNumber = numberFound;
@@ -351,12 +351,12 @@ public class OJDKBuild implements Distribution {
                 Pkg pkg = new Pkg();
 
                 ArchiveType ext = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
-                                                               .filter(entry -> fileName.endsWith(entry.getKey()))
+                                                               .filter(entry -> filename.endsWith(entry.getKey()))
                                                                .findFirst()
                                                                .map(Entry::getValue)
                                                                .orElse(ArchiveType.NONE);
                 if (ArchiveType.NONE == ext) {
-                    LOGGER.debug("Archive Type not found in OJDKBuild for filename: {}", fileName);
+                    LOGGER.debug("Archive Type not found in OJDKBuild for filename: {}", filename);
                     continue;
                 } else if (ArchiveType.SRC_TAR == ext) {
                     continue;
@@ -371,12 +371,12 @@ public class OJDKBuild implements Distribution {
                 pkg.setTermOfSupport(supTerm);
 
                 pkg.setDistribution(Distro.OJDK_BUILD.get());
-                pkg.setFileName(fileName);
+                pkg.setFileName(filename);
                 pkg.setDirectDownloadUri(downloadLink);
                 pkg.setVersionNumber(vNumber);
                 pkg.setJavaVersion(vNumber);
                 pkg.setDistributionVersion(numberFound);
-                pkg.setPackageType(fileName.contains(Constants.JRE_POSTFIX) ? JRE : JDK);
+                pkg.setPackageType(filename.contains(Constants.JRE_POSTFIX) ? JRE : JDK);
                 pkg.setReleaseStatus(withoutPrefix.contains(Constants.EA_POSTFIX) ? EA : GA);
 
 
@@ -386,7 +386,7 @@ public class OJDKBuild implements Distribution {
                                                                  .map(Entry::getValue)
                                                                  .orElse(Architecture.NONE);
                 if (Architecture.NONE == arch) {
-                    LOGGER.debug("Architecture not found in OJDKBuild for filename: {}", fileName);
+                    LOGGER.debug("Architecture not found in OJDKBuild for filename: {}", filename);
                     continue;
                 }
                 pkg.setArchitecture(arch);
@@ -415,7 +415,7 @@ public class OJDKBuild implements Distribution {
                     }
                 }
                 if (OperatingSystem.NONE == os) {
-                    LOGGER.debug("Operating System not found in OJDKBuild for filename: {}", fileName);
+                    LOGGER.debug("Operating System not found in OJDKBuild for filename: {}", filename);
                     continue;
                 }
                 pkg.setOperatingSystem(os);
