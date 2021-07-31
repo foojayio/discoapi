@@ -19,6 +19,9 @@
 
 package io.foojay.api.distribution;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Architecture;
@@ -26,6 +29,7 @@ import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.HashAlgorithm;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
@@ -35,31 +39,26 @@ import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
+import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpClient.Redirect;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
+import java.util.Map.Entry;
 import java.util.TreeSet;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.Architecture.AARCH64;
-import static io.foojay.api.pkg.Architecture.ARM;
-import static io.foojay.api.pkg.Architecture.MIPS;
-import static io.foojay.api.pkg.Architecture.PPC64;
-import static io.foojay.api.pkg.Architecture.PPC64LE;
-import static io.foojay.api.pkg.Architecture.SPARCV9;
-import static io.foojay.api.pkg.Architecture.X64;
-import static io.foojay.api.pkg.Architecture.X86;
-import static io.foojay.api.pkg.OperatingSystem.AIX;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.OperatingSystem.MACOS;
-import static io.foojay.api.pkg.OperatingSystem.SOLARIS;
-import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.PackageType.JRE;
 import static io.foojay.api.pkg.ReleaseStatus.EA;
 import static io.foojay.api.pkg.ReleaseStatus.GA;
 
@@ -67,48 +66,22 @@ import static io.foojay.api.pkg.ReleaseStatus.GA;
 public class Temurin implements Distribution {
     private static final Logger LOGGER = LoggerFactory.getLogger(Temurin.class);
 
-    private static final String                       PACKAGE_URL            = "https://projects.eclipse.org/projects/adoptium/downloads";
+    private static final String        PACKAGE_URL            = "https://api.github.com/repos/adoptium/";
 
     // URL parameters
-    private static final String                       ARCHITECTURE_PARAM     = "architecture";
-    private static final String                       OPERATING_SYSTEM_PARAM = "os";
-    private static final String                       ARCHIVE_TYPE_PARAM     = "";
-    private static final String                       PACKAGE_TYPE_PARAM     = "image_type";
-    private static final String                       RELEASE_STATUS_PARAM   = "release_type";
-    private static final String                       SUPPORT_TERM_PARAM     = "";
-    private static final String                       BITNESS_PARAM          = "";
+    private static final String        ARCHITECTURE_PARAM     = "architecture";
+    private static final String        OPERATING_SYSTEM_PARAM = "os";
+    private static final String        ARCHIVE_TYPE_PARAM     = "";
+    private static final String        PACKAGE_TYPE_PARAM     = "image_type";
+    private static final String        RELEASE_STATUS_PARAM   = "release_type";
+    private static final String        SUPPORT_TERM_PARAM     = "";
+    private static final String        BITNESS_PARAM          = "";
 
-    // Mappings for url parameters
-    private static final Map<Architecture, String>
-                                                      ARCHITECTURE_MAP     = Map.of(AARCH64, "aarch64", ARM, "arm", MIPS, "mips", PPC64, "ppc64", PPC64LE, "ppc64le", SPARCV9, "sparcv9", X64, "x64", X86, "x32");
-    private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP = Map.of(LINUX, "linux", MACOS, "mac", WINDOWS, "windows", SOLARIS, "solaris", AIX, "aix");
-    private static final Map<PackageType, String>     PACKAGE_TYPE_MAP     = Map.of(JDK, "jdk", JRE, "jre");
-    private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP   = Map.of(EA, "ea", GA, "ga");
-
-    // JSON fields
-    private static final String                       FIELD_BINARIES         = "binaries";
-    private static final String                       FIELD_INSTALLER        = "installer";
-    private static final String                       FIELD_PACKAGE          = "package";
-    private static final String                       FIELD_LINK             = "link";
-    private static final String                       FIELD_NAME             = "name";
-    private static final String                       FIELD_VERSION_DATA     = "version_data";
-    private static final String                       FIELD_MAJOR            = "major";
-    private static final String                       FIELD_MINOR            = "minor";
-    private static final String                       FIELD_SECURITY         = "security";
-    private static final String                       FIELD_PATCH            = "patch";
-    private static final String                       FIELD_SEMVER           = "semver";
-    private static final String                       FIELD_RELEASE_TYPE     = "release_type";
-    private static final String                       FIELD_RELEASE_NAME     = "release_name";
-    private static final String                       FIELD_ARCHITECTURE     = "architecture";
-    private static final String                       FIELD_JVM_IMPL         = "jvm_impl";
-    private static final String                       FIELD_OS               = "os";
-    private static final String                       FIELD_CHECKSUM         = "checksum";
-
-    private static final HashAlgorithm HASH_ALGORITHM      = HashAlgorithm.NONE;
-    private static final String        HASH_URI            = "";
-    private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
-    private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
-    private static final String        SIGNATURE_URI       = "";
+    private static final HashAlgorithm HASH_ALGORITHM         = HashAlgorithm.NONE;
+    private static final String        HASH_URI               = "";
+    private static final SignatureType SIGNATURE_TYPE         = SignatureType.NONE;
+    private static final HashAlgorithm SIGNATURE_ALGORITHM    = HashAlgorithm.NONE;
+    private static final String        SIGNATURE_URI          = "";
 
 
     @Override public Distro getDistro() { return Distro.TEMURIN; }
@@ -172,8 +145,134 @@ public class Temurin implements Distribution {
                                               final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         List<Pkg> pkgs = new ArrayList<>();
 
-        //pkg.setFreeUseInProduction(Boolean.TRUE);
+        return pkgs;
+    }
 
+    public List<Pkg> getAllPkgs() {
+        List<Pkg> pkgs = new ArrayList<>();
+        try {
+            for (int i = 8 ; i < MajorVersion.getLatest(true).getAsInt() ; i++) {
+                String packageUrl = PACKAGE_URL + "temurin" + i + "-binaries/releases";
+                // Get all packages from github
+                String      query   = packageUrl;
+                HttpClient client  = HttpClient.newBuilder()
+                                               .followRedirects(Redirect.NEVER)
+                                               .version(java.net.http.HttpClient.Version.HTTP_2)
+                                               .connectTimeout(Duration.ofSeconds(20))
+                                               .build();
+                HttpRequest request = HttpRequest.newBuilder()
+                                                 .uri(URI.create(query))
+                                                 .setHeader("User-Agent", "DiscoAPI")
+                                                 .timeout(Duration.ofSeconds(60))
+                                                 .GET()
+                                                 .build();
+                try {
+                    HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
+                    if (response.statusCode() == 200) {
+                        String      bodyText = response.body();
+                        Gson        gson     = new Gson();
+                        JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
+                        if (element instanceof JsonArray) {
+                            JsonArray jsonArray = element.getAsJsonArray();
+                            pkgs.addAll(getAllPkgsFromJson(jsonArray));
+                        }
+            } else {
+                        // Problem with url request
+                        LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
+                    }
+                } catch (CompletionException | InterruptedException | IOException e) {
+                    LOGGER.error("Error fetching packages for distribution {} from {}", getName(), query);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error fetching all packages from Trava. {}", e);
+        }
+        return pkgs;
+    }
+
+    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray) {
+        List<Pkg> pkgs = new ArrayList<>();
+
+        for (int i = 0; i < jsonArray.size(); i++) {
+            JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
+            if (jsonObj.has("prerelease")) {
+                boolean prerelease = jsonObj.get("prerelease").getAsBoolean();
+                if (prerelease) { continue; }
+            }
+            JsonArray assets = jsonObj.getAsJsonArray("assets");
+            for (JsonElement element : assets) {
+                JsonObject assetJsonObj = element.getAsJsonObject();
+                String     filename     = assetJsonObj.get("name").getAsString();
+
+                if (null == filename || filename.isEmpty() || filename.endsWith("txt") || filename.contains("debugimage") || filename.contains("testimage") || filename.endsWith("json")) { continue; }
+                if (filename.contains("-debug-")) { continue; }
+
+                if (null == filename || !filename.startsWith("OpenJDK")) { continue; }
+
+                final String   withoutPrefix = filename.replaceAll("OpenJDK[0-9]+U\\-", "");
+                final String   withoutSuffix = withoutPrefix.substring(0, withoutPrefix.lastIndexOf("."));
+                final String[] filenameParts = withoutSuffix.split("_");
+
+                final VersionNumber versionNumber = VersionNumber.fromText(filenameParts[4] + (filenameParts.length == 6 ? ("+b" + filenameParts[5]) : ""));
+                final MajorVersion  majorVersion  = versionNumber.getMajorVersion();
+
+                String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+
+                PackageType packageType = PackageType.fromText(filenameParts[0]);
+
+                OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
+                                                                                   .filter(entry -> withoutSuffix.contains(entry.getKey()))
+                                                                                   .findFirst()
+                                                                                   .map(Entry::getValue)
+                                                                                   .orElse(OperatingSystem.NOT_FOUND);
+                if (OperatingSystem.NOT_FOUND == operatingSystem) {
+                        LOGGER.debug("Operating System not found in Temurin for filename: {}", filename);
+                    continue;
+                }
+
+
+                final Architecture    architecture    = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                                                                                     .filter(entry -> withoutSuffix.contains(entry.getKey()))
+                                                                                     .findFirst()
+                                                                                     .map(Entry::getValue)
+                                                                                     .orElse(Architecture.NOT_FOUND);
+                if (Architecture.NOT_FOUND == architecture) {
+                        LOGGER.debug("Architecture not found in Temurin for filename: {}", filename);
+                    continue;
+                }
+
+                    final ArchiveType archiveType = Helper.getFileEnding(filename);
+                if (OperatingSystem.MACOS == operatingSystem) {
+                    switch(archiveType) {
+                        case DEB:
+                        case RPM: operatingSystem = OperatingSystem.LINUX; break;
+                        case CAB:
+                        case MSI:
+                        case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
+                    }
+                }
+
+                Pkg pkg = new Pkg();
+                pkg.setDistribution(Distro.TEMURIN.get());
+                pkg.setArchitecture(architecture);
+                pkg.setBitness(architecture.getBitness());
+                pkg.setVersionNumber(versionNumber);
+                pkg.setJavaVersion(versionNumber);
+                pkg.setDistributionVersion(versionNumber);
+                pkg.setDirectDownloadUri(downloadLink);
+                pkg.setFileName(filename);
+                pkg.setArchiveType(archiveType);
+                pkg.setJavaFXBundled(false);
+                pkg.setTermOfSupport(majorVersion.getTermOfSupport());
+                pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+                pkg.setPackageType(packageType);
+                pkg.setOperatingSystem(operatingSystem);
+                pkg.setFreeUseInProduction(Boolean.TRUE);
+                pkgs.add(pkg);
+            }
+        }
+
+        LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
     }
 }
