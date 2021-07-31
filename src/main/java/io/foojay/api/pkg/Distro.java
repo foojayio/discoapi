@@ -19,29 +19,7 @@
 
 package io.foojay.api.pkg;
 
-import io.foojay.api.distribution.AOJ;
-import io.foojay.api.distribution.AOJ_OPENJ9;
-import io.foojay.api.distribution.JetBrains;
-import io.foojay.api.distribution.Temurin;
-import io.foojay.api.distribution.Corretto;
-import io.foojay.api.distribution.Distribution;
-import io.foojay.api.distribution.Dragonwell;
-import io.foojay.api.distribution.GraalVMCE16;
-import io.foojay.api.distribution.GraalVMCE11;
-import io.foojay.api.distribution.GraalVMCE8;
-import io.foojay.api.distribution.Liberica;
-import io.foojay.api.distribution.LibericaNative;
-import io.foojay.api.distribution.Mandrel;
-import io.foojay.api.distribution.Microsoft;
-import io.foojay.api.distribution.OJDKBuild;
-import io.foojay.api.distribution.OpenLogic;
-import io.foojay.api.distribution.Oracle;
-import io.foojay.api.distribution.OracleOpenJDK;
-import io.foojay.api.distribution.RedHat;
-import io.foojay.api.distribution.SAPMachine;
-import io.foojay.api.distribution.Trava;
-import io.foojay.api.distribution.Zulu;
-import io.foojay.api.distribution.ZuluPrime;
+import io.foojay.api.distribution.*;
 import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.scopes.UsageScope;
 import io.foojay.api.util.OutputFormat;
