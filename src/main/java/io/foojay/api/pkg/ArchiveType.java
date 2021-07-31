@@ -130,11 +130,11 @@ public enum ArchiveType implements ApiFeature {
     public List<String> getFileEndings() { return fileEndings; }
 
     public static ArchiveType getFromFileName(final String fileName) {
-        for (ArchiveType ext : values()) {
-            for (String ending : ext.getFileEndings()) {
-                if (fileName.toLowerCase().endsWith(ending)) { return ext; }
+        if (null == fileName || fileName.isEmpty()) { return ArchiveType.NONE; }
+        for (ArchiveType archiveType : values()) {
+            for (String ending : archiveType.getFileEndings()) {
+                if (fileName.toLowerCase().endsWith(ending)) { return archiveType; }
             }
-
         }
         return ArchiveType.NONE;
     }
