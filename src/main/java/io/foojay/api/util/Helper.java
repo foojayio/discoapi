@@ -36,6 +36,7 @@ import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.distribution.RedHat;
 import io.foojay.api.distribution.SAPMachine;
+import io.foojay.api.distribution.Temurin;
 import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
 import io.foojay.api.distribution.ZuluPrime;
@@ -167,7 +168,7 @@ public class Helper {
                     Zulu zulu = (Zulu) distro.get();
                     // Get packages from API
                     for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                        pkgs.addAll(getPkgsAsync(zulu, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
+                        pkgs.addAll(getPkgs(zulu, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
                     }
 
                     // Get packages from CDN
@@ -243,23 +244,23 @@ public class Helper {
                 SAPMachine  sapMachine = (SAPMachine) distro.get();
 
                 // Search through github release and fetch packages from there
-                String      query      = sapMachine.getPkgUrl() + "?per_page=100";
-                HttpResponse<String> response = get(query);
-                if (null == response) {
+                    String querySAPMachine = sapMachine.getPkgUrl() + "?per_page=100";
+                    HttpResponse<String> responseSAPMachine = get(querySAPMachine, Map.of("accept", "application/vnd.github.v3+json"));
+                    if (null == responseSAPMachine) {
                     LOGGER.debug("Response (SAP Machine) returned null");
                 } else {
-                    if (response.statusCode() == 200) {
-                        String      bodyText = response.body();
-                        Gson        gson     = new Gson();
-                        JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-                        if (element instanceof JsonArray) {
-                            JsonArray jsonArray = element.getAsJsonArray();
-                        pkgs.addAll(sapMachine.getAllPkgsFromJson(jsonArray));
+                        if (responseSAPMachine.statusCode() == 200) {
+                            String      bodyText = responseSAPMachine.body();
+                            Gson        gson     = new Gson();
+                            JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
+                            if (element instanceof JsonArray) {
+                                JsonArray jsonArray = element.getAsJsonArray();
+                                pkgs.addAll(sapMachine.getAllPkgsFromJson(jsonArray));
+                            }
+                        } else {
+                            // Problem with url request
+                            LOGGER.debug("Response (Status Code {}) {} ", responseSAPMachine.statusCode(), responseSAPMachine.body());
                         }
-                    } else {
-                        // Problem with url request
-                        LOGGER.debug("Response (Status Code {}) {} ", response.statusCode(), response.body());
-                    }
                     }
                 // Fetch packages from sap.github.io -> sapmachine_releases.json
                 pkgs.addAll(sapMachine.getAllPkgsFromJsonUrl());
@@ -275,9 +276,9 @@ public class Helper {
                 AOJ AOJ = (AOJ) distro.get();
                 for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
                     VersionNumber versionNumber = majorVersion.getVersionNumber();
-                        pkgs.addAll(getPkgsAsync(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                        pkgs.addAll(getPkgs(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
                                             ReleaseStatus.GA, TermOfSupport.NONE));
-                        pkgs.addAll(getPkgsAsync(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                        pkgs.addAll(getPkgs(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
                                             ReleaseStatus.EA, TermOfSupport.NONE));
                 }
                 break;
@@ -285,13 +286,15 @@ public class Helper {
                 AOJ_OPENJ9 AOJ_OPENJ9 = (AOJ_OPENJ9) distro.get();
                 for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
                     VersionNumber versionNumber = majorVersion.getVersionNumber();
-                        pkgs.addAll(getPkgsAsync(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                        pkgs.addAll(getPkgs(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
                                             ReleaseStatus.GA, TermOfSupport.NONE));
-                        pkgs.addAll(getPkgsAsync(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                        pkgs.addAll(getPkgs(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
                                             ReleaseStatus.EA, TermOfSupport.NONE));
                 }
                 break;
-                case TEMURIN:
+            case TEMURIN:
+                Temurin temurin = (Temurin) distro.get();
+                pkgs.addAll(temurin.getAllPkgs());
                 break;
             case MICROSOFT:
                 Microsoft microsoft = (Microsoft) distro.get();
@@ -311,12 +314,12 @@ public class Helper {
                 break;
             default:
                 Distribution distribution = distro.get();
-                for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                        pkgs.addAll(getPkgsAsync(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE,
-                                            PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
-                }
+                CacheManager.INSTANCE.getMajorVersions().stream().forEach(majorVersion -> {
+                    pkgs.addAll(getPkgs(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE,
+                                       PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
+                });
                 break;
-        }
+            }
         } catch (Exception e) {
             LOGGER.debug("There was a problem fetching packages for {}. {}", distro, e.getMessage());
         }
@@ -337,7 +340,9 @@ public class Helper {
                 List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(null, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
                 pkgsFound.addAll(pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList()));
             } else {
-            HttpResponse<String> response = get(query);
+                Map<String, String> headers = new HashMap<>();
+                if (query.contains("api.github.com")) { headers.put("accept", "application/vnd.github.v3+json"); }
+                HttpResponse<String> response = get(query, headers);
             if (null == response) {
                 LOGGER.debug("Response {} returned null.", distribution.getDistro().getApiString());
             } else {
@@ -393,7 +398,9 @@ public class Helper {
         String query = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
         try {
         Collection<CompletableFuture<List<Pkg>>> futures = Collections.synchronizedList(new ArrayList<>());
-        CompletableFuture<List<Pkg>> future = Helper.getAsync(query).thenApply(response -> {
+            Map<String, String> headers = new HashMap<>();
+            if (query.contains("api.github.com")) { headers.put("accept", "application/vnd.github.v3+json"); }
+            CompletableFuture<List<Pkg>> future = Helper.getAsync(query, headers).thenApply(response -> {
             List<Pkg> pkgs      = new LinkedList<>();
             List<Pkg> pkgsFound = new ArrayList<>();
             if (null == response) {
@@ -696,7 +703,7 @@ public class Helper {
         }
     }
 
-    public static final String getTextFromUrl(final String uri) throws Exception {
+    public static final String getTextFromUrl(final String uri) {
         try (var stream = URI.create(uri).toURL().openStream()) {
             return new String(stream.readAllBytes(), UTF_8);
         } catch(Exception e) {
@@ -1273,12 +1280,27 @@ public class Helper {
     }
 
     public static final HttpResponse<String> get(final String uri) {
+        return get(uri, new HashMap<>());
+    }
+    public static final HttpResponse<String> get(final String uri, final Map<String,String> headers) {
         if (null == httpClient) { httpClient = createHttpClient(); }
 
-        HttpRequest request = HttpRequest.newBuilder()
+        List<String> requestHeaders = new LinkedList<>();
+        requestHeaders.add("User-Agent");
+        requestHeaders.add("DiscoAPI");
+        headers.entrySet().forEach(entry -> {
+            final String name  = entry.getKey();
+            final String value = entry.getValue();
+            if (null != name && !name.isEmpty() && null != value && !value.isEmpty()) {
+                requestHeaders.add(name);
+                requestHeaders.add(value);
+            }
+        });
+
+        final HttpRequest request = HttpRequest.newBuilder()
                                          .GET()
                                          .uri(URI.create(uri))
-                                         .setHeader("User-Agent", "DiscoAPI")
+                                         .headers(requestHeaders.toArray(new String[0]))
                                          .timeout(Duration.ofSeconds(60))
                                          .build();
 
@@ -1299,14 +1321,30 @@ public class Helper {
     }
 
     public static final CompletableFuture<HttpResponse<String>> getAsync(final String uri) {
+        return getAsync(uri, new HashMap<>());
+    }
+    public static final CompletableFuture<HttpResponse<String>> getAsync(final String uri, final Map<String, String> headers) {
         if (null == httpClientAsync) { httpClientAsync = createHttpClient(); }
+
+        List<String> requestHeaders = new LinkedList<>();
+        requestHeaders.add("User-Agent");
+        requestHeaders.add("DiscoAPI");
+        headers.entrySet().forEach(entry -> {
+            final String name  = entry.getKey();
+            final String value = entry.getValue();
+            if (null != name && !name.isEmpty() && null != value && !value.isEmpty()) {
+                requestHeaders.add(name);
+                requestHeaders.add(value);
+            }
+        });
 
         final HttpRequest request = HttpRequest.newBuilder()
                                                .GET()
                                                .uri(URI.create(uri))
-                                               .setHeader("User-Agent", "DiscoAPI")
+                                               .headers(requestHeaders.toArray(new String[0]))
                                                .timeout(Duration.ofSeconds(60))
                                                .build();
+
         return httpClientAsync.sendAsync(request, BodyHandlers.ofString());
     }
 }
