@@ -205,7 +205,7 @@ public class AOJ implements Distribution {
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
         queryBuilder.append("jvm_impl=").append("hotspot");
 
-        if (operatingSystem != OperatingSystem.NONE) {
+        if (null != operatingSystem && OperatingSystem.NONE != operatingSystem && OperatingSystem.NOT_FOUND != operatingSystem) {
             queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
             queryBuilder.append(OPERATING_SYSTEM_PARAM).append("=").append(OPERATING_SYSTEM_MAP.get(operatingSystem));
         }
