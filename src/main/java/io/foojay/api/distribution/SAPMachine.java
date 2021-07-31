@@ -153,10 +153,9 @@ public class SAPMachine implements Distribution {
                                                    final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                                                    final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         StringBuilder queryBuilder = new StringBuilder();
-        //queryBuilder.append(getPkgUrl()).append(latest ? "/latest" : "").append("?per_page=100");
         queryBuilder.append(PACKAGE_URL).append("?per_page=100");
 
-        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder.toString());
+        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
 
         return queryBuilder.toString();
     }
