@@ -219,7 +219,9 @@ public class MajorVersion {
                                              .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
                                              .filter(pkg -> ReleaseStatus.GA == pkg.getReleaseStatus())
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream()
+                                             .sorted(Comparator.comparing(SemVer::getVersionNumber).reversed())
+                                             .collect(Collectors.toList());
     }
 
     public List<SemVer> getVersionsOnlyEarlyAccess(final List<Scope> scopes, final Match match) {
