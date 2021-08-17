@@ -19,28 +19,25 @@
 
 package io.foojay.api;
 
+import io.foojay.api.distribution.Distribution;
 import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
-import io.foojay.api.pkg.Feature;
-import io.foojay.api.pkg.LibCType;
-import io.foojay.api.pkg.Match;
-import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.Feature;
 import io.foojay.api.pkg.Latest;
+import io.foojay.api.pkg.LibCType;
 import io.foojay.api.pkg.MajorVersion;
+import io.foojay.api.pkg.Match;
 import io.foojay.api.pkg.OperatingSystem;
+import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
-import io.foojay.api.distribution.Distribution;
-import io.foojay.api.scopes.SignatureScope;
-import io.foojay.api.util.Comparison;
 import io.foojay.api.scopes.Scope;
+import io.foojay.api.util.Comparison;
 import io.foojay.api.util.Constants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -61,21 +58,20 @@ import static java.util.stream.Collectors.toSet;
 public enum DiscoService {
     INSTANCE;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DiscoService.class);
-
-
     public List<Pkg> getPkgsFromCache(final VersionNumber fromVersionNumber, final VersionNumber toVersionNumber, final List<Distribution> distributions, final List<Architecture> architectures, final List<ArchiveType> archiveTypes,
                                       final PackageType packageType, final List<OperatingSystem> operatingSystems, final List<LibCType> libCTypes, final List<ReleaseStatus> releaseStatus, final List<TermOfSupport> termsOfSupport,
                                       final Bitness bitness, final Boolean javafxBundled, final Boolean directlyDownloadable, final List<Feature> features, final Boolean signatureAvailable, final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
         Collection<Pkg> selection = CacheManager.INSTANCE.pkgCache.getPkgs();
-        for (Scope scope : pkgScopes) {
-            switch (scope.getApiString()) {
-                case "signature_available":
-                    selection = selection.parallelStream().filter(pkg -> !pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
-                    break;
-                case "signature_not_available":
-                    selection = selection.parallelStream().filter(pkg -> pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
-                    break;
+        if (null != pkgScopes && !pkgScopes.isEmpty()) {
+            for (Scope scope : pkgScopes) {
+                switch (scope.getApiString()) {
+                    case "signature_available":
+                        selection = selection.parallelStream().filter(pkg -> !pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
+                        break;
+                    case "signature_not_available":
+                        selection = selection.parallelStream().filter(pkg -> pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
+                        break;
+                }
             }
         }
         Collection<Pkg> pkgSelection = selection;
@@ -114,18 +110,19 @@ public enum DiscoService {
                                       final PackageType packageType, final List<OperatingSystem> operatingSystems, final List<LibCType> libCTypes, final List<ReleaseStatus> releaseStatus, final List<TermOfSupport> termsOfSupport,
                                       final Bitness bitness, final Boolean javafxBundled, final Boolean directlyDownloadable, final Latest latest, final List<Feature> features, final Boolean signatureAvailable, final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
         Collection<Pkg> selection = CacheManager.INSTANCE.pkgCache.getPkgs();
-        for (Scope scope : pkgScopes) {
-            switch (scope.getApiString()) {
-                case "signature_available":
-                    selection = selection.parallelStream().filter(pkg -> !pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
-                    break;
-                case "signature_not_available":
-                    selection = selection.parallelStream().filter(pkg -> pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
-                    break;
+        if (null != pkgScopes && !pkgScopes.isEmpty()) {
+            for (Scope scope : pkgScopes) {
+                switch (scope.getApiString()) {
+                    case "signature_available":
+                        selection = selection.parallelStream().filter(pkg -> !pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
+                        break;
+                    case "signature_not_available":
+                        selection = selection.parallelStream().filter(pkg -> pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
+                        break;
+                }
             }
         }
         Collection<Pkg> pkgSelection = selection;
-
         List<Pkg> pkgsFound;
         if (Comparison.EQUAL == comparison) {
             switch(latest) {
