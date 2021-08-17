@@ -817,7 +817,37 @@ public enum MongoDbManager {
         return true;
     }
 
+    public boolean removePkgsOfDistro(final Distro distro) {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, last update for distro not set.");
+            return false;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Could not upsert update because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return false;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.PACKAGES_COLLECTION) {
+            LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
+            return false;
+        }
+        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
 
+        MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
+        try {
+            Bson deleteFilter = eq(FIELD_DISTRIBUTION, distro.getApiString());
+            collection.deleteMany(deleteFilter);
+        } catch (JsonParseException e) {
+            LOGGER.error("Error when deleting package from {}. {}", distro.getApiString(), e.getMessage());
+        }
+
+        LOGGER.debug("Successfully removed packages of distro {}", distro.getApiString());
+        return true;
+    }
 
     public void updateEphemeralIds() {
         connect();
