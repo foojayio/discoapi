@@ -49,6 +49,8 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static io.foojay.api.pkg.ArchiveType.getFromFileName;
@@ -64,11 +66,11 @@ public class JetBrains implements Distribution {
     private static final Logger LOGGER = LoggerFactory.getLogger(JetBrains.class);
 
     private static final String        PACKAGE_URL            = "https://cache-redirector.jetbrains.com/intellij-jbr/";
-    public  static final String        PKGS_PROPERTIES        = "https://github.com/foojay2020/openjdk_releases/raw/main/jetbrains.properties";
-    public  static final String        GITHUB_RELEASES        = "https://github.com/JetBrains/JetBrainsRuntime/releases";
     private static final String        GITHUB_USER            = "JetBrains";
     private static final String        GITHUB_REPOSITORY      = "JetBrainsRuntime";
-    private static final String        GITHUB_RELEASES_URL    = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases";
+    public  static final String        PKGS_PROPERTIES        = "https://github.com/foojay2020/openjdk_releases/raw/main/jetbrains.properties";
+    public  static final String        GITHUB_RELEASES        = "https://github.com/JetBrains/JetBrainsRuntime/releases/latest";
+    public  static final String        GITHUB_RELEASES_URL    = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases/latest";
 
 
 
@@ -87,6 +89,8 @@ public class JetBrains implements Distribution {
     private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
     private static final String        SIGNATURE_URI          = "";
 
+    private static final Pattern       JBRSDK_PATTERN         = Pattern.compile("JBRSDK\\s+\\|\\s+\\[([0-9a-zA-Z_.-]+)\\]\\(([0-9a-z:/._-]+)\\)");
+    private static final Matcher       JBRSDK_MATCHER         = JBRSDK_PATTERN.matcher("");
 
     @Override public Distro getDistro() { return Distro.JETBRAINS; }
 
@@ -247,6 +251,76 @@ public class JetBrains implements Distribution {
         return pkgs;
     }
 
+    public List<Pkg> getAllPkgsFromString(final String bodyText) {
+        List<Pkg> pkgs = new ArrayList<>();
+        JBRSDK_MATCHER.reset(bodyText);
+        while(JBRSDK_MATCHER.find()) {
+            if (JBRSDK_MATCHER.groupCount() >= 2) {
+                String   filename         = JBRSDK_MATCHER.group(1);
+                String   strippedFilename = filename.replaceFirst("jbrsdk-", "").replaceAll("(\\.tar\\.gz|\\.zip)", "");
+                String[] filenameParts    = strippedFilename.split("-");
+                String   downloadLink     = JBRSDK_MATCHER.group(2);
+
+                if (null == filename || filename.isEmpty() || filename.endsWith("checksum")) { continue; }
+
+                Pkg pkg = new Pkg();
+
+                pkg.setDistribution(Distro.JETBRAINS.get());
+                pkg.setFileName(filename);
+                pkg.setDirectDownloadUri(downloadLink);
+
+                ArchiveType ext = getFromFileName(filename);
+                pkg.setArchiveType(ext);
+
+                Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                                                                 .filter(entry -> filename.contains(entry.getKey()))
+                                                                 .findFirst()
+                                                                 .map(Entry::getValue)
+                                                                 .orElse(Architecture.NONE);
+
+                pkg.setArchitecture(arch);
+                pkg.setBitness(arch.getBitness());
+
+
+                VersionNumber vNumber = VersionNumber.fromText(filenameParts[0].replaceAll("_", "."));
+                pkg.setVersionNumber(vNumber);
+                pkg.setJavaVersion(vNumber);
+                pkg.setDistributionVersion(vNumber);
+
+                pkg.setTermOfSupport(TermOfSupport.LTS);
+
+                pkg.setPackageType(JDK);
+
+                pkg.setReleaseStatus(GA);
+
+                OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
+                                                                      .filter(entry -> strippedFilename.contains(entry.getKey()))
+                                                                      .findFirst()
+                                                                      .map(Entry::getValue)
+                                                                      .orElse(OperatingSystem.NONE);
+
+                if (OperatingSystem.NONE == os) {
+                    LOGGER.debug("Operating System not found in {} for filename: {}", getName(), filename);
+                    continue;
+                }
+                pkg.setOperatingSystem(os);
+
+                if (WINDOWS == os) {
+                    pkg.setLibCType(LibCType.C_STD_LIB);
+                } else if (LINUX == os ) {
+                    pkg.setLibCType(LibCType.GLIBC);
+                } else if (MACOS == os) {
+                    pkg.setLibCType(LibCType.LIBC);
+                }
+
+                pkg.setFreeUseInProduction(Boolean.TRUE);
+
+                pkgs.add(pkg);
+            }
+        }
+        return pkgs;
+    }
+
     public List<Pkg> getAllPkgsFromHtml(final String html) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
@@ -272,7 +346,7 @@ public class JetBrains implements Distribution {
                                                                                .map(Entry::getValue)
                                                                                .orElse(OperatingSystem.NOT_FOUND);
             if (OperatingSystem.NOT_FOUND == operatingSystem) {
-                System.out.println("Operating System not found in JetBrains for filename: " + filename);
+                LOGGER.debug("Operating System not found in JetBrains for filename: {}", filename);
                 continue;
             }
 
@@ -283,7 +357,7 @@ public class JetBrains implements Distribution {
                                                                            .map(Entry::getValue)
                                                                            .orElse(Architecture.NOT_FOUND);
             if (Architecture.NOT_FOUND == architecture) {
-                System.out.println("Architecture not found in JetBrains for filename: " + filename);
+                LOGGER.debug("Architecture not found in JetBrains for filename: {}", filename);
                 continue;
             }
 
