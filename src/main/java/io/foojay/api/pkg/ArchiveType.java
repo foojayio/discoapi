@@ -25,15 +25,15 @@ import java.util.List;
 
 
 public enum ArchiveType implements ApiFeature {
-    APK("apk", "apk", "apk"),
-    BIN("bin", "bin", "bin"),
+    APK("apk", "apk", ".apk"),
+    BIN("bin", "bin", ".bin"),
     CAB("cab", "cab",".cab"),
     DEB("deb", "deb",".deb"),
     DMG("dmg", "dmg",".dmg"),
     MSI("msi", "msi",".msi"),
     PKG("pkg", "pkg",".pkg"),
     RPM("rpm", "rpm",".rpm"),
-    SRC_TAR("src.tar.gz", "src_tar",".src.tar.gz", ".source.tar.gz", "source.tar.gz"),
+    SRC_TAR("src.tar.gz", "src_tar",".src.tar.gz", ".source.tar.gz", ".source.tar.gz"),
     TAR("tar", "tar", ".tar"),
     TAR_GZ("tar.gz", "tar.gz", ".tar.gz"),
     TAR_Z("tar.Z", "tar.z", ".tar.Z"),
