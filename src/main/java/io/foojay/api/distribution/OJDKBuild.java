@@ -38,23 +38,19 @@ import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
+import io.foojay.api.util.GithubTokenPool;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpClient.Redirect;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpResponse.BodyHandlers;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeSet;
+import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -135,7 +131,10 @@ public class OJDKBuild implements Distribution {
                                              .stream()
                                              .filter(pkg -> Distro.OJDK_BUILD.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString))))
+                                             .stream()
+                                             .sorted(Comparator.comparing(SemVer::getVersionNumber).reversed())
+                                             .collect(Collectors.toList());
     }
 
 
@@ -291,20 +290,9 @@ public class OJDKBuild implements Distribution {
         try {
             for (String packageUrl : PACKAGE_URLS) {
                 // Get all packages from github
-                String      query   = packageUrl;
-                HttpClient  client  = HttpClient.newBuilder()
-                                                .followRedirects(Redirect.NORMAL)
-                                                .version(java.net.http.HttpClient.Version.HTTP_2)
-                                                .connectTimeout(Duration.ofSeconds(20))
-                                                .build();
-                HttpRequest request = HttpRequest.newBuilder()
-                                                 .uri(URI.create(query))
-                                                 .setHeader("User-Agent", "DiscoAPI")
-                                                 .timeout(Duration.ofSeconds(60))
-                                                 .GET()
-                                                 .build();
                 try {
-                    HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
+                    HttpResponse<String> response = Helper.get(packageUrl, Map.of("accept", "application/vnd.github.v3+json",
+                                                                                  "authorization", GithubTokenPool.INSTANCE.next()));
                     if (response.statusCode() == 200) {
                         String      bodyText = response.body();
                         Gson        gson     = new Gson();
@@ -317,8 +305,8 @@ public class OJDKBuild implements Distribution {
                         // Problem with url request
                         LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
                     }
-                } catch (InterruptedException | IOException e) {
-                    LOGGER.error("Error fetching packages for distribution {} from {}", getName(), query);
+                } catch (CompletionException e) {
+                    LOGGER.error("Error fetching packages for distribution {} from {}", getName(), packageUrl);
                 }
             }
         } catch (Exception e) {

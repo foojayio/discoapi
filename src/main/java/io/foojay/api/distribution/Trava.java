@@ -35,21 +35,16 @@ import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
+import io.foojay.api.util.GithubTokenPool;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpClient.Redirect;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpResponse.BodyHandlers;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
@@ -72,6 +67,7 @@ public class Trava implements Distribution {
     private static final String       GITHUB_USER      = "TravaOpenJDK";
     private static final String       PACKAGE_URL      = "https://github.com/TravaOpenJDK/";
     public  static final List<String> PACKAGE_URLS     = List.of("https://api.github.com/repos/" + GITHUB_USER + "/trava-jdk-8-dcevm/releases?per_page=100",
+                                                                 "https://api.github.com/repos/" + GITHUB_USER + "/trava-jdk-11-dcevm/releases?per_page=100",
                                                                  "https://api.github.com/repos/" + GITHUB_USER + "/trava-jdk-11-dcevm-newgen/releases?per_page=100");
 
 
@@ -130,7 +126,10 @@ public class Trava implements Distribution {
                                              .stream()
                                              .filter(pkg -> Distro.TRAVA.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString))))
+                                             .stream()
+                                             .sorted(Comparator.comparing(SemVer::getVersionNumber).reversed())
+                                             .collect(Collectors.toList());
     }
 
 
@@ -290,20 +289,9 @@ public class Trava implements Distribution {
         try {
             for (String packageUrl : PACKAGE_URLS) {
                 // Get all packages from github
-                String      query   = packageUrl;
-                HttpClient  client  = HttpClient.newBuilder()
-                                                .followRedirects(Redirect.NEVER)
-                                                .version(java.net.http.HttpClient.Version.HTTP_2)
-                                                .connectTimeout(Duration.ofSeconds(20))
-                                                .build();
-                HttpRequest request = HttpRequest.newBuilder()
-                                                 .uri(URI.create(query))
-                                                 .setHeader("User-Agent", "DiscoAPI")
-                                                 .timeout(Duration.ofSeconds(60))
-                                                 .GET()
-                                                 .build();
                 try {
-                    HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
+                    HttpResponse<String> response = Helper.get(packageUrl, Map.of("accept", "application/vnd.github.v3+json",
+                                                                                  "authorization", GithubTokenPool.INSTANCE.next()));
                     if (response.statusCode() == 200) {
                         String      bodyText = response.body();
                         Gson        gson     = new Gson();
@@ -316,8 +304,8 @@ public class Trava implements Distribution {
                         // Problem with url request
                         LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
                     }
-                } catch (CompletionException | InterruptedException | IOException e) {
-                    LOGGER.error("Error fetching packages for distribution {} from {}", getName(), query);
+                } catch (CompletionException e) {
+                    LOGGER.error("Error fetching packages for distribution {} from {}", getName(), packageUrl);
                 }
             }
         } catch (Exception e) {
@@ -334,10 +322,10 @@ public class Trava implements Distribution {
             JsonArray assets = jsonObj.getAsJsonArray("assets");
             for (JsonElement element : assets) {
                 JsonObject assetJsonObj = element.getAsJsonObject();
-                String     fileName     = assetJsonObj.get("name").getAsString();
+                String     filename     = assetJsonObj.get("name").getAsString();
 
-                if (null == fileName || fileName.isEmpty() || fileName.endsWith("txt") || fileName.endsWith("debuginfo.zip") || fileName.endsWith("sha256")) { continue; }
-                if (fileName.contains("-debug-")) { continue; }
+                if (null == filename || filename.isEmpty() || filename.endsWith("txt") || filename.endsWith("debuginfo.zip") || filename.endsWith("sha256")) { continue; }
+                if (filename.contains("-debug-")) { continue; }
 
                 String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
@@ -352,12 +340,12 @@ public class Trava implements Distribution {
                 Pkg pkg = new Pkg();
 
                 ArchiveType ext = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
-                                                               .filter(entry -> fileName.endsWith(entry.getKey()))
+                                                               .filter(entry -> filename.endsWith(entry.getKey()))
                                                                .findFirst()
                                                                .map(Entry::getValue)
                                                                .orElse(ArchiveType.NONE);
                 if (ArchiveType.NONE == ext) {
-                    LOGGER.debug("Archive Type not found in Trava for filename: {}", fileName);
+                    LOGGER.debug("Archive Type not found in Trava for filename: {}", filename);
                     continue;
                 } else if (ArchiveType.SRC_TAR == ext) {
                     continue;
@@ -372,29 +360,29 @@ public class Trava implements Distribution {
                 pkg.setTermOfSupport(supTerm);
 
                 pkg.setDistribution(Distro.TRAVA.get());
-                pkg.setFileName(fileName);
+                pkg.setFileName(filename);
                 pkg.setDirectDownloadUri(downloadLink);
                 pkg.setVersionNumber(vNumber);
                 pkg.setJavaVersion(vNumber);
                 pkg.setDistributionVersion(vNumber);
-                pkg.setPackageType(fileName.contains(Constants.JRE_POSTFIX) ? JRE : JDK);
-                pkg.setReleaseStatus(fileName.contains(Constants.EA_POSTFIX) ? EA : GA);
+                pkg.setPackageType(filename.contains(Constants.JRE_POSTFIX) ? JRE : JDK);
+                pkg.setReleaseStatus(filename.contains(Constants.EA_POSTFIX) ? EA : GA);
 
 
                 Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                                 .filter(entry -> fileName.contains(entry.getKey()))
+                                                                 .filter(entry -> filename.contains(entry.getKey()))
                                                                  .findFirst()
                                                                  .map(Entry::getValue)
                                                                  .orElse(Architecture.NONE);
                 if (Architecture.NONE == arch) {
-                    LOGGER.debug("Architecture not found in Trava for filename: {}", fileName);
+                    LOGGER.debug("Architecture not found in Trava for filename: {}", filename);
                     arch = Architecture.X64;
                 }
                 pkg.setArchitecture(arch);
                 pkg.setBitness(arch.getBitness());
 
                 OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                                      .filter(entry -> fileName.contains(entry.getKey()))
+                                                                      .filter(entry -> filename.contains(entry.getKey()))
                                                                       .findFirst()
                                                                       .map(Entry::getValue)
                                                                       .orElse(OperatingSystem.NONE);
@@ -416,7 +404,7 @@ public class Trava implements Distribution {
                     }
                 }
                 if (OperatingSystem.NONE == os) {
-                    LOGGER.debug("Operating System not found in Trava for filename: {}", fileName);
+                    LOGGER.debug("Operating System not found in Trava for filename: {}", filename);
                     continue;
                 }
                 pkg.setOperatingSystem(os);
