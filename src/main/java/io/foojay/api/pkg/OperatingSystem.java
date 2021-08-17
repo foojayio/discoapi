@@ -85,6 +85,10 @@ public enum OperatingSystem implements ApiFeature {
             case "linux":
             case "Linux":
             case "LINUX":
+            case "unix":
+            case "UNIX":
+            case "Unix":
+            case "-unix":
                 return LINUX;
             case "-linux-musl":
             case "-linux_musl":
