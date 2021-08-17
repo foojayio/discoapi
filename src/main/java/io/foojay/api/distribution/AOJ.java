@@ -279,6 +279,8 @@ public class AOJ implements Distribution {
                 String installerName         = installerObj.get(FIELD_NAME).getAsString();
                 String installerDownloadLink = installerObj.get(FIELD_LINK).getAsString();
 
+                if (installerDownloadLink.contains("temurin")) { continue; }
+
                 if (installerName.contains("testimage") || installerName.contains("debugimage")) { continue; }
 
                 if (Architecture.NONE == arc) {
@@ -345,6 +347,8 @@ public class AOJ implements Distribution {
                 JsonObject packageObj      = packageElement.getAsJsonObject();
                 String packageName         = packageObj.get(FIELD_NAME).getAsString();
                 String packageDownloadLink = packageObj.get(FIELD_LINK).getAsString();
+
+                if (packageDownloadLink.contains("temurin")) { continue; }
 
                 if (packageName.contains("testimage") || packageName.contains("debugimage")) { continue; }
 
