@@ -48,16 +48,16 @@ import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 public enum Distro implements ApiFeature {
-    AOJ("AOJ", "aoj", new AOJ(), 60),
-    AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 60),
+    AOJ("AOJ", "aoj", new AOJ(), 2880),
+    AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 2880),
     CORRETTO("Corretto", "corretto", new Corretto(), 720),
     DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 1440),
     GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 720),
     GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 720),
     GRAALVM_CE16("Graal VM CE 16", "graalvm_ce16", new GraalVMCE16(), 725),
-    JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 360),
-    LIBERICA("Liberica", "liberica", new Liberica(), 60),
-    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 720),
+    JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 720),
+    LIBERICA("Liberica", "liberica", new Liberica(), 180),
+    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 1440),
     MANDREL("Mandrel", "mandrel", new Mandrel(), 1440),
     MICROSOFT("Microsoft", "microsoft", new Microsoft(), 720),
     OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 1440),
@@ -66,10 +66,11 @@ public enum Distro implements ApiFeature {
     ORACLE("Oracle", "oracle", new Oracle(), 720),
     RED_HAT("Red Hat", "redhat", new RedHat(), 720),
     SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 720),
-    TEMURIN("Temurin", "temurin", new Temurin(), 60),
+    SEMERU("Semeru", "semeru", new Semeru(), 720),
+    TEMURIN("Temurin", "temurin", new Temurin(), 720),
     TRAVA("Trava", "trava", new Trava(), 1440),
     ZULU("Zulu", "zulu", new Zulu(), 15),
-    ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), 360),
+    ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), 1440),
     NONE("-", "", null, 0),
     NOT_FOUND("", "", null, 0);
 
@@ -271,6 +272,10 @@ public enum Distro implements ApiFeature {
             case "SAP-Machine":
             case "SAP-MACHINE":
                 return SAP_MACHINE;
+            case "semeru":
+            case "Semeru":
+            case "SEMERU":
+                return SEMERU;
             case "temurin":
             case "Temurin":
             case "TEMURIN":
