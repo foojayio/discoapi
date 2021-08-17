@@ -32,13 +32,13 @@ import java.util.stream.Collectors;
 public class SemVerTest {
     @Test
     public void semVerFromTextTest() {
-        String t1 = ">=11.0.9.0-ea+b1";
+        String t1 = ">=11.0.9.0-ea+1";
         SemVer semVer1 = SemVerParser.fromText(t1).getSemVer1();
-        assert semVer1.toString().equals(">=11.0.9-ea+b1");
+        assert semVer1.toString().equals(">=11.0.9-ea+1");
         assert semVer1.getVersionNumber().toString(OutputFormat.REDUCED, true, false).equals("11.0.9");
         assert ReleaseStatus.EA == semVer1.getReleaseStatus();
         assert semVer1.getPre().equals("-ea");
-        assert semVer1.getMetadata().equals("+b1");
+        assert semVer1.getMetadata().equals("+1");
         assert Comparison.GREATER_THAN_OR_EQUAL == semVer1.getComparison();
 
         String t2 = "1.8.0.252-ea";
@@ -88,29 +88,29 @@ public class SemVerTest {
         SemVer              semVer7             = result7.getSemVer1();
         assert semVer7.toString(false).equals("12.0.9.0.5.1-ea+meta");
 
-        String              t8                  = "14.0.0-ea.36+meta";
+        String              t8                  = "14.0.0-ea+36";
         SemVerParsingResult result8             = SemVerParser.fromText(t8);
         SemVer              semVer8             = result8.getSemVer1();
         assert ReleaseStatus.EA == semVer8.getReleaseStatus();
         assert semVer8.getPreBuild().equals("36");
-        assert semVer8.toString(false).equals("14-ea.36+meta");
+        assert semVer8.toString(false).equals("14-ea+36");
     }
 
     @Test
     public void semVerToStringTest() {
-        SemVer semVer = new SemVer(new VersionNumber(11, 0, 9, 1, 0, 5), ReleaseStatus.EA,"", "+b1");
-        assert "11.0.9.1-ea+b1".equals(semVer.toString());
-        assert "11.0.9.1.0.5-ea+b1".equals(semVer.toString(false));
+        SemVer semVer = new SemVer(new VersionNumber(11, 0, 9, 1, 0, 5), ReleaseStatus.EA,"", "+1");
+        assert "11.0.9.1-ea+1".equals(semVer.toString());
+        assert "11.0.9.1.0.5-ea+1".equals(semVer.toString(false));
 
-        SemVer semVer1 = SemVer.fromText("14.0.0-ea.36").getSemVer1();
-        assert "14-ea.36".equals(semVer1.toString());
+        SemVer semVer1 = SemVer.fromText("14.0.0-ea+36").getSemVer1();
+        assert "14-ea+36".equals(semVer1.toString());
     }
 
     @Test
     public void semVerEqualsToOtherSemVerTest() {
-        SemVer semver1 = SemVer.fromText(new VersionNumber(17, null, null, null, null, null, null, ReleaseStatus.EA, 28).toString()).getSemVer1();
-        SemVer semver2 = SemVer.fromText("17-ea.28").getSemVer1();
-        SemVer semver3 = SemVer.fromText("17-ea.34").getSemVer1();
+        SemVer semver1 = SemVer.fromText(new VersionNumber(17, null, null, null, null, null, 28, ReleaseStatus.EA).toString()).getSemVer1();
+        SemVer semver2 = SemVer.fromText("17-ea+28").getSemVer1();
+        SemVer semver3 = SemVer.fromText("17-ea+34").getSemVer1();
 
         assert semver1.equalTo(semver2);
         assert semver1.compareTo(semver2) == 0;
@@ -124,7 +124,7 @@ public class SemVerTest {
 
     @Test
     public void semVerConstructorTest() {
-        VersionNumber versionNumber = new VersionNumber(11, 0, 0, 0, 0, 0, 13, ReleaseStatus.EA, 5);
+        VersionNumber versionNumber = new VersionNumber(11, 0, 0, 0, 0, 0, 5, ReleaseStatus.EA);
         SemVer        semver        = new SemVer(versionNumber);
         assert versionNumber.toString(OutputFormat.REDUCED, true, true).equals(semver.toString(true));
     }

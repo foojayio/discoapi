@@ -80,7 +80,7 @@ public class VersionNumberTest {
         VersionNumber versionNumber10 = new VersionNumber(2, 060); // leading 0 will be interpreted as octal and 0x as hexadecimal
         assert versionNumber9.compareTo(versionNumber10) != 0;
 
-        VersionNumber versionNumber11 = new VersionNumber(17, null, null, null, null, null, null, ReleaseStatus.EA, 28);
+        VersionNumber versionNumber11 = new VersionNumber(17, null, null, null, null, null, 28, ReleaseStatus.EA);
         VersionNumber versionNumber12 = VersionNumber.fromText("17-ea.28");
         VersionNumber versionNumber13 = VersionNumber.fromText("17-ea.34");
         assert versionNumber11.equals(versionNumber12);
@@ -93,7 +93,7 @@ public class VersionNumberTest {
         assert versionNumber13.compareTo(versionNumber11) > 0;
 
         VersionNumber versionNumber14 = VersionNumber.fromText("16-ea.30");
-        VersionNumber versionNumber15 = new VersionNumber(16, null, null, null, null, null, null, ReleaseStatus.EA, 30);
+        VersionNumber versionNumber15 = new VersionNumber(16, null, null, null, null, null, 30, ReleaseStatus.EA);
         VersionNumber versionNumber16 = VersionNumber.fromText("16-ea");
         assert versionNumber14.compareTo(versionNumber15) == 0;
         assert versionNumber14.compareTo(versionNumber16) != 0;
@@ -101,14 +101,14 @@ public class VersionNumberTest {
 
     @Test
     public void versionNumberEqualsOtherVersionNumber2() {
-        final VersionNumber versionNumber1 = new VersionNumber(1);
-        final VersionNumber versionNumber2 = new VersionNumber(1);
-        final VersionNumber versionNumber3 = new VersionNumber(1, 2);
-        final VersionNumber versionNumber4 = new VersionNumber(1, 2);
-        final VersionNumber versionNumber5 = new VersionNumber(1, 2, 3);
-        final VersionNumber versionNumber6 = new VersionNumber(1, 2, 3);
-        final VersionNumber versionNumber7 = new VersionNumber(1, 2, 3, 4);
-        final VersionNumber versionNumber8 = new VersionNumber(1, 2, 3, 4);
+        final VersionNumber versionNumber1  = new VersionNumber(1);
+        final VersionNumber versionNumber2  = new VersionNumber(1);
+        final VersionNumber versionNumber3  = new VersionNumber(1, 2);
+        final VersionNumber versionNumber4  = new VersionNumber(1, 2);
+        final VersionNumber versionNumber5  = new VersionNumber(1, 2, 3);
+        final VersionNumber versionNumber6  = new VersionNumber(1, 2, 3);
+        final VersionNumber versionNumber7  = new VersionNumber(1, 2, 3, 4);
+        final VersionNumber versionNumber8  = new VersionNumber(1, 2, 3, 4);
         final VersionNumber versionNumber9  = new VersionNumber(8, 0, 282, null, 8);
         final VersionNumber versionNumber10 = new VersionNumber(8, 0, 282);
 
@@ -116,8 +116,8 @@ public class VersionNumberTest {
         assert versionNumber3.equals(versionNumber4);
         assert versionNumber5.equals(versionNumber6);
         assert versionNumber7.equals(versionNumber8);
-        assert versionNumber9.equals(versionNumber10); // equals -> 8.0.282 == 8.0.282+b8
-        assert versionNumber10.compareTo(versionNumber9) == 1; // compare to -> 8.0.282 > 8.0.282+b8
+        assert versionNumber9.equals(versionNumber10);          // equals -> 8.0.282 == 8.0.282+b8
+        assert versionNumber10.compareTo(versionNumber9) == -1; // compare to -> 8.0.282 < 8.0.282+b8
     }
 
     @Test
@@ -195,7 +195,7 @@ public class VersionNumberTest {
         final VersionNumber versionNumber11 = new VersionNumber(8, 0, 262);
         final VersionNumber versionNumber12 = new VersionNumber(8, 0, 262);
         final VersionNumber versionNumber13 = new VersionNumber(11);
-        final VersionNumber versionNumber14 = new VersionNumber(8, 0, 272);
+        final VersionNumber versionNumber14 = VersionNumberBuilder.create(8).updateNumber(272).buildNumber(10).build();
         final VersionNumber versionNumber15 = VersionNumberBuilder.create(8).updateNumber(275).buildNumber(1).build();
         final VersionNumber versionNumber16 = VersionNumberBuilder.create(8).updateNumber(272).buildNumber(9).build();
         final VersionNumber versionNumber17 = new VersionNumber(11, 0, 9, 1);
@@ -208,20 +208,20 @@ public class VersionNumberTest {
         final VersionNumber versionNumber24 = new VersionNumber(8, 0, 162, 0, 12);
         final VersionNumber versionNumber25 = new VersionNumber(11, 0, 1, 0);
         final VersionNumber versionNumber26 = new VersionNumber(11, 0, 0, 0);
-        final VersionNumber versionNumber27 = VersionNumberBuilder.create(14).releaseStatus(ReleaseStatus.EA).preBuildNumber(28).build();
-        final VersionNumber versionNumber28 = new VersionNumber(15, 0, 0);
+        final VersionNumber versionNumber27 = VersionNumberBuilder.create(14).releaseStatus(ReleaseStatus.EA).buildNumber(28).build();
+        final VersionNumber versionNumber28 = VersionNumberBuilder.create(15).releaseStatus(ReleaseStatus.EA).build();
         final VersionNumber versionNumber29 = new VersionNumber(11, 0, 9, 1, 5, 2);
-        final VersionNumber versionNumber30 = new VersionNumber(11, 0, 9, 1, 5, 2);
-        final VersionNumber versionNumber31 = new VersionNumber(17, 0, 0, 0, null, null, null, ReleaseStatus.EA, 1);
-        final VersionNumber versionNumber32 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
-        final VersionNumber versionNumber33 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
-        final VersionNumber versionNumber34 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
-        final VersionNumber versionNumber35 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
-        final VersionNumber versionNumber36 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
-        final VersionNumber versionNumber37 = new VersionNumber(14, null, null, null, null, null, null, ReleaseStatus.EA, 36);
-        final VersionNumber versionNumber38 = new VersionNumber(17, null, null, null, null, null, null, ReleaseStatus.EA, 8);
-        final VersionNumber versionNumber39 = new VersionNumber(17, null, null, null, null, null, null, ReleaseStatus.EA, 5);
-        final VersionNumber versionNumber40 = new VersionNumber(17, null, null, null, null, null, null, ReleaseStatus.EA, 2);
+        final VersionNumber versionNumber30 = VersionNumberBuilder.create(11).updateNumber(9).patchNumber(1).fifthNumber(5).sixthNumber(2).releaseStatus(ReleaseStatus.EA).build();
+        final VersionNumber versionNumber31 = new VersionNumber(17, 0, 0, 0, null, null, 1, ReleaseStatus.EA);
+        final VersionNumber versionNumber32 = new VersionNumber(14, null, null, null, null, null, 36, ReleaseStatus.EA);
+        final VersionNumber versionNumber33 = new VersionNumber(14, null, null, null, null, null, 36, ReleaseStatus.EA);
+        final VersionNumber versionNumber34 = new VersionNumber(14, null, null, null, null, null, 36, ReleaseStatus.EA);
+        final VersionNumber versionNumber35 = new VersionNumber(14, null, null, null, null, null, 36, ReleaseStatus.EA);
+        final VersionNumber versionNumber36 = new VersionNumber(14, null, null, null, null, null, 36, ReleaseStatus.EA);
+        final VersionNumber versionNumber37 = new VersionNumber(14, null, null, null, null, null, 36, ReleaseStatus.EA);
+        final VersionNumber versionNumber38 = new VersionNumber(17, null, null, null, null, null, 8, ReleaseStatus.EA);
+        final VersionNumber versionNumber39 = new VersionNumber(17, null, null, null, null, null, 5, ReleaseStatus.EA);
+        final VersionNumber versionNumber40 = new VersionNumber(17, null, null, null, null, null, 2, ReleaseStatus.EA);
 
         assert versionNumber1.compareTo(VersionNumber.fromText(versionNumber1String))   == 0;
         assert versionNumber2.compareTo(VersionNumber.fromText(versionNumber2String))   == 0;
@@ -276,11 +276,11 @@ public class VersionNumberTest {
         final String versionNumber4String = "8u172-b11";                 // 8.0.172 build 11
         final String versionNumber5String = "8u162-b12_openj9-0.8.0";    // 8.0.162 build 12
 
-        final VersionNumber versionNumber1 = new VersionNumber(8, 0, 275, null, null, null, 1, null, null);
-        final VersionNumber versionNumber2 = new VersionNumber(8, 0, 272, null, null, null, 9, null, null);
-        final VersionNumber versionNumber3 = new VersionNumber(7, 0, 25, null, null, null, 15, null, null);
-        final VersionNumber versionNumber4 = new VersionNumber(8, 0, 172, null, null, null, 11, null, null);
-        final VersionNumber versionNumber5 = new VersionNumber(8, 0, 162, null, null, null, 12, null, null);
+        final VersionNumber versionNumber1 = new VersionNumber(8, 0, 275, null, null, null, 1, null);
+        final VersionNumber versionNumber2 = new VersionNumber(8, 0, 272, null, null, null, 9, null);
+        final VersionNumber versionNumber3 = new VersionNumber(7, 0, 25, null, null, null, 15, null);
+        final VersionNumber versionNumber4 = new VersionNumber(8, 0, 172, null, null, null, 11, null);
+        final VersionNumber versionNumber5 = new VersionNumber(8, 0, 162, null, null, null, 12, null);
 
         assert VersionNumber.fromText(versionNumber1String).toString().equals(versionNumber1.toString());
         assert VersionNumber.fromText(versionNumber2String).toString().equals(versionNumber2.toString());
@@ -325,11 +325,11 @@ public class VersionNumberTest {
 
     @Test
     public void sortingVersionNumbers() {
-        VersionNumber vn1 = new VersionNumber(11,0,10, null, null, null, 2, ReleaseStatus.GA, null);
-        VersionNumber vn2 = new VersionNumber(11,0,10, null, null, null, 3, ReleaseStatus.GA, null);
-        VersionNumber vn3 = new VersionNumber(11,0,10, null, null, null, 4, ReleaseStatus.GA, null);
-        VersionNumber vn4 = new VersionNumber(11,0,10, null, null, null, 1, ReleaseStatus.GA, null);
-        VersionNumber vn5 = new VersionNumber(11,0,10, null, null, null, null, ReleaseStatus.GA, null);
+        VersionNumber vn1 = new VersionNumber(11,0,10, null, null, null, 2, ReleaseStatus.GA);
+        VersionNumber vn2 = new VersionNumber(11,0,10, null, null, null, 3, ReleaseStatus.GA);
+        VersionNumber vn3 = new VersionNumber(11,0,10, null, null, null, 4, ReleaseStatus.GA);
+        VersionNumber vn4 = new VersionNumber(11,0,10, null, null, null, 1, ReleaseStatus.GA);
+        VersionNumber vn5 = new VersionNumber(11,0,10, null, null, null, null, ReleaseStatus.GA);
 
         List<VersionNumber> versions       = new ArrayList<>(Arrays.asList(new VersionNumber[]{vn1, vn2, vn3, vn4, vn5}));
         List<VersionNumber> sortedVersions = versions.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());

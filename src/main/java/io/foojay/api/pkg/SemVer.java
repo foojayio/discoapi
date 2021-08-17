@@ -21,6 +21,7 @@ package io.foojay.api.pkg;
 
 import io.foojay.api.util.Comparison;
 import io.foojay.api.util.Error;
+import io.foojay.api.util.Helper;
 import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.SemVerParser;
 import io.foojay.api.util.SemVerParsingResult;
@@ -45,7 +46,7 @@ public class SemVer implements Comparable<SemVer> {
 
 
     public SemVer(final VersionNumber versionNumber) {
-        this(versionNumber, versionNumber.getReleaseStatus() != null && versionNumber.getReleaseStatus().isPresent() ? versionNumber.getReleaseStatus().get() : ReleaseStatus.GA, versionNumber.getPreBuild() != null && versionNumber.getPreBuild().isPresent() ? "-ea." + versionNumber.getPreBuild().getAsInt() : "", versionNumber.getBuild() != null && versionNumber.getBuild().isPresent() ? "+b" + versionNumber.getBuild().getAsInt() : "");
+        this(versionNumber, versionNumber.getReleaseStatus() != null && versionNumber.getReleaseStatus().isPresent() ? versionNumber.getReleaseStatus().get() : ReleaseStatus.GA, versionNumber.getReleaseStatus().isPresent() ? ReleaseStatus.EA == versionNumber.getReleaseStatus().get() ? "-ea" : "" : "", (versionNumber.getBuild() != null && versionNumber.getBuild().isPresent() && versionNumber.getBuild().getAsInt() > 0) ? "+" + versionNumber.getBuild().getAsInt() : "");
     }
     public SemVer(final VersionNumber versionNumber, final ReleaseStatus releaseStatus) {
         this(versionNumber, releaseStatus, ReleaseStatus.EA == releaseStatus ? "ea" : "", "");
@@ -64,9 +65,23 @@ public class SemVer implements Comparable<SemVer> {
         this.comparison    = Comparison.EQUAL;
         this.preBuild      = "";
 
-        if (null != this.versionNumber.getReleaseStatus() && this.versionNumber.getReleaseStatus().isPresent() && this.versionNumber.getReleaseStatus().get() != this.releaseStatus) {
-            this.versionNumber.setReleaseStatus(this.releaseStatus);
+        if (versionNumber.getBuild().isPresent() && versionNumber.getBuild().getAsInt() > 0) {
+            this.preBuild = Integer.toString(versionNumber.getBuild().getAsInt());
         }
+
+        if (this.preBuild.isEmpty() && !metadata.isEmpty()) {
+            if (Helper.isPositiveInteger(this.metadata)) {
+                this.preBuild = this.metadata;
+                Integer build = Integer.valueOf(this.preBuild);
+                if (build > 0) {
+                    this.versionNumber.setBuild(build);
+                }
+            }
+        }
+
+        //if (this.versionNumber.getReleaseStatus().isPresent() && this.versionNumber.getReleaseStatus().get() != this.releaseStatus) {
+        //    this.versionNumber.setReleaseStatus(this.releaseStatus);
+        //}
 
         // Extract early access preBuild
         if (null != this.pre) {
@@ -77,9 +92,14 @@ public class SemVer implements Comparable<SemVer> {
                 if (null != eaResult.group(1)) {
                     this.versionNumber.setReleaseStatus(ReleaseStatus.EA);
                     if (null != eaResult.group(4)) {
-                        this.preBuild = eaResult.group(4);
-                        if (null == this.versionNumber.getPreBuild() || this.versionNumber.getPreBuild().isEmpty()) {
-                            this.versionNumber.setPreBuild(Integer.parseInt(this.preBuild));
+                        this.preBuild = !eaResult.group(4).equals("0") ? eaResult.group(4) : "";
+                        if (null == this.versionNumber.getBuild() || this.versionNumber.getBuild().isEmpty()) {
+                            if (!this.preBuild.isEmpty()) {
+                                Integer build = Integer.parseInt(this.preBuild);
+                                if (build > 0) {
+                                    this.versionNumber.setBuild(build);
+                                }
+                            }
                         }
                     }
                 }
@@ -107,7 +127,11 @@ public class SemVer implements Comparable<SemVer> {
                 if (null != buildNumberResult.group(1)) {
                     if (null != buildNumberResult.group(2)) {
                         if (null == this.versionNumber.getBuild() || this.versionNumber.getBuild().isEmpty()) {
-                            this.versionNumber.setBuild(Integer.parseInt(buildNumberResult.group(2)));
+                            Integer build = Integer.parseInt(buildNumberResult.group(2));
+                            if (build > 0) {
+                                this.versionNumber.setBuild(build);
+                                this.preBuild = Integer.toString(build);
+                            }
                         }
                     }
                 }
@@ -155,13 +179,18 @@ public class SemVer implements Comparable<SemVer> {
     public String getPreBuild() { return preBuild; }
     public void setPreBuild(final String preBuild) {
         if (preBuild.matches("[0-9]+")) {
-            if (preBuild.length() > 1 && preBuild.startsWith("0")) {
-                throw new IllegalArgumentException("preBuild cannot starts with 0: " + preBuild);
+            if (preBuild.length() > 1 && (preBuild.startsWith("0") || preBuild.startsWith("b0"))) {
+                throw new IllegalArgumentException("preBuild must be larger than 0");
             }
             this.preBuild = preBuild;
         } else {
-            throw new IllegalArgumentException("Invalid preBuild: " + preBuild);
+            throw new IllegalArgumentException("Invalid preBuild: " + preBuild + ". It should only contain integers > 0.");
         }
+    }
+
+    public Integer getPreBuildAsInt() {
+        if (null == preBuild || preBuild.isEmpty()) { return -1; }
+        return Integer.valueOf(preBuild);
     }
 
     public String getMetadata() { return metadata; }
@@ -301,6 +330,11 @@ public class SemVer implements Comparable<SemVer> {
         d = compareSegment(getSixth(), semVer.getSixth());
         if (d != 0) { return d; }
 
+        if (ReleaseStatus.EA == releaseStatus) {
+            d = compareSegment(getPreBuildAsInt(), semVer.getPreBuildAsInt());
+            if (d != 0) { return d; }
+        }
+
         if ((null != pre && pre.isEmpty()) && (null != semVer.getPre() && semVer.getPre().isEmpty())) { return 0; }
         if (null == pre || pre.isEmpty()) { return 1; }
         if (null == semVer.getPre() || semVer.getPre().isEmpty()) { return -1; }
@@ -351,17 +385,11 @@ public class SemVer implements Comparable<SemVer> {
         }
 
         if (prePart1.isEmpty()) {
-            if (!prePart2.isEmpty()) {
-                return -1;
-            }
-            return 1;
+            return !prePart2.isEmpty() ? -1 : 1;
         }
 
         if (prePart2.isEmpty()) {
-            if (!prePart1.isEmpty()) {
-                return 1;
-            }
-            return -1;
+            return !prePart1.isEmpty() ? 1 : -1;
         }
 
         Integer prePart1Number;
@@ -378,11 +406,7 @@ public class SemVer implements Comparable<SemVer> {
         }
 
         if (null != prePart1Number && null != prePart2Number) {
-            if (prePart1Number > prePart2Number) {
-                return 1;
-            } else {
-                return -1;
-            }
+            return prePart1Number > prePart2Number ? 1 : -1;
         } else if (null != prePart2Number) {
             return -1;
         } else if (null != prePart1Number) {
@@ -396,11 +420,27 @@ public class SemVer implements Comparable<SemVer> {
         versionBuilder.append(Comparison.EQUAL != comparison ? comparison.getOperator() : "");
         versionBuilder.append(versionNumber.toString(OutputFormat.REDUCED, javaFormat, false));
         if (ReleaseStatus.EA == releaseStatus) {
-            versionBuilder.append("-ea").append(preBuild.isEmpty() ? "" : ("." + preBuild));
+            versionBuilder.append("-ea");
         }
+
+        if (null == preBuild || preBuild.isEmpty()) {
         if (null != metadata && !metadata.isEmpty()) {
             versionBuilder.append(metadata.startsWith("+") ? metadata : ("+" + metadata));
         }
+        } else {
+            if (preBuild.startsWith("+")) {
+                preBuild = preBuild.substring(1);
+            }
+            try {
+                Integer pb = Integer.valueOf(preBuild);
+                if (pb > 0) {
+                    versionBuilder.append("+").append(pb);
+                }
+            } catch (NumberFormatException e) {
+                versionBuilder.append(preBuild.startsWith("+") ? preBuild : ("+" + preBuild));
+            }
+        }
+
         return versionBuilder.toString();
     }
 

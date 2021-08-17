@@ -147,6 +147,13 @@ public class SemVerParser {
         // Validate prerelease
         Error err1;
         if (null != pre1 && !pre1.isEmpty()) {
+            String[] eparts = pre1.split("\\.");
+            if (eparts.length > 0 && (eparts[0].equalsIgnoreCase("-ea") || eparts[0].equalsIgnoreCase("ea"))) {
+                pre1 = "ea";
+            }
+            if (eparts.length > 1 && Helper.isPositiveInteger(eparts[1])) {
+                metadata1 = eparts[1];
+            }
             err1 = validatePrerelease(pre1);
             if (null != err1) {
                 parsingResult.setError1(err1);
@@ -269,6 +276,13 @@ public class SemVerParser {
             // Validate prerelease
             Error err2;
             if (null != pre2 && !pre2.isEmpty()) {
+            String[] eparts = pre2.split("\\.");
+            if (eparts.length > 0 && (eparts[0].equalsIgnoreCase("-ea") || eparts[0].equalsIgnoreCase("ea"))) {
+                pre2 = "ea";
+            }
+            if (eparts.length > 1 && Helper.isPositiveInteger(eparts[1])) {
+                metadata2 = eparts[1];
+            }
                 err2 = validatePrerelease(pre2);
                 if (null != err2) {
                     parsingResult.setError2(err2);

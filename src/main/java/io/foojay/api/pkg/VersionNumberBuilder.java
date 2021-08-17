@@ -81,12 +81,6 @@ public class VersionNumberBuilder {
         return this;
     }
 
-    public VersionNumberBuilder preBuildNumber(final Integer preBuildNumber) throws IllegalArgumentException {
-        if (null != preBuildNumber && 0 > preBuildNumber) { throw new IllegalArgumentException("PreBuild number cannot be smaller than 0"); }
-        versionNumber.setPreBuild(preBuildNumber);
-        return this;
-    }
-
     public VersionNumber build() {
         return versionNumber;
     }
