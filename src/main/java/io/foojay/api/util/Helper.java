@@ -36,6 +36,7 @@ import io.foojay.api.distribution.Oracle;
 import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.distribution.RedHat;
 import io.foojay.api.distribution.SAPMachine;
+import io.foojay.api.distribution.Semeru;
 import io.foojay.api.distribution.Temurin;
 import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
@@ -245,7 +246,8 @@ public class Helper {
 
                 // Search through github release and fetch packages from there
                     String querySAPMachine = sapMachine.getPkgUrl() + "?per_page=100";
-                    HttpResponse<String> responseSAPMachine = get(querySAPMachine, Map.of("accept", "application/vnd.github.v3+json"));
+                    HttpResponse<String> responseSAPMachine = get(querySAPMachine, Map.of("accept", "application/vnd.github.v3+json",
+                                                                                          "authorization", GithubTokenPool.INSTANCE.next()));
                     if (null == responseSAPMachine) {
                     LOGGER.debug("Response (SAP Machine) returned null");
                 } else {
@@ -267,6 +269,10 @@ public class Helper {
 
                 // Fetch major versions 10, 12, 13 from github
                 pkgs.addAll(sapMachine.getAllPkgs());
+                break;
+            case SEMERU:
+                Semeru semeru = (Semeru) distro.get();
+                pkgs.addAll(semeru.getAllPkgs());
                 break;
             case TRAVA:
                 Trava trava = (Trava) distro.get();
@@ -300,10 +306,33 @@ public class Helper {
                 Microsoft microsoft = (Microsoft) distro.get();
                 pkgs.addAll(microsoft.getAllPkgs());
                 break;
-                case JETBRAINS:
-                    JetBrains jetbrains = (JetBrains) distro.get();
-                    pkgs.addAll(jetbrains.getAllPkgs());
-                    break;
+            case JETBRAINS:
+                JetBrains jetbrains = (JetBrains) distro.get();
+                // Add all packages from properties file
+                pkgs.addAll(jetbrains.getAllPkgs());
+                // Add packages from latest github release
+                String queryJetbrains = jetbrains.GITHUB_RELEASES_URL;
+                HttpResponse<String> responseJetbrains = Helper.get(queryJetbrains, Map.of("accept", "application/vnd.github.v3+json",
+                                                                                               "authorization", GithubTokenPool.INSTANCE.next()));
+                if (null == responseJetbrains) {
+                    LOGGER.debug("Response (JetBrains) returned null");
+                } else {
+                    if (responseJetbrains.statusCode() == 200) {
+                        String      bodyText = responseJetbrains.body();
+                        Gson        gson    = new Gson();
+                        JsonElement element = gson.fromJson(bodyText, JsonElement.class);
+                        if (element instanceof JsonObject) {
+                            JsonObject jsonObject = element.getAsJsonObject();
+                            if (jsonObject.has("body")) {
+                                pkgs.addAll(jetbrains.getAllPkgsFromString(jsonObject.get("body").getAsString()));
+                            }
+                        }
+                    } else {
+                        // Problem with url request
+                        LOGGER.debug("Response (Status Code {}) {} ", responseJetbrains.statusCode(), responseJetbrains.body());
+                    }
+                }
+                break;
             case LIBERICA_NATIVE:
                 LibericaNative libericaNative = (LibericaNative) distro.get();
                 pkgs.addAll(libericaNative.getAllPkgs());
@@ -341,7 +370,10 @@ public class Helper {
                 pkgsFound.addAll(pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList()));
             } else {
                 Map<String, String> headers = new HashMap<>();
-                if (query.contains("api.github.com")) { headers.put("accept", "application/vnd.github.v3+json"); }
+                if (query.contains("api.github.com")) {
+                    headers.put("accept", "application/vnd.github.v3+json");
+                    headers.put("authorization", GithubTokenPool.INSTANCE.next());
+                }
                 HttpResponse<String> response = get(query, headers);
             if (null == response) {
                 LOGGER.debug("Response {} returned null.", distribution.getDistro().getApiString());
