@@ -19,18 +19,13 @@
 
 package io.foojay.api;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.util.Constants;
-import io.foojay.api.util.EphemeralIdCache;
 import io.foojay.api.util.Helper;
-import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.PkgCache;
 import io.foojay.api.util.State;
 import io.micronaut.context.annotation.Requires;
@@ -45,6 +40,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
@@ -67,19 +63,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.foojay.api.util.Constants.API_VERSION_V1;
-import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
-import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
-import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
-
 
 @Requires(notEnv = Environment.TEST) // Don't run in tests
 public enum CacheManager {
     INSTANCE;
 
-    private static final Logger                           LOGGER                             = LoggerFactory.getLogger(CacheManager.class);
-    public final         PkgCache<String, Pkg>            pkgCache                           = new PkgCache<>();
-    public final         Map<Integer, Boolean>            maintainedMajorVersions            = new ConcurrentHashMap<>() {{
+    private static final Logger                           LOGGER                                    = LoggerFactory.getLogger(CacheManager.class);
+    public final         PkgCache<String, Pkg>            pkgCache                                  = new PkgCache<>();
+    public final         Map<Integer, Boolean>            maintainedMajorVersions                   = new ConcurrentHashMap<>() {{
         put(1, false);
         put(2, false);
         put(3, false);
@@ -97,12 +88,13 @@ public enum CacheManager {
         put(15, true);
         put(16, true);
         put(17, true);
+        put(18, true);
     }};
-    public               AtomicBoolean                    ephemeralIdCacheIsUpdating         = new AtomicBoolean(false);
-    public               AtomicReference<String>          publicPkgs                         = new AtomicReference<>();
-    public               AtomicReference<String>          publicPkgsIncldugingEa             = new AtomicReference<>();
-    public               AtomicReference<String>          publicPkgsDownloadable             = new AtomicReference<>();
-    public               AtomicReference<String>          publicPkgsIncldugingEaDownloadable = new AtomicReference<>();
+    public               AtomicBoolean                    ephemeralIdCacheIsUpdating                = new AtomicBoolean(false);
+    public               AtomicReference<String>          publicPkgs                                = new AtomicReference<>();
+    public               AtomicReference<String>          publicPkgsIncldugingEa                    = new AtomicReference<>();
+    public               AtomicReference<String>          publicPkgsDownloadable                    = new AtomicReference<>();
+    public               AtomicReference<String>          publicPkgsIncldugingEaDownloadable        = new AtomicReference<>();
 
     public               AtomicReference<String>          publicPkgsOpenJDK                         = new AtomicReference<>();
     public               AtomicReference<String>          publicPkgsOpenJDKIncldugingEa             = new AtomicReference<>();
@@ -114,13 +106,13 @@ public enum CacheManager {
     public               AtomicReference<String>          publicPkgsGraalVMDownloadable             = new AtomicReference<>();
     public               AtomicReference<String>          publicPkgsGraalVMIncldugingEaDownloadable = new AtomicReference<>();
 
-    public               AtomicLong                       msToGetAllPkgsFromDB               = new AtomicLong(-1);
-    public               AtomicReference<Duration>        durationToUpdateMongoDb            = new AtomicReference<>();
-    public               AtomicReference<Duration>        durationForLastUpdateRun           = new AtomicReference();
-    public               AtomicInteger                    distrosUpdatedInLastRun            = new AtomicInteger(-1);
-    public               AtomicInteger                    packagesAddedInUpdate              = new AtomicInteger(0);
-    public               AtomicLong                       numberOfPackages                   = new AtomicLong(-1);
-    private final        List<MajorVersion>               majorVersions                      = new LinkedList<>();
+    public               AtomicLong                       msToGetAllPkgsFromDB                      = new AtomicLong(-1);
+    public               AtomicReference<Duration>        durationToUpdateMongoDb                   = new AtomicReference<>();
+    public               AtomicReference<Duration>        durationForLastUpdateRun                  = new AtomicReference();
+    public               AtomicInteger                    distrosUpdatedInLastRun                   = new AtomicInteger(-1);
+    public               AtomicInteger                    packagesAddedInUpdate                     = new AtomicInteger(0);
+    public               AtomicLong                       numberOfPackages                          = new AtomicLong(-1);
+    private final        List<MajorVersion>               majorVersions                             = new LinkedList<>();
 
 
 
@@ -140,7 +132,9 @@ public enum CacheManager {
             final double  delta               = (lastUpdateForDistro.until(Instant.now(), ChronoUnit.MINUTES));
             if (delta > distro.getMinUpdateIntervalInMinutes() || forceUpdate) {
                 final Instant updateDistroStart = Instant.now();
-                pkgsFound.addAll(Helper.getPkgsOfDistro(distro));
+                List<Pkg> pkgsOfDistro = Helper.getPkgsOfDistro(distro);
+                pkgsFound.addAll(pkgsOfDistro);
+                LOGGER.debug("{} packages added from {}", pkgsOfDistro.size(), distro.getName());
                 distro.lastUpdateDuration.set(Duration.between(updateDistroStart, Instant.now()));
 
                 MongoDbManager.INSTANCE.setLastUpdateForDistro(distro);
@@ -265,18 +259,24 @@ public enum CacheManager {
         LOGGER.debug("Updating major versions");
         // Update all available major versions (exclude GraalVM based pkgs because they have different version numbers)
         majorVersions.clear();
-        majorVersions.addAll(pkgCache.getPkgs()
-                                     .stream()
-                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8)
-                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11)
-                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE16)
-                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE)
-                                     .filter(pkg -> pkg.getDistribution().getDistro() != Distro.MANDREL)
-                                     .map(pkg -> pkg.getVersionNumber().getFeature().getAsInt())
-                                     .distinct()
-                                     .map(majorVersion -> new MajorVersion(majorVersion))
-                                     .sorted(Comparator.comparing(MajorVersion::getVersionNumber).reversed())
-                                     .collect(Collectors.toList()));
+
+        if (pkgCache.isEmpty()) {
+            maintainedMajorVersions.keySet().forEach(key -> majorVersions.add(new MajorVersion(key, Helper.getTermOfSupport(key))));
+            Collections.sort(majorVersions, Comparator.comparing(MajorVersion::getVersionNumber).reversed());
+        } else {
+            majorVersions.addAll(pkgCache.getPkgs()
+                                         .stream()
+                                         .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8)
+                                         .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11)
+                                         .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE16)
+                                         .filter(pkg -> pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE)
+                                         .filter(pkg -> pkg.getDistribution().getDistro() != Distro.MANDREL)
+                                         .map(pkg -> pkg.getVersionNumber().getFeature().getAsInt())
+                                         .distinct()
+                                         .map(majorVersion -> new MajorVersion(majorVersion))
+                                         .sorted(Comparator.comparing(MajorVersion::getVersionNumber).reversed())
+                                         .collect(Collectors.toList()));
+        }
         // Validate major versions
         final Optional<MajorVersion> largestFeatureVersion       = majorVersions.stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).limit(1).findFirst();
         final Optional<MajorVersion> secondLargestFeatureVersion = majorVersions.stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).limit(2).skip(1).findFirst();
@@ -301,7 +301,6 @@ public enum CacheManager {
                 LOGGER.debug("Error updating major versions. Please check package cache.");
             }
         }
-
         LOGGER.debug("Successfully updated major versions");
     }
 
