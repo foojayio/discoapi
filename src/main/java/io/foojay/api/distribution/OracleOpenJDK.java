@@ -84,6 +84,8 @@ public class OracleOpenJDK implements Distribution {
     private static final String                       FILENAME_PREFIX            = "openjdk-";
     private static final Pattern                      FILENAME_PREFIX_PATTERN    = Pattern.compile("OpenJDK(8|11)U-");
     private static final Matcher                      FILENAME_PREFIX_MATCHER    = FILENAME_PREFIX_PATTERN.matcher("");
+    private static final Pattern                      BUILD_NUMBER_PATTERN       = Pattern.compile("\\/([0-9]{1,3})\\/GPL\\/");
+    private static final Matcher                      BUILD_NUMBER_MATCHER       = BUILD_NUMBER_PATTERN.matcher("");
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM         = "";
@@ -377,24 +379,31 @@ public class OracleOpenJDK implements Distribution {
             JsonArray assets = jsonObj.getAsJsonArray("assets");
             for (JsonElement element : assets) {
                 JsonObject assetJsonObj = element.getAsJsonObject();
-                String     fileName     = assetJsonObj.get("name").getAsString();
+                String     filename     = assetJsonObj.get("name").getAsString();
 
-                if (fileName.contains("debuginfo") || fileName.contains("sources") || fileName.contains("static-libs") || fileName.contains("testimage") || fileName.endsWith("sign")) { continue; }
+                if (filename.contains("debuginfo") || filename.contains("sources") || filename.contains("static-libs") || filename.contains("testimage") || filename.endsWith("sign")) { continue; }
 
-                String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
+                ArchiveType archiveType = ArchiveType.getFromFileName(filename);
+                if (ArchiveType.SRC_TAR == archiveType) { continue; }
 
-                String[] nameParts = withoutPrefix.split("_");
+                String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
+                String withoutSuffix = withoutPrefix.replaceAll(archiveType.getFileEndings().get(0), "");
+
+                String[] nameParts = withoutSuffix.split("_");
                 if (!nameParts[0].equals("jre") && !nameParts[0].equals("jdk")) { continue; }
 
                 VersionNumber vNumber = VersionNumber.fromText(nameParts[3]);
+
+                if (vNumber.getBuild().isEmpty() && nameParts.length >= 5) {
+                    int buildNumber = Helper.getPositiveIntFromText(nameParts[4]);
+                    if (buildNumber > 0) { vNumber.setBuild(buildNumber); }
+                }
 
                 String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
                 Pkg pkg = new Pkg();
 
-                ArchiveType ext = ArchiveType.getFromFileName(fileName);
-                if (ArchiveType.SRC_TAR == ext) { continue; }
-                pkg.setArchiveType(ext);
+                pkg.setArchiveType(archiveType);
 
                 TermOfSupport supTerm = null;
                 if (!vNumber.getFeature().isEmpty()) {
@@ -403,7 +412,7 @@ public class OracleOpenJDK implements Distribution {
                 pkg.setTermOfSupport(supTerm);
 
                 pkg.setDistribution(Distro.ORACLE_OPEN_JDK.get());
-                pkg.setFileName(fileName);
+                pkg.setFileName(filename);
                 pkg.setDirectDownloadUri(downloadLink);
                 pkg.setVersionNumber(vNumber);
                 pkg.setJavaVersion(vNumber);
@@ -424,7 +433,7 @@ public class OracleOpenJDK implements Distribution {
                                                                        .map(Entry::getValue)
                                                                        .orElse(PackageType.NONE);
                 if (PackageType.NONE == packageType) {
-                    LOGGER.debug("Package Type not found in {} for filename: {}", getName(), fileName);
+                    LOGGER.debug("Package Type not found in {} for filename: {}", getName(), filename);
                     continue;
                 }
                 pkg.setPackageType(packageType);
@@ -435,7 +444,7 @@ public class OracleOpenJDK implements Distribution {
                                                                  .map(Entry::getValue)
                                                                  .orElse(Architecture.NONE);
                 if (Architecture.NONE == arch) {
-                    LOGGER.debug("Architecture not found in {} for filename: {}", getName(), fileName);
+                    LOGGER.debug("Architecture not found in {} for filename: {}", getName(), filename);
                     continue;
                 }
 
@@ -465,7 +474,7 @@ public class OracleOpenJDK implements Distribution {
                     }
                 }
                 if (OperatingSystem.NONE == os) {
-                    LOGGER.debug("Operating System not found in {} for filename: {}", getName(), fileName);
+                    LOGGER.debug("Operating System not found in {} for filename: {}", getName(), filename);
                     continue;
                 }
                 pkg.setOperatingSystem(os);
@@ -488,7 +497,7 @@ public class OracleOpenJDK implements Distribution {
             if (null != response) {
                 String html = response.body();
                 if (!html.isEmpty()) {
-                    pkgs.addAll(extractPackagesFromHtml(html));
+                    pkgs.addAll(extractPackagesFromHtml(html, false));
                 }
             }
         } catch (Exception e) {
@@ -499,12 +508,14 @@ public class OracleOpenJDK implements Distribution {
         int latestMajorVersion = CacheManager.INSTANCE.getMajorVersions().stream().max(Comparator.comparing(MajorVersion::getAsInt)).get().getAsInt();
         for (int i = latestMajorVersion ; i > latestMajorVersion - 3 ; i--) {
             String jdkUrl = JDK_URL + i + "/";
+            boolean isReleaseCandidate = false;
             try {
                 HttpResponse<String> response = Helper.get(jdkUrl);
                 if (null != response) {
                     String html = response.body();
                     if (!html.isEmpty()) {
-                        pkgs.addAll(extractPackagesFromHtml(html));
+                        isReleaseCandidate = html.contains("Release-Candidate");
+                        pkgs.addAll(extractPackagesFromHtml(html, isReleaseCandidate));
                     }
                 }
             } catch (Exception e) {
@@ -578,21 +589,33 @@ public class OracleOpenJDK implements Distribution {
                     arch   = Architecture.fromText(keyParts[noOfKeyParts - 2]);
                     pkg.getFeatures().add(Feature.VALHALLA);
                 } else {
-                    if (keyParts.length == 4) {
-                        arch = Architecture.fromText(keyParts[noOfKeyParts - 2]);
-                    } else {
                         arch = Architecture.fromText(keyParts[noOfKeyParts - 1]);
                     }
-                }
+
                 pkg.setArchitecture(arch);
                 pkg.setBitness(arch.getBitness());
 
-                VersionNumber vNumber = VersionNumber.fromText(fileName);
-                pkg.setVersionNumber(vNumber);
-                pkg.setJavaVersion(vNumber);
-                pkg.setDistributionVersion(vNumber);
+                VersionNumber versionNumber = VersionNumber.fromText(fileName);
 
-                Helper.setTermOfSupport(vNumber, pkg);
+                BUILD_NUMBER_MATCHER.reset(downloadLink);
+                while(BUILD_NUMBER_MATCHER.find()) {
+                    if (BUILD_NUMBER_MATCHER.groupCount() > 0) {
+                        try {
+                            Integer buildNo = Integer.valueOf(BUILD_NUMBER_MATCHER.group(1));
+                            if (versionNumber.getBuild().isEmpty()) {
+                                    versionNumber.setBuild(buildNo);
+                                }
+                        } catch (NumberFormatException e) {
+                            LOGGER.debug("Error parsing Oracle OpenJDK build number: {}", BUILD_NUMBER_MATCHER.group(1));
+                        }
+                    }
+                }
+
+                pkg.setVersionNumber(versionNumber);
+                pkg.setJavaVersion(versionNumber);
+                pkg.setDistributionVersion(versionNumber);
+
+                Helper.setTermOfSupport(versionNumber, pkg);
 
                 pkg.setPackageType(PackageType.JDK);
 
@@ -704,7 +727,7 @@ public class OracleOpenJDK implements Distribution {
         return pkg;
     }
 
-    private List<Pkg> extractPackagesFromHtml(final String html) {
+    private List<Pkg> extractPackagesFromHtml(final String html, final boolean isReleaseCandidate) {
         final List<Pkg> pkgs      = new ArrayList<>();
         List<String>    fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
         for (String href : fileHrefs) {
@@ -719,7 +742,22 @@ public class OracleOpenJDK implements Distribution {
             ArchiveType     archiveType     = Helper.getFileEnding(filename);
             TermOfSupport   termOfSupport   = Helper.getTermOfSupport(versionNumber);
             ReleaseStatus   releaseStatus   = (href.contains("/GA/") || href.contains("/ga/")) ? ReleaseStatus.GA : ReleaseStatus.EA;
+            if (isReleaseCandidate) { releaseStatus = EA; }
             String          downloadLink    = href.replaceAll("\"", "").replace("href=", "");
+
+            BUILD_NUMBER_MATCHER.reset(downloadLink);
+            while(BUILD_NUMBER_MATCHER.find()) {
+                if (BUILD_NUMBER_MATCHER.groupCount() > 0) {
+                    try {
+                        Integer buildNo = Integer.valueOf(BUILD_NUMBER_MATCHER.group(1));
+                        if (versionNumber.getBuild().isEmpty()) {
+                        versionNumber.setBuild(buildNo);
+                            }
+                    } catch (NumberFormatException e) {
+                        LOGGER.debug("Error parsing Oracle OpenJDK build number: {}", BUILD_NUMBER_MATCHER.group(1));
+                    }
+                }
+            }
 
             Pkg pkg = new Pkg();
             pkg.setDistribution(Distro.ORACLE_OPEN_JDK.get());
@@ -743,7 +781,6 @@ public class OracleOpenJDK implements Distribution {
             pkg.setJavaFXBundled(versionNumber.getFeature().getAsInt() <= 10);
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
-
             pkgs.add(pkg);
         }
         return pkgs;
