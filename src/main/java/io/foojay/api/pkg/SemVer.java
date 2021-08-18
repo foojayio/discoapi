@@ -330,18 +330,42 @@ public class SemVer implements Comparable<SemVer> {
         d = compareSegment(getSixth(), semVer.getSixth());
         if (d != 0) { return d; }
 
-        if (ReleaseStatus.EA == releaseStatus) {
             d = compareSegment(getPreBuildAsInt(), semVer.getPreBuildAsInt());
             if (d != 0) { return d; }
-        }
 
         if ((null != pre && pre.isEmpty()) && (null != semVer.getPre() && semVer.getPre().isEmpty())) { return 0; }
         if (null == pre || pre.isEmpty()) { return 1; }
         if (null == semVer.getPre() || semVer.getPre().isEmpty()) { return -1; }
 
         return comparePrerelease(pre, semVer.getPre());
-    }
+        }
 
+    public int compareToIgnoreBuild(final SemVer semVer) {
+        int d;
+        d = compareSegment(getFeature(), semVer.getFeature());
+        if (d != 0) { return d; }
+
+        d = compareSegment(getInterim(), semVer.getInterim());
+        if (d != 0) { return d; }
+
+        d = compareSegment(getUpdate(), semVer.getUpdate());
+        if (d != 0) { return d; }
+
+        d = compareSegment(getPatch(), semVer.getPatch());
+        if (d != 0) { return d; }
+
+        d = compareSegment(getFifth(), semVer.getFifth());
+        if (d != 0) { return d; }
+
+        d = compareSegment(getSixth(), semVer.getSixth());
+        if (d != 0) { return d; }
+        
+        if ((null != pre && pre.isEmpty()) && (null != semVer.getPre() && semVer.getPre().isEmpty())) { return 0; }
+        if (null == pre || pre.isEmpty()) { return 1; }
+        if (null == semVer.getPre() || semVer.getPre().isEmpty()) { return -1; }
+
+        return comparePrerelease(pre, semVer.getPre());
+    }
 
     private int compareSegment(final int s1, final int s2) {
         if (s1 < s2) {
