@@ -24,6 +24,7 @@ Presentation about the [Disco API](https://de.slideshare.net/han_solo/disco-api-
 * Oracle OpenJDK
 * Red Hat (contains only links to download site)
 * SAP Machine
+* Semeru
 * Temurin
 * Trava  
 * Zulu
@@ -40,7 +41,7 @@ Presentation about the [Disco API](https://de.slideshare.net/han_solo/disco-api-
 ---
 ### Terms and parameters used in the disco API:
 * **archive_type** stands more or less for the file extension of the package e.g. tar.gz, zip, dmg, msi etc.
-* **distribution** stands for the name of the distribution (aoj, aoj_openj9, corretto, dragonwell, liberica, liberica_native, oracle, oracle_open_jdk, sap_machine, trava, zulu etc.)
+* **distribution** stands for the name of the distribution (aoj, aoj_openj9, corretto, dragonwell, liberica, liberica_native, oracle, oracle_open_jdk, sap_machine, semeru, temurin, trava, zulu etc.)
 * **major_version** stands for the major version of a package e.g. 8, 11, 13, 15 (it is the feature version in the [JEP 322](https://openjdk.java.net/jeps/322))
 * **java_version** stands for the full version without trailing '0' which can also include '-ea' for early access builds (e.g. 15-ea, 13.0.5.1 etc.)
 * **distribution_version** stands for a distribution specific version number which could also contain additional information
@@ -90,7 +91,7 @@ The packages endpoint can be used with the following url parameters:
 - <b>version</b> (e.g. 1.8.0_262, 11.0.9.1, 17-ea.1, 11.0.8..<11.0.10)
   
 
-- <b>distro</b> (e.g. aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, graalvm_ce16, jetbrains, liberica, liberica_native, mandrel, microsoft, ojdk_build, openlogic, oracle, oracle_open_jdk, redhat, sap_machine, temurin, trava, zulu, zulu_prime)
+- <b>distro</b> (e.g. aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, graalvm_ce16, jetbrains, liberica, liberica_native, mandrel, microsoft, ojdk_build, openlogic, oracle, oracle_open_jdk, redhat, sap_machine, semeru, temurin, trava, zulu, zulu_prime)
   
 
 - <b>architecture</b> (e.g. aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32)
