@@ -126,6 +126,7 @@ public class Zulu implements Distribution {
     private static final String                       FIELD_SHA_256_HASH         = "sha256_hash";
     private static final String                       FIELD_SIGNATURES           = "signatures";
     private static final String                       FIELD_TYPE                 = "type";
+    private static final String                       FIELD_OPEN_JDK_BUILD_NO    = "openjdk_build_number";
 
     private static final HashAlgorithm                HASH_ALGORITHM             = HashAlgorithm.NONE;
     private static final String                       HASH_URI                   = "";
@@ -255,6 +256,10 @@ public class Zulu implements Distribution {
             //Get the real version number from the filename without the prefix
             final String fileNameWithoutPrefix = fileName.replaceAll(FILENAME_PREFIX_VN_PATTERN.pattern(), "");
             vNumber = VersionNumber.fromText(fileNameWithoutPrefix);
+        }
+
+        if (jsonObj.has(FIELD_OPEN_JDK_BUILD_NO)) {
+            vNumber.setBuild(jsonObj.get(FIELD_OPEN_JDK_BUILD_NO).getAsInt());
         }
 
         JsonArray zuluVersionArray = jsonObj.get(FIELD_ZULU_VERSION).getAsJsonArray();
