@@ -330,14 +330,30 @@ public class SemVer implements Comparable<SemVer> {
         d = compareSegment(getSixth(), semVer.getSixth());
         if (d != 0) { return d; }
 
-            d = compareSegment(getPreBuildAsInt(), semVer.getPreBuildAsInt());
-            if (d != 0) { return d; }
+        ReleaseStatus thisStatus  = releaseStatus;
+        ReleaseStatus otherStatus = semVer.getReleaseStatus();
 
-        if ((null != pre && pre.isEmpty()) && (null != semVer.getPre() && semVer.getPre().isEmpty())) { return 0; }
-        if (null == pre || pre.isEmpty()) { return 1; }
-        if (null == semVer.getPre() || semVer.getPre().isEmpty()) { return -1; }
+        if (ReleaseStatus.GA == thisStatus && ReleaseStatus.EA == otherStatus) {
+            d = 1;
+        } else if (ReleaseStatus.EA == thisStatus && ReleaseStatus.GA == otherStatus) {
+            d = -1;
+        } else if (thisStatus == otherStatus) {
+            // Either both GA or both EA
+            int thisBuild  = getPreBuildAsInt();
+            int otherBuild = semVer.getPreBuildAsInt();
 
-        return comparePrerelease(pre, semVer.getPre());
+            if (thisBuild > otherBuild) {
+                d = 1;
+            } else if (thisBuild < otherBuild) {
+                d = -1;
+            } else {
+                d = 0;
+            }
+        } else {
+            d = 0;
+        }
+
+        return d;
         }
 
     public int compareToIgnoreBuild(final SemVer semVer) {
