@@ -149,7 +149,7 @@ public class Semeru implements Distribution {
     public List<Pkg> getAllPkgs() {
         List<Pkg> pkgs = new ArrayList<>();
         try {
-            for (int i = 8 ; i < MajorVersion.getLatest(true).getAsInt() ; i++) {
+            for (int i = 8 ; i <= MajorVersion.getLatest(true).getAsInt() ; i++) {
                 String packageUrl = PACKAGE_URL + "semeru" + i + "-binaries/releases";
                 // Get all packages from github
                 try {
