@@ -61,7 +61,7 @@ import static io.foojay.api.pkg.ReleaseStatus.GA;
 public class LibericaNative implements Distribution {
     private static final Logger        LOGGER                 = LoggerFactory.getLogger(LibericaNative.class);
 
-    private static final String        PACKAGE_URL            = "https://download.bell-sw.com/vm/21.0.0.2";
+    private static final String        PACKAGE_URL            = "https://download.bell-sw.com/vm/21.2.0";
     public  static final String        PKGS_PROPERTIES        = "https://github.com/foojay2020/openjdk_releases/raw/main/liberica_native.properties";
 
     // URL parameters
@@ -130,26 +130,32 @@ public class LibericaNative implements Distribution {
 
         StringBuilder queryBuilder = new StringBuilder(PACKAGE_URL);
         switch(operatingSystem) {
+            case WINDOWS:
+                switch(architecture) {
+                    case X64:
+                    case AMD64: queryBuilder.append("/bellsoft-liberica-vm-openjdk11-21.2.0-windows-amd64.msi"); break;
+                }
+                break;
             case LINUX:
                 switch(architecture) {
                     case X64    :
-                    case AMD64  : queryBuilder.append("/bellsoft-liberica-vm-openjdk11-21.0.0.2-linux-amd64.tar.gz"); break;
+                    case AMD64  : queryBuilder.append("/bellsoft-liberica-vm-openjdk11-21.2.0-linux-amd64.tar.gz"); break;
                     case ARM64  :
-                    case AARCH64: queryBuilder.append("/bellsoft-liberica-vm-openjdk11-21.0.0.2-linux-aarch64.tar.gz");break;
+                    case AARCH64: queryBuilder.append("/bellsoft-liberica-vm-openjdk11-21.2.0-linux-aarch64.tar.gz");break;
                 }
                 break;
             case ALPINE_LINUX:
             case LINUX_MUSL:
                 switch(architecture) {
                     case X64    :
-                    case AMD64  : queryBuilder.append("/bellsoft-liberica-vm-openjdk11-21.0.0.2-linux-x64-musl.tar.gz"); break;
+                    case AMD64  : queryBuilder.append("/bellsoft-liberica-vm-openjdk11-21.2.0-linux-x64-musl.tar.gz"); break;
                     case ARM64  :
-                    case AARCH64: queryBuilder.append("/bellsoft-liberica-vm-openjdk11-21.0.0.2-linux-aarch64-musl.tar.gz"); break;
+                    case AARCH64: queryBuilder.append("/bellsoft-liberica-vm-openjdk11-21.2.0-linux-aarch64-musl.tar.gz"); break;
                 }
             case MACOS:
                 switch(architecture) {
                     case X64  :
-                    case AMD64: queryBuilder.append("/bellsoft-liberica-vm-openjdk11-21.0.0.2-macos-amd64.zip"); break;
+                    case AMD64: queryBuilder.append("/bellsoft-liberica-vm-openjdk11-21.2.0-macos-amd64.zip"); break;
                 }
                 break;
         }
