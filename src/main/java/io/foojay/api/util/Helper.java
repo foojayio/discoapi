@@ -183,172 +183,190 @@ public class Helper {
                     }
                     pkgs.addAll(pkgsToAdd);
                     break;
-            case ZULU_PRIME:
-                ZuluPrime zuluPrime = (ZuluPrime) distro.get();
-                pkgs.addAll(zuluPrime.getAllPkgs());
-                break;
-            case ORACLE:
-                Oracle oracle = (Oracle) distro.get();
-                pkgs.addAll(oracle.getAllPkgs());
-                break;
-            case RED_HAT:
-                RedHat redhat = (RedHat) distro.get();
-                pkgs.addAll(redhat.getAllPkgs());
-                break;
-            case OJDK_BUILD:
-                OJDKBuild ojdkBuild = (OJDKBuild) distro.get();
-                pkgs.addAll(ojdkBuild.getAllPkgs());
-                break;
-            case ORACLE_OPEN_JDK:
-                OracleOpenJDK oracleOpenJDK = (OracleOpenJDK) distro.get();
-                pkgs.addAll(oracleOpenJDK.getAllPkgs());
-                // Get all jdk 8 packages from github
-                String       query8     = oracleOpenJDK.getGithubPkg8Url() + "/releases?per_page=100";
-                HttpResponse<String> response8 = get(query8);
-                if (null == response8) {
-                    LOGGER.debug("Response (Oracle OpenJDK) returned null");
-                } else {
-                if (response8.statusCode() == 200) {
-                    String      bodyText = response8.body();
-                        Gson        gson     = new Gson();
-                        JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-                        if (element instanceof JsonArray) {
-                            JsonArray jsonArray = element.getAsJsonArray();
-                            pkgs.addAll(oracleOpenJDK.getAllPkgs(jsonArray));
-                        }
+                case ZULU_PRIME:
+                    ZuluPrime zuluPrime = (ZuluPrime) distro.get();
+                    pkgs.addAll(zuluPrime.getAllPkgs());
+                    break;
+                case ORACLE:
+                    Oracle oracle = (Oracle) distro.get();
+                    pkgs.addAll(oracle.getAllPkgs());
+                    break;
+                case RED_HAT:
+                    RedHat redhat = (RedHat) distro.get();
+                    pkgs.addAll(redhat.getAllPkgs());
+                    break;
+                case OJDK_BUILD:
+                    OJDKBuild ojdkBuild = (OJDKBuild) distro.get();
+                    pkgs.addAll(ojdkBuild.getAllPkgs());
+                    break;
+                case ORACLE_OPEN_JDK:
+                    OracleOpenJDK oracleOpenJDK = (OracleOpenJDK) distro.get();
+                    pkgs.addAll(oracleOpenJDK.getAllPkgs());
+                    // Get all jdk 8 packages from github
+                    String       query8     = oracleOpenJDK.getGithubPkg8Url() + "/releases?per_page=100";
+                    HttpResponse<String> response8 = get(query8);
+                    if (null == response8) {
+                        LOGGER.debug("Response (Oracle OpenJDK) returned null");
                     } else {
-                        // Problem with url request
-                        LOGGER.debug("Response (Status Code {}) {} ", response8.statusCode(), response8.body());
-                    }
-                }
-                // Get all jdk 11 packages from github
-                String       query11    = oracleOpenJDK.getGithubPkg11Url() + "/releases?per_page=100";
-                HttpResponse<String> response11 = get(query11);
-                if (null == response11) {
-                    LOGGER.debug("Response (Oracle OpenJDK) returned null");
-                } else {
-                if (response11.statusCode() == 200) {
-                    String      bodyText = response11.body();
-                        Gson        gson     = new Gson();
-                        JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-                        if (element instanceof JsonArray) {
-                            JsonArray jsonArray = element.getAsJsonArray();
-                            pkgs.addAll(oracleOpenJDK.getAllPkgs(jsonArray));
-                        }
-                    } else {
-                        // Problem with url request
-                        LOGGER.debug("Response (Status Code {}) {} ", response11.statusCode(), response11.body());
-                    }
-                }
-                break;
-            case SAP_MACHINE:
-                SAPMachine  sapMachine = (SAPMachine) distro.get();
-
-                // Search through github release and fetch packages from there
-                    String querySAPMachine = sapMachine.getPkgUrl() + "?per_page=100";
-                    HttpResponse<String> responseSAPMachine = get(querySAPMachine, Map.of("accept", "application/vnd.github.v3+json",
-                                                                                          "authorization", GithubTokenPool.INSTANCE.next()));
-                    if (null == responseSAPMachine) {
-                    LOGGER.debug("Response (SAP Machine) returned null");
-                } else {
-                        if (responseSAPMachine.statusCode() == 200) {
-                            String      bodyText = responseSAPMachine.body();
+                    if (response8.statusCode() == 200) {
+                        String      bodyText = response8.body();
                             Gson        gson     = new Gson();
                             JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
                             if (element instanceof JsonArray) {
                                 JsonArray jsonArray = element.getAsJsonArray();
-                                pkgs.addAll(sapMachine.getAllPkgsFromJson(jsonArray));
+                                pkgs.addAll(oracleOpenJDK.getAllPkgs(jsonArray));
                             }
                         } else {
                             // Problem with url request
-                            LOGGER.debug("Response (Status Code {}) {} ", responseSAPMachine.statusCode(), responseSAPMachine.body());
+                            LOGGER.debug("Response (Status Code {}) {} ", response8.statusCode(), response8.body());
                         }
                     }
-                // Fetch packages from sap.github.io -> sapmachine_releases.json
-                pkgs.addAll(sapMachine.getAllPkgsFromJsonUrl());
+                    // Get all jdk 11 packages from github
+                    String       query11    = oracleOpenJDK.getGithubPkg11Url() + "/releases?per_page=100";
+                    HttpResponse<String> response11 = get(query11);
+                    if (null == response11) {
+                        LOGGER.debug("Response (Oracle OpenJDK) returned null");
+                    } else {
+                    if (response11.statusCode() == 200) {
+                        String      bodyText = response11.body();
+                            Gson        gson     = new Gson();
+                            JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
+                            if (element instanceof JsonArray) {
+                                JsonArray jsonArray = element.getAsJsonArray();
+                                pkgs.addAll(oracleOpenJDK.getAllPkgs(jsonArray));
+                            }
+                        } else {
+                            // Problem with url request
+                            LOGGER.debug("Response (Status Code {}) {} ", response11.statusCode(), response11.body());
+                        }
+                    }
+                    break;
+                case SAP_MACHINE:
+                    SAPMachine  sapMachine = (SAPMachine) distro.get();
 
-                // Fetch major versions 10, 12, 13 from github
-                pkgs.addAll(sapMachine.getAllPkgs());
-                break;
-            case SEMERU:
-                Semeru semeru = (Semeru) distro.get();
-                pkgs.addAll(semeru.getAllPkgs());
-                break;
-            case TRAVA:
-                Trava trava = (Trava) distro.get();
-                pkgs.addAll(trava.getAllPkgs());
-                break;
-            case AOJ:
-                AOJ AOJ = (AOJ) distro.get();
-                for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                    VersionNumber versionNumber = majorVersion.getVersionNumber();
-                        pkgs.addAll(getPkgs(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
-                                            ReleaseStatus.GA, TermOfSupport.NONE));
-                        pkgs.addAll(getPkgs(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
-                                            ReleaseStatus.EA, TermOfSupport.NONE));
-                }
-                break;
-            case AOJ_OPENJ9:
-                AOJ_OPENJ9 AOJ_OPENJ9 = (AOJ_OPENJ9) distro.get();
-                for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                    VersionNumber versionNumber = majorVersion.getVersionNumber();
-                        pkgs.addAll(getPkgs(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
-                                            ReleaseStatus.GA, TermOfSupport.NONE));
-                        pkgs.addAll(getPkgs(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
-                                            ReleaseStatus.EA, TermOfSupport.NONE));
-                }
-                break;
-            case TEMURIN:
-                Temurin temurin = (Temurin) distro.get();
-                pkgs.addAll(temurin.getAllPkgs());
-                break;
-            case MICROSOFT:
-                Microsoft microsoft = (Microsoft) distro.get();
-                pkgs.addAll(microsoft.getAllPkgs());
-                break;
-            case JETBRAINS:
-                JetBrains jetbrains = (JetBrains) distro.get();
-                // Add all packages from properties file
-                pkgs.addAll(jetbrains.getAllPkgs());
-                // Add packages from latest github release
-                String queryJetbrains = jetbrains.GITHUB_RELEASES_URL;
-                HttpResponse<String> responseJetbrains = Helper.get(queryJetbrains, Map.of("accept", "application/vnd.github.v3+json",
-                                                                                               "authorization", GithubTokenPool.INSTANCE.next()));
-                if (null == responseJetbrains) {
-                    LOGGER.debug("Response (JetBrains) returned null");
-                } else {
-                    if (responseJetbrains.statusCode() == 200) {
-                        String      bodyText = responseJetbrains.body();
-                        Gson        gson    = new Gson();
-                        JsonElement element = gson.fromJson(bodyText, JsonElement.class);
-                        if (element instanceof JsonObject) {
-                            JsonObject jsonObject = element.getAsJsonObject();
-                            if (jsonObject.has("body")) {
-                                pkgs.addAll(jetbrains.getAllPkgsFromString(jsonObject.get("body").getAsString()));
+                    // Search through github release and fetch packages from there
+                        String querySAPMachine = sapMachine.getPkgUrl() + "?per_page=100";
+                        HttpResponse<String> responseSAPMachine = get(querySAPMachine, Map.of("accept", "application/vnd.github.v3+json",
+                                                                                              "authorization", GithubTokenPool.INSTANCE.next()));
+                        if (null == responseSAPMachine) {
+                        LOGGER.debug("Response (SAP Machine) returned null");
+                    } else {
+                            if (responseSAPMachine.statusCode() == 200) {
+                                String      bodyText = responseSAPMachine.body();
+                                Gson        gson     = new Gson();
+                                JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
+                                if (element instanceof JsonArray) {
+                                    JsonArray jsonArray = element.getAsJsonArray();
+                                    pkgs.addAll(sapMachine.getAllPkgsFromJson(jsonArray));
+                                }
+                            } else {
+                                // Problem with url request
+                                LOGGER.debug("Response (Status Code {}) {} ", responseSAPMachine.statusCode(), responseSAPMachine.body());
                             }
                         }
-                    } else {
-                        // Problem with url request
-                        LOGGER.debug("Response (Status Code {}) {} ", responseJetbrains.statusCode(), responseJetbrains.body());
+                    // Fetch packages from sap.github.io -> sapmachine_releases.json
+                    pkgs.addAll(sapMachine.getAllPkgsFromJsonUrl());
+
+                    // Fetch major versions 10, 12, 13 from github
+                    pkgs.addAll(sapMachine.getAllPkgs());
+                    break;
+                case SEMERU:
+                    Semeru semeru = (Semeru) distro.get();
+                    pkgs.addAll(semeru.getAllPkgs());
+                    break;
+                case TRAVA:
+                    Trava trava = (Trava) distro.get();
+                    pkgs.addAll(trava.getAllPkgs());
+                    break;
+                case AOJ:
+                    AOJ AOJ = (AOJ) distro.get();
+                    for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
+                        VersionNumber versionNumber = majorVersion.getVersionNumber();
+                            pkgs.addAll(getPkgs(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                                                ReleaseStatus.GA, TermOfSupport.NONE));
+                            pkgs.addAll(getPkgs(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                                                ReleaseStatus.EA, TermOfSupport.NONE));
                     }
+                    break;
+                case AOJ_OPENJ9:
+                    AOJ_OPENJ9 AOJ_OPENJ9 = (AOJ_OPENJ9) distro.get();
+                    for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
+                        VersionNumber versionNumber = majorVersion.getVersionNumber();
+                            pkgs.addAll(getPkgs(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                                                ReleaseStatus.GA, TermOfSupport.NONE));
+                            pkgs.addAll(getPkgs(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                                                ReleaseStatus.EA, TermOfSupport.NONE));
+                    }
+                    break;
+                case TEMURIN:
+                    Temurin temurin = (Temurin) distro.get();
+                        List<Pkg> temurinPkgs = temurin.getAllPkgs();
+                        List<MajorVersion> earlyAccessOnly = CacheManager.INSTANCE.getMajorVersions().stream()
+                                                                                  .filter(majorVersion -> majorVersion.isEarlyAccessOnly())
+                                                                                  .collect(Collectors.toList());
+                        earlyAccessOnly.forEach(majorVersion -> {
+                            Optional<Pkg> optionalPkg = temurinPkgs.stream()
+                                                                   .filter(pkg -> majorVersion.getAsInt() == pkg.getMajorVersion().getAsInt())
+                                                                   .findFirst();
+                            if (optionalPkg.isPresent()) {
+                                VersionNumber javaVersion         = optionalPkg.get().getJavaVersion();
+                                List<Pkg>     temurinPkgsToRemove = CacheManager.INSTANCE.pkgCache.getPkgs()
+                                                                                                  .stream()
+                                                                                                  .filter(pkg -> pkg.getDistribution().getDistro() == Distro.TEMURIN)
+                                                                                                  .filter(pkg -> pkg.getJavaVersion().equals(javaVersion))
+                                                                                                  .collect(Collectors.toList());
+                            temurinPkgsToRemove.forEach(pkg -> CacheManager.INSTANCE.pkgCache.remove(pkg.getId()));
+                        }
+                    });
+                    pkgs.addAll(temurinPkgs);
+                    break;
+                case MICROSOFT:
+                    Microsoft microsoft = (Microsoft) distro.get();
+                    pkgs.addAll(microsoft.getAllPkgs());
+                    break;
+                case JETBRAINS:
+                    JetBrains jetbrains = (JetBrains) distro.get();
+                    // Add all packages from properties file
+                    pkgs.addAll(jetbrains.getAllPkgs());
+                    // Add packages from latest github release
+                    String queryJetbrains = jetbrains.GITHUB_RELEASES_URL;
+                    HttpResponse<String> responseJetbrains = Helper.get(queryJetbrains, Map.of("accept", "application/vnd.github.v3+json",
+                                                                                                   "authorization", GithubTokenPool.INSTANCE.next()));
+                    if (null == responseJetbrains) {
+                        LOGGER.debug("Response (JetBrains) returned null");
+                    } else {
+                        if (responseJetbrains.statusCode() == 200) {
+                            String      bodyText = responseJetbrains.body();
+                            Gson        gson    = new Gson();
+                            JsonElement element = gson.fromJson(bodyText, JsonElement.class);
+                            if (element instanceof JsonObject) {
+                                JsonObject jsonObject = element.getAsJsonObject();
+                                if (jsonObject.has("body")) {
+                                    pkgs.addAll(jetbrains.getAllPkgsFromString(jsonObject.get("body").getAsString()));
+                                }
+                            }
+                        } else {
+                            // Problem with url request
+                            LOGGER.debug("Response (Status Code {}) {} ", responseJetbrains.statusCode(), responseJetbrains.body());
+                        }
+                    }
+                    break;
+                case LIBERICA_NATIVE:
+                    LibericaNative libericaNative = (LibericaNative) distro.get();
+                    pkgs.addAll(libericaNative.getAllPkgs());
+                    break;
+                    case OPEN_LOGIC:
+                        OpenLogic openLogic = (OpenLogic) distro.get();
+                        pkgs.addAll(openLogic.getAllPkgs());
+                    break;
+                default:
+                    Distribution distribution = distro.get();
+                    CacheManager.INSTANCE.getMajorVersions().stream().forEach(majorVersion -> {
+                        pkgs.addAll(getPkgs(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE,
+                                           PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
+                    });
+                    break;
                 }
-                break;
-            case LIBERICA_NATIVE:
-                LibericaNative libericaNative = (LibericaNative) distro.get();
-                pkgs.addAll(libericaNative.getAllPkgs());
-                break;
-                case OPEN_LOGIC:
-                    OpenLogic openLogic = (OpenLogic) distro.get();
-                    pkgs.addAll(openLogic.getAllPkgs());
-                break;
-            default:
-                Distribution distribution = distro.get();
-                CacheManager.INSTANCE.getMajorVersions().stream().forEach(majorVersion -> {
-                    pkgs.addAll(getPkgs(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE,
-                                       PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
-                });
-                break;
-            }
         } catch (Exception e) {
             LOGGER.debug("There was a problem fetching packages for {}. {}", distro, e.getMessage());
         }
