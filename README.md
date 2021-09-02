@@ -1,4 +1,4 @@
-# foojay Disco API
+# foojay Disco API <img align="right" src="https://github.com/foojay2020/badges/raw/main/works_with_openjdk/Works-with-OpenJDK.png" width="100">
 
 
 ![Logo](https://github.com/foojay2020/discoapi/raw/main/discoduke.png)
