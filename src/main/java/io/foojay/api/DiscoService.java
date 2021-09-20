@@ -60,7 +60,7 @@ public enum DiscoService {
 
     public List<Pkg> getPkgsFromCache(final VersionNumber fromVersionNumber, final VersionNumber toVersionNumber, final List<Distribution> distributions, final List<Architecture> architectures, final List<ArchiveType> archiveTypes,
                                       final PackageType packageType, final List<OperatingSystem> operatingSystems, final List<LibCType> libCTypes, final List<ReleaseStatus> releaseStatus, final List<TermOfSupport> termsOfSupport,
-                                      final Bitness bitness, final Boolean javafxBundled, final Boolean directlyDownloadable, final List<Feature> features, final Boolean signatureAvailable, final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
+                                      final Bitness bitness, final Boolean javafxBundled, final Boolean withFxIfAvailable, final Boolean directlyDownloadable, final List<Feature> features, final Boolean signatureAvailable, final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
         Collection<Pkg> selection = CacheManager.INSTANCE.pkgCache.getPkgs();
         if (null != pkgScopes && !pkgScopes.isEmpty()) {
             for (Scope scope : pkgScopes) {
@@ -97,18 +97,26 @@ public enum DiscoService {
                                                             .filter(pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) <= 0)
                                                             .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
                                                             .collect(Collectors.toList());
+        if (null == javafxBundled && withFxIfAvailable) {
+            List<Pkg> pkgsToRemove = pkgsFound.stream()
+                                              .filter(Predicate.not(Pkg::isJavaFXBundled))
+                                              .filter(pkg -> pkgsFound.stream().filter(p -> p.equalsExceptJavaFXAndPackageType(pkg)).count() > 0)
+                                              .collect(Collectors.toList());
+            pkgsFound.removeAll(pkgsToRemove);
+        }
+
         return pkgsFound;
     }
 
     public List<Pkg> getPkgsFromCache(final VersionNumber versionNumber, final Comparison comparison, final List<Distribution> distributions, final List<Architecture> architectures, final List<ArchiveType> archiveTypes,
                                       final PackageType packageType, final List<OperatingSystem> operatingSystems, final List<LibCType> libCTypes, final List<ReleaseStatus> releaseStatus, final List<TermOfSupport> termsOfSupport,
-                                      final Bitness bitness, final Boolean javafxBundled, final Boolean directlyDownloadable, final Latest latest, final List<Feature> features, final Boolean signatureAvailable, final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
-        return getPkgsFromCache(versionNumber, null, comparison, distributions, architectures, archiveTypes, packageType, operatingSystems, libCTypes, releaseStatus, termsOfSupport, bitness, javafxBundled, directlyDownloadable, latest, features, signatureAvailable, distroScopes, match, pkgScopes);
+                                      final Bitness bitness, final Boolean javafxBundled, final Boolean withFxIfAvailable, final Boolean directlyDownloadable, final Latest latest, final List<Feature> features, final Boolean signatureAvailable, final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
+        return getPkgsFromCache(versionNumber, null, comparison, distributions, architectures, archiveTypes, packageType, operatingSystems, libCTypes, releaseStatus, termsOfSupport, bitness, javafxBundled, withFxIfAvailable, directlyDownloadable, latest, features, signatureAvailable, distroScopes, match, pkgScopes);
     }
 
     public List<Pkg> getPkgsFromCache(final VersionNumber versionNumber, final VersionNumber toVersionNumber, final Comparison comparison, final List<Distribution> distributions, final List<Architecture> architectures, final List<ArchiveType> archiveTypes,
                                       final PackageType packageType, final List<OperatingSystem> operatingSystems, final List<LibCType> libCTypes, final List<ReleaseStatus> releaseStatus, final List<TermOfSupport> termsOfSupport,
-                                      final Bitness bitness, final Boolean javafxBundled, final Boolean directlyDownloadable, final Latest latest, final List<Feature> features, final Boolean signatureAvailable, final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
+                                      final Bitness bitness, final Boolean javafxBundled, final Boolean withFxIfAvailable, final Boolean directlyDownloadable, final Latest latest, final List<Feature> features, final Boolean signatureAvailable, final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
         Collection<Pkg> selection = CacheManager.INSTANCE.pkgCache.getPkgs();
         if (null != pkgScopes && !pkgScopes.isEmpty()) {
             for (Scope scope : pkgScopes) {
@@ -135,6 +143,7 @@ public enum DiscoService {
                                                                                                                                                            pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8 &&
                                                                                                                                                            pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11 &&
                                                                                                                                                            pkg.getDistribution().getDistro() != Distro.GRAALVM_CE16 &&
+                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE17 &&
                                                                                                                                                            pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE &&
                                                                                                                                                            pkg.getDistribution().getDistro() != Distro.MANDREL) : distributions.contains(pkg.getDistribution()))
                                                                             .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(distroScopes.stream().collect(toSet())::contains))
@@ -488,6 +497,16 @@ public enum DiscoService {
                                                       .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
                                                       .collect(Collectors.toList());
         }
+
+        if (null == javafxBundled && null != withFxIfAvailable && withFxIfAvailable) {
+            List<Pkg> finalPkgsFound = pkgsFound;
+            List<Pkg> pkgsToRemove = pkgsFound.stream()
+                                              .filter(Predicate.not(Pkg::isJavaFXBundled))
+                                              .filter(pkg -> finalPkgsFound.stream().filter(p -> p.equalsExceptJavaFXAndPackageType(pkg)).count() > 0)
+                                              .collect(Collectors.toList());
+            pkgsFound.removeAll(pkgsToRemove);
+        }
+
         return pkgsFound;
     }
 }
