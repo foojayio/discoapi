@@ -70,6 +70,8 @@ public interface Distribution {
 
     String getSignatureUri();
 
+    String getOfficialUri();
+
     List<String> getSynonyms();
 
     List<SemVer> getVersions();

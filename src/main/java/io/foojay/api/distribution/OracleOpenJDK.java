@@ -102,7 +102,7 @@ public class OracleOpenJDK implements Distribution {
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP         = Map.of(EA, "early_access", GA, "GA");
 
     private static final String                       OPEN_JDK_ARCHIVE_URL       = "https://jdk.java.net/archive/";
-    public  static final String                       PKGS_PROPERTIES            = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk.properties";
+    public  static final String                       PKGS_PROPERTIES            = "https://github.com/foojayio/openjdk_releases/raw/main/openjdk.properties";
     private        final Properties                   propertiesPkgs             = new Properties();
 
     private static final HashAlgorithm                HASH_ALGORITHM             = HashAlgorithm.NONE;
@@ -110,6 +110,7 @@ public class OracleOpenJDK implements Distribution {
     private static final SignatureType                SIGNATURE_TYPE             = SignatureType.NONE;
     private static final HashAlgorithm                SIGNATURE_ALGORITHM        = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI              = "";
+    private static final String                       OFFICIAL_URI               = "https://openjdk.java.net/";
 
 
     public OracleOpenJDK() {
@@ -159,6 +160,8 @@ public class OracleOpenJDK implements Distribution {
     @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
+
+    @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
         return List.of("oracle_open_jdk", "ORACLE_OPEN_JDK", "oracle_openjdk", "ORACLE_OPENJDK", "Oracle_OpenJDK", "Oracle OpenJDK", "oracle openjdk", "ORACLE OPENJDK", "open_jdk",

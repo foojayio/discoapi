@@ -58,7 +58,7 @@ public class Microsoft implements Distribution {
     private static final Pattern       FILENAME_PREFIX_PATTERN = Pattern.compile("microsoft-");
     private static final Matcher       FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
     private static final String        PACKAGE_URL             = "https://docs.microsoft.com/java/openjdk/download";
-    public  static final String        PKGS_PROPERTIES         = "https://github.com/foojay2020/openjdk_releases/raw/main/microsoft.properties";
+    public  static final String        PKGS_PROPERTIES         = "https://github.com/foojayio/openjdk_releases/raw/main/microsoft.properties";
 
     // URL parameters
     private static final String        ARCHITECTURE_PARAM      = "";
@@ -74,6 +74,7 @@ public class Microsoft implements Distribution {
     private static final SignatureType SIGNATURE_TYPE          = SignatureType.NONE;
     private static final HashAlgorithm SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
     private static final String        SIGNATURE_URI           = "";
+    private static final String        OFFICIAL_URI            = "https://www.microsoft.com/openjdk";
 
 
     @Override public Distro getDistro() { return Distro.MICROSOFT; }
@@ -105,6 +106,8 @@ public class Microsoft implements Distribution {
     @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
+
+    @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
         return List.of("microsoft", "Microsoft", "MICROSOFT", "Microsoft OpenJDK", "Microsoft Build of OpenJDK");

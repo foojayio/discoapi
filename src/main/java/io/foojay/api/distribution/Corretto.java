@@ -26,6 +26,7 @@ import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.HashAlgorithm;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
@@ -36,10 +37,12 @@ import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
+import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -64,6 +67,8 @@ public class Corretto implements Distribution {
     private static final Matcher                      FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
     private static final String                       PACKAGE_URL             = "https://api.github.com/repos/corretto/";// jdk8: corretto-8, jdk11: corretto-11, jdk15,jdk16: corretto-jdk
 
+    private static final String                       PREFIX                  = "amazon-corretto-";
+
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM      = "";
     private static final String                       OPERATING_SYSTEM_PARAM  = "";
@@ -78,6 +83,7 @@ public class Corretto implements Distribution {
     private static final SignatureType                SIGNATURE_TYPE          = SignatureType.NONE;
     private static final HashAlgorithm                SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI           = "";//https://corretto.aws/downloads/resources/11.0.6.10.1/B04F24E3.pub";
+    private static final String                       OFFICIAL_URI            = "https://aws.amazon.com/de/corretto/";
 
 
     @Override public Distro getDistro() { return Distro.CORRETTO; }
@@ -110,6 +116,8 @@ public class Corretto implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public String getOfficialUri() { return OFFICIAL_URI; }
+
     @Override public List<String> getSynonyms() {
         return List.of("corretto", "CORRETTO", "Corretto");
     }
@@ -127,20 +135,18 @@ public class Corretto implements Distribution {
                                                    final boolean latest, final OperatingSystem operatingSystem,
                                                    final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                                                    final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append(PACKAGE_URL);
         int featureVersion = versionNumber.getFeature().getAsInt();
-        if (featureVersion == 8 || featureVersion == 11) {
+
+        if (TermOfSupport.LTS == versionNumber.getMajorVersion().getTermOfSupport()) {
             queryBuilder.append("corretto-").append(featureVersion).append("/releases").append("?per_page=100");
-        } else if (featureVersion == 15 || featureVersion == 16) {
+        } else {
                 queryBuilder.append("corretto-jdk").append("/releases").append("?per_page=100");
-        } else if (featureVersion == 17) {
-            //queryBuilder.append("corretto-").append(featureVersion).append("/releases").append("?per_page=100");
-        } else if (featureVersion == 18 || featureVersion == 19) {
-            //queryBuilder.append("corretto-jdk").append("/releases").append("?per_page=100");
         }
 
-        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder.toString());
+        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
 
         return queryBuilder.toString();
     }
@@ -150,11 +156,21 @@ public class Corretto implements Distribution {
                                               final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         List<Pkg> pkgs = new ArrayList<>();
 
+        if (versionNumber.getMajorVersion().getAsInt() < 8) { return pkgs; }
+
         TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
         supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
 
         if (jsonObj.has("message")) {
             LOGGER.debug("Github rate limit reached when trying to get packages for Corretto {}", versionNumber);
+            return pkgs;
+        }
+        if (jsonObj.has("prerelease") && jsonObj.get("prerelease").getAsBoolean()) {
+            LOGGER.debug("Corretto version {} is a prerelease", versionNumber.toString(OutputFormat.REDUCED_COMPRESSED, true, true));
+            return pkgs;
+        }
+        if (!jsonObj.has("body")) {
+            LOGGER.debug("No body element found in response for Corretto version {}", versionNumber.toString(OutputFormat.REDUCED_COMPRESSED, true, true));
             return pkgs;
         }
         String bodyText = jsonObj.get("body").getAsString();
@@ -283,6 +299,108 @@ public class Corretto implements Distribution {
 
             pkgs.add(pkg);
         }
+
+        return pkgs;
+    }
+
+    public List<Pkg> getAllPkgs() {
+        final String gaPackageUrl = "https://docs.aws.amazon.com/corretto/latest/corretto-";
+        List<Pkg> pkgs = new ArrayList<>();
+        for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
+            if (majorVersion.getAsInt() < 8) { continue; }
+            StringBuilder queryBuilder = new StringBuilder().append(gaPackageUrl).append(majorVersion.getAsInt()).append("-ug/downloads-list.html");
+            String query = queryBuilder.toString();
+            try {
+                final HttpResponse<String> response = Helper.get(query);
+                if (null == response) { continue; }
+                final String htmlAllJDKs  = response.body();
+                if (!htmlAllJDKs.isEmpty()) {
+                    pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs));
+                }
+            } catch (Exception e) {
+                LOGGER.error("Error fetching all packages from {}. {}", getName(), e);
+            }
+        }
+        return pkgs;
+    }
+
+    public List<Pkg> getAllPkgsFromHtml(final String html) {
+        List<Pkg> pkgs = new ArrayList<>();
+        if (null == html || html.isEmpty()) { return pkgs; }
+        List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
+
+        for (String fileHref : fileHrefs) {
+            String filename = Helper.getFileNameFromText(fileHref.replaceAll("\"", ""));
+
+            Pkg pkg = new Pkg();
+            pkg.setDistribution(Distro.CORRETTO.get());
+
+            String withoutPrefix = filename.replace(PREFIX, "");
+
+            pkg.setJavaFXBundled(false);
+            pkg.setPackageType(withoutPrefix.contains("jre") ? JRE : JDK);
+
+            Architecture architecture = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                                                                     .filter(entry -> filename.contains(entry.getKey()))
+                                                                     .findFirst()
+                                                                     .map(Entry::getValue)
+                                                                     .orElse(Architecture.NOT_FOUND);
+            if (Architecture.NOT_FOUND == architecture) {
+                LOGGER.debug("Architecture not found in Corretto for filename: {}", filename);
+                continue;
+            }
+            pkg.setArchitecture(architecture);
+            pkg.setBitness(architecture.getBitness());
+
+            OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
+                                                                               .filter(entry -> filename.contains(entry.getKey()))
+                                                                               .findFirst()
+                                                                               .map(Entry::getValue)
+                                                                               .orElse(OperatingSystem.NOT_FOUND);
+            if (OperatingSystem.NOT_FOUND == operatingSystem) {
+                LOGGER.debug("Operating System not found in Corretto for filename: {}", filename);
+                continue;
+            }
+            pkg.setOperatingSystem(operatingSystem);
+
+            ArchiveType archiveType = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
+                                                                   .filter(entry -> filename.contains(entry.getKey()))
+                                                                   .findFirst()
+                                                                   .map(Entry::getValue)
+                                                                   .orElse(ArchiveType.NOT_FOUND);
+            if (ArchiveType.NOT_FOUND == archiveType) {
+                LOGGER.debug("Archive Type not found in Corretto for filename: {}", filename);
+                continue;
+            }
+            pkg.setArchiveType(archiveType);
+
+            // No support for Feature.Interim.Update.Path but only Major.Minor.Update => setPatch(0)
+            VersionNumber vNumber = VersionNumber.fromText(withoutPrefix);
+            VersionNumber versionNumber = vNumber;
+            versionNumber.setPatch(0);
+            pkg.setVersionNumber(versionNumber);
+            pkg.setJavaVersion(versionNumber);
+            pkg.setDistributionVersion(vNumber);
+            pkg.setReleaseStatus(GA);
+
+            pkg.setTermOfSupport(Helper.getTermOfSupport(versionNumber));
+
+            pkg.setDirectlyDownloadable(true);
+
+            pkg.setFileName(Helper.getFileNameFromText(filename));
+            pkg.setDirectDownloadUri(fileHref);
+
+            pkg.setFreeUseInProduction(Boolean.TRUE);
+
+            pkgs.add(pkg);
+        }
+
+        pkgs.forEach(pkg -> {
+            String signatureUri = pkg.getDirectDownloadUri() + ".sig";
+            if (html.contains(signatureUri)) {
+                pkg.setSignatureUri(signatureUri);
+            }
+        });
 
         return pkgs;
     }

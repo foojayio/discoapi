@@ -76,6 +76,7 @@ public class Dragonwell implements Distribution {
     private static final SignatureType                SIGNATURE_TYPE         = SignatureType.NONE;
     private static final HashAlgorithm                SIGNATURE_ALGORITHM    = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI          = "";
+    private static final String                       OFFICIAL_URI           = "http://dragonwell-jdk.io/";
 
 
     @Override public Distro getDistro() { return Distro.DRAGONWELL; }
@@ -107,6 +108,8 @@ public class Dragonwell implements Distribution {
     @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
+
+    @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
         return List.of("dragonwell", "DRAGONWELL", "Dragonwell");

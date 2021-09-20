@@ -133,6 +133,7 @@ public class Zulu implements Distribution {
     private static final SignatureType                SIGNATURE_TYPE             = SignatureType.NONE;
     private static final HashAlgorithm                SIGNATURE_ALGORITHM        = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI              = "";
+    private static final String                       OFFICIAL_URI               = "https://www.azul.com/downloads/?package=jdk";
 
 
     @Override public Distro getDistro() { return Distro.ZULU; }
@@ -164,6 +165,8 @@ public class Zulu implements Distribution {
     @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
+
+    @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
         return List.of("zulu", "ZULU", "Zulu", "zulucore", "ZULUCORE", "ZuluCore", "zulu_core", "ZULU_CORE", "Zulu_Core", "zulu core", "ZULU CORE", "Zulu Core");

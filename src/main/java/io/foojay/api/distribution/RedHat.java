@@ -78,6 +78,7 @@ public class RedHat implements Distribution {
     private static final SignatureType                SIGNATURE_TYPE         = SignatureType.NONE;
     private static final HashAlgorithm                SIGNATURE_ALGORITHM    = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI          = "";
+    private static final String                       OFFICIAL_URI           = "https://developers.redhat.com/products/openjdk/overview";
 
 
     public RedHat() {
@@ -113,6 +114,8 @@ public class RedHat implements Distribution {
     @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
+
+    @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
         return List.of("RedHat", "redhat", "REDHAT", "Red Hat", "red hat", "RED HAT", "Red_Hat", "red_hat", "red-hat", "Red-Hat", "RED-HAT");

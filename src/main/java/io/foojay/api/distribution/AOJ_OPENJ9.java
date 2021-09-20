@@ -115,6 +115,7 @@ public class AOJ_OPENJ9 implements Distribution {
     private static final SignatureType                SIGNATURE_TYPE         = SignatureType.NONE;
     private static final HashAlgorithm                SIGNATURE_ALGORITHM    = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI          = "";
+    private static final String                       OFFICIAL_URI           = "https://adoptopenjdk.net/";
 
 
     @Override public Distro getDistro() { return Distro.AOJ_OPENJ9; }
@@ -146,6 +147,8 @@ public class AOJ_OPENJ9 implements Distribution {
     @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
+
+    @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
         return List.of("aoj_openj9", "AOJ_OpenJ9", "AOJ_OPENJ9", "AOJ OpenJ9", "AOJ OPENJ9", "aoj openj9");

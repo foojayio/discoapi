@@ -50,6 +50,7 @@ import java.util.Properties;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import static io.foojay.api.pkg.PackageType.JDK;
 import static io.foojay.api.pkg.ReleaseStatus.EA;
 import static io.foojay.api.pkg.ReleaseStatus.GA;
 
@@ -58,7 +59,7 @@ public class Oracle implements Distribution {
     private static final Logger                       LOGGER                  = LoggerFactory.getLogger(Oracle.class);
 
     private static final String                       PACKAGE_URL             = "";
-    public  static final String                       PKGS_PROPERTIES         = "https://github.com/foojay2020/openjdk_releases/raw/main/oracle.properties";
+    public  static final String                       PKGS_PROPERTIES         = "https://github.com/foojayio/openjdk_releases/raw/main/oracle.properties";
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM      = "";
@@ -74,6 +75,7 @@ public class Oracle implements Distribution {
     private static final SignatureType                SIGNATURE_TYPE          = SignatureType.NONE;
     private static final HashAlgorithm                SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI           = "";
+    private static final String                       OFFICIAL_URI            = "https://www.oracle.com/java/";
 
     // Mappings for url parameters
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP      = Map.of(EA, "early_access", GA, "GA");
@@ -109,6 +111,8 @@ public class Oracle implements Distribution {
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
 
+    @Override public String getOfficialUri() { return OFFICIAL_URI; }
+
     @Override public List<String> getSynonyms() {
         return List.of("oracle", "Oracle", "ORACLE");
     }
@@ -135,7 +139,7 @@ public class Oracle implements Distribution {
         }
         queryBuilder.append("/");
 
-        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder.toString());
+        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
 
         return queryBuilder.toString();
     }
@@ -155,9 +159,8 @@ public class Oracle implements Distribution {
     public List<Pkg> getAllPkgs() {
         List<Pkg> pkgs = new ArrayList<>();
 
-        List<String> pkgUrls = new ArrayList<>();
-
         // Load jdk properties
+        List<String> pkgUrls = new ArrayList<>();
         try {
             final Properties           propertiesPkgs = new Properties();
             final HttpResponse<String> response       = Helper.get(PKGS_PROPERTIES);
@@ -192,12 +195,17 @@ public class Oracle implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages of {}. {}", getName(), e);
         }
+
+        // Load all packages from MajorVersion 17 and above
+        pkgs.addAll(getAllPkgsFrom17AndAbove());
+
         return pkgs;
     }
 
     public List<Pkg> getAllPkgsFromHtml(final String html, final String packageUrl) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
+
         List<String> fileNames = new ArrayList<>(Helper.getDownloadHrefsFromString(html));
         for (String filename : fileNames) {
             if (filename.contains("-demos") || filename.contains("-p-")) { continue; }
@@ -216,7 +224,7 @@ public class Oracle implements Distribution {
                 // > JDK 8
                 packageType = filename.startsWith("jdk") ? PackageType.JDK : PackageType.JRE;
                 nameParts   = filename.split("_");
-                
+
                 if (filename.startsWith("jdk")) {
                     versionNumber = VersionNumber.fromText(nameParts[0].replace("jdk-", ""));
                 } else if (filename.startsWith("jre")) {
@@ -320,6 +328,77 @@ public class Oracle implements Distribution {
             pkgs.add(pkg);
         }
 
+        return pkgs;
+    }
+
+    public List<Pkg> getAllPkgsFrom17AndAbove() {
+        final List<Pkg>                                                  pkgs             = new ArrayList<>();
+        final String                                                     baseUrl          = "https://download.oracle.com/java/";
+        final List<OperatingSystem>                                      operatingSystems = List.of(OperatingSystem.LINUX, OperatingSystem.MACOS, OperatingSystem.WINDOWS);
+        final Map<OperatingSystem, Map<Architecture, List<ArchiveType>>> archiveTypeMap   = Map.of(OperatingSystem.LINUX, Map.of(Architecture.AARCH64, List.of(ArchiveType.RPM, ArchiveType.TAR_GZ),
+                                                                                                                                 Architecture.X64, List.of(ArchiveType.DEB, ArchiveType.RPM, ArchiveType.TAR_GZ)),
+                                                                                                   OperatingSystem.MACOS, Map.of(Architecture.AARCH64, List.of(ArchiveType.DMG, ArchiveType.TAR_GZ),
+                                                                                                                                 Architecture.X64, List.of(ArchiveType.DMG, ArchiveType.TAR_GZ)),
+                                                                                                   OperatingSystem.WINDOWS, Map.of(Architecture.X64, List.of(ArchiveType.EXE, ArchiveType.MSI, ArchiveType.ZIP)));
+
+        CacheManager.INSTANCE.getMajorVersions()
+                             .stream()
+                             .filter(majorVersion -> majorVersion.getAsInt() >= 17)
+                             .forEach(majorVersion -> {
+                                 final List<SemVer> versions = majorVersion.getVersions();
+                                 versions.stream().map(semver -> new VersionNumber(semver.getFeature(), semver.getInterim(), semver.getUpdate(), semver.getPatch())).collect(Collectors.toSet()).forEach(version -> {
+                                     final int           featureVersion = version.getFeature().getAsInt();
+                                     final int           update         = version.getUpdate().getAsInt();
+                                     final VersionNumber versionNumber  = new VersionNumber(featureVersion, 0, update, 0);
+                                     StringBuilder uriBuilder = new StringBuilder(baseUrl).append(featureVersion).append("/archive/jdk-").append(featureVersion);
+                                     if (0 == update) {
+                                         uriBuilder.append("_");
+                                     } else {
+                                         uriBuilder.append(".0.").append(update).append("_");
+                                     }
+                                     int length1 = uriBuilder.length();
+                                     operatingSystems.forEach(operatingSystem -> {
+                                         uriBuilder.setLength(length1);
+                                         uriBuilder.append(operatingSystem.getApiString()).append("-");
+                                         int length2 = uriBuilder.length();
+                                         archiveTypeMap.get(operatingSystem).entrySet().forEach(entry -> {
+                                             uriBuilder.setLength(length2);
+                                             Architecture      architecture = entry.getKey();
+                                             List<ArchiveType> archiveTypes = entry.getValue();
+                                             int length3 = uriBuilder.length();
+                                             archiveTypes.forEach(archiveType -> {
+                                                 uriBuilder.setLength(length3);
+                                                 uriBuilder.append(architecture.getApiString()).append("_").append("bin").append(".").append(archiveType.getApiString());
+                                                 final String fileDownloadUri = uriBuilder.toString();
+                                                 final String filename        = fileDownloadUri.substring(fileDownloadUri.lastIndexOf("/") + 1);
+
+                                                 if (Helper.isUriValid(fileDownloadUri)) {
+                                                     // Create pkg
+                                                     Pkg pkg = new Pkg();
+                                                     pkg.setDistribution(Distro.ORACLE.get());
+                                                     pkg.setVersionNumber(versionNumber);
+                                                     pkg.setJavaVersion(versionNumber);
+                                                     pkg.setDistributionVersion(versionNumber);
+                                                     pkg.setPackageType(JDK);
+                                                     pkg.setArchitecture(architecture);
+                                                     pkg.setBitness(architecture.getBitness());
+                                                     pkg.setOperatingSystem(operatingSystem);
+                                                     pkg.setReleaseStatus(ReleaseStatus.GA);
+                                                     pkg.setTermOfSupport(versionNumber.getMajorVersion().getTermOfSupport());
+                                                     pkg.setFileName(filename);
+                                                     pkg.setArchiveType(archiveType);
+                                                     pkg.setJavaFXBundled(false);
+                                                     pkg.setDirectlyDownloadable(true);
+                                                     pkg.setFreeUseInProduction(Boolean.TRUE);
+                                                     pkg.setDirectDownloadUri(fileDownloadUri);
+
+                                                     pkgs.add(pkg);
+                                                 }
+                                             });
+                                         });
+                                     });
+                                 });
+                             });
         return pkgs;
     }
 }

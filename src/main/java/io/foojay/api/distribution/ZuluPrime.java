@@ -59,7 +59,7 @@ public class ZuluPrime implements Distribution {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZuluPrime.class);
 
     private static final String        PACKAGE_URL            = "https://docs.azul.com/prime/prime-quick-start-tar";
-    public  static final String        PKGS_PROPERTIES        = "https://github.com/foojay2020/openjdk_releases/raw/main/zulu_prime.properties";
+    public  static final String        PKGS_PROPERTIES        = "https://github.com/foojayio/openjdk_releases/raw/main/zulu_prime.properties";
 
     // URL parameters
     private static final String        ARCHITECTURE_PARAM     = "";
@@ -75,6 +75,7 @@ public class ZuluPrime implements Distribution {
     private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
     private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
     private static final String        SIGNATURE_URI       = "";
+    private static final String        OFFICIAL_URI        = "https://www.azul.com/products/prime/stream-download/";
 
 
     @Override public Distro getDistro() { return Distro.ZULU_PRIME; }
@@ -106,6 +107,8 @@ public class ZuluPrime implements Distribution {
     @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
+
+    @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
         return List.of("zing", "ZING", "Zing", "prime", "PRIME", "Prime", "zuluprime", "ZULUPRIME", "ZuluPrime", "zulu_prime","ZULU_PRIME", "Zulu_Prime", "zulu prime", "ZULU PRIME", "Zulu Prime");

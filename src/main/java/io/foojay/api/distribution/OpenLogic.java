@@ -61,7 +61,7 @@ public class OpenLogic implements Distribution {
 
     private static final String                       PREFIX                 = "openlogic-openjdk-";
     private static final String                       PACKAGE_URL            = "";
-    public  static final String                       PKGS_PROPERTIES        = "https://github.com/foojay2020/openjdk_releases/raw/main/openlogic.properties";
+    public  static final String                       PKGS_PROPERTIES        = "https://github.com/foojayio/openjdk_releases/raw/main/openlogic.properties";
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM     = "";
@@ -80,6 +80,7 @@ public class OpenLogic implements Distribution {
     private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
     private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI          = "";
+    private static final String        OFFICIAL_URI        = "https://www.openlogic.com";
 
 
     public OpenLogic() {
@@ -115,6 +116,8 @@ public class OpenLogic implements Distribution {
     @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
+
+    @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
         return List.of("openlogic", "OPENLOGIC", "OpenLogic", "open_logic", "OPEN_LOGIC", "Open Logic", "OPEN LOGIC", "open logic");

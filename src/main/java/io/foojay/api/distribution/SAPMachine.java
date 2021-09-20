@@ -103,6 +103,7 @@ public class SAPMachine implements Distribution {
     private static final SignatureType                SIGNATURE_TYPE          = SignatureType.NONE;
     private static final HashAlgorithm                SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI           = "";
+    private static final String                       OFFICIAL_URI            = "https://sap.github.io/SapMachine/";
 
 
     @Override public Distro getDistro() { return Distro.SAP_MACHINE; }
@@ -134,6 +135,8 @@ public class SAPMachine implements Distribution {
     @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
+
+    @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
         return List.of("sap_machine", "sapmachine", "SAPMACHINE", "SAP_MACHINE", "SAPMachine", "SAP Machine", "sap-machine", "SAP-Machine", "SAP-MACHINE");

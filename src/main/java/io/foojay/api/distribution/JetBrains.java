@@ -68,7 +68,7 @@ public class JetBrains implements Distribution {
     private static final String        PACKAGE_URL            = "https://cache-redirector.jetbrains.com/intellij-jbr/";
     private static final String        GITHUB_USER            = "JetBrains";
     private static final String        GITHUB_REPOSITORY      = "JetBrainsRuntime";
-    public  static final String        PKGS_PROPERTIES        = "https://github.com/foojay2020/openjdk_releases/raw/main/jetbrains.properties";
+    public  static final String        PKGS_PROPERTIES        = "https://github.com/foojayio/openjdk_releases/raw/main/jetbrains.properties";
     public  static final String        GITHUB_RELEASES        = "https://github.com/JetBrains/JetBrainsRuntime/releases/latest";
     public  static final String        GITHUB_RELEASES_URL    = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases/latest";
 
@@ -88,6 +88,7 @@ public class JetBrains implements Distribution {
     private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
     private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
     private static final String        SIGNATURE_URI          = "";
+    private static final String        OFFICIAL_URI           = "https://confluence.jetbrains.com/display/JBR/JetBrains+Runtime";
 
     private static final Pattern       JBRSDK_PATTERN         = Pattern.compile("JBRSDK\\s+\\|\\s+\\[([0-9a-zA-Z_.-]+)\\]\\(([0-9a-z:/._-]+)\\)");
     private static final Matcher       JBRSDK_MATCHER         = JBRSDK_PATTERN.matcher("");
@@ -121,6 +122,8 @@ public class JetBrains implements Distribution {
     @Override public HashAlgorithm getSignatureAlgorithm() { return SIGNATURE_ALGORITHM; }
 
     @Override public String getSignatureUri() { return SIGNATURE_URI; }
+
+    @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
         return List.of("jetbrains", "JetBrains", "JETBRAINS");
