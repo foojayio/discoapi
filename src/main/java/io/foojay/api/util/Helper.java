@@ -26,6 +26,7 @@ import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.distribution.AOJ;
 import io.foojay.api.distribution.AOJ_OPENJ9;
+import io.foojay.api.distribution.Corretto;
 import io.foojay.api.distribution.Distribution;
 import io.foojay.api.distribution.JetBrains;
 import io.foojay.api.distribution.LibericaNative;
@@ -186,6 +187,13 @@ public class Helper {
                 case ZULU_PRIME:
                     ZuluPrime zuluPrime = (ZuluPrime) distro.get();
                     pkgs.addAll(zuluPrime.getAllPkgs());
+                    break;
+                case CORRETTO:
+                    Corretto corretto = (Corretto) distro.get();
+                    pkgs.addAll(corretto.getAllPkgs());
+                    CacheManager.INSTANCE.getMajorVersions().stream().forEach(majorVersion ->
+                        pkgs.addAll(getPkgs(corretto, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE,
+                                            ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE)));
                     break;
                 case ORACLE:
                     Oracle oracle = (Oracle) distro.get();
@@ -404,16 +412,12 @@ public class Helper {
                         JsonArray jsonArray = element.getAsJsonArray();
                         for (int i = 0; i < jsonArray.size(); i++) {
                             JsonObject pkgJsonObj         = jsonArray.get(i).getAsJsonObject();
-                            List<Pkg> pkgsInDistribution =
-                                    distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx,
-                                                                releaseStatus, termOfSupport);
+                                List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
                         pkgsFound.addAll(pkgsInDistribution);
                         }
                     } else if (element instanceof JsonObject) {
                         JsonObject pkgJsonObj         = element.getAsJsonObject();
-                        List<Pkg> pkgsInDistribution =
-                            distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus,
-                                                        termOfSupport);
+                            List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
                     pkgsFound.addAll(pkgsInDistribution);
                     }
                 } else {
@@ -705,7 +709,8 @@ public class Helper {
         if (featureVersion < 1) { throw new IllegalArgumentException("Feature version number cannot be smaller than 1"); }
         if (featureVersion <= 8) { return true; }
         if (featureVersion < 11) { return false; }
-        return ((featureVersion - 11.0) / 6.0) % 1 == 0;
+        if (featureVersion < 17) { return ((featureVersion - 11.0) / 6.0) % 1 == 0; }
+        return ((featureVersion - 17.0) / 4.0) % 1 == 0;
     }
 
     public static final TermOfSupport getTermOfSupport(final VersionNumber versionNumber, final Distro distribution) {
