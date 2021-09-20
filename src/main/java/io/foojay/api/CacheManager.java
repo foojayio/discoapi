@@ -269,6 +269,7 @@ public enum CacheManager {
                                          .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8)
                                          .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11)
                                          .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE16)
+                                         .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE17)
                                          .filter(pkg -> pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE)
                                          .filter(pkg -> pkg.getDistribution().getDistro() != Distro.MANDREL)
                                          .map(pkg -> pkg.getVersionNumber().getFeature().getAsInt())
