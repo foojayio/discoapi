@@ -149,7 +149,7 @@ public class HelperTest {
         assert Helper.isLTS(8);
         assert Helper.isLTS(11);
         assert Helper.isLTS(17);
-        assert Helper.isLTS(23);
+        assert Helper.isLTS(21);
     }
 
     @Test
@@ -157,8 +157,8 @@ public class HelperTest {
         assert Helper.isMTS(13);
         assert Helper.isMTS(15);
         assert Helper.isMTS(19);
-        assert Helper.isMTS(21);
-        assert Helper.isMTS(25);
+        assert Helper.isMTS(23);
+        assert Helper.isMTS(27);
     }
 
     @Test
