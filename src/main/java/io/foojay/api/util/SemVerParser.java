@@ -62,6 +62,10 @@ public class SemVerParser {
         String pre1      = null != result.group(9)  ? result.group(9)  : "";
 
         if (pre1.equals("ea.0")) { pre1 = "ea"; }
+        if (pre1.startsWith("b") && metadata1.isEmpty()) {
+            metadata1 = pre1;
+            pre1 = "";
+        }
 
         VersionNumber versionNumber1 = new VersionNumber();
 
@@ -181,6 +185,10 @@ public class SemVerParser {
             String pre2      = null != result.group(23) ? result.group(23) : "";
 
             if (pre2.equals("ea.0")) { pre2 = "ea"; }
+            if (pre2.startsWith("b") && metadata2.isEmpty()) {
+                metadata2 = pre2;
+                pre2 = "";
+            }
 
             VersionNumber versionNumber2 = new VersionNumber();
 
