@@ -49,30 +49,40 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.gte;
+import static com.mongodb.client.model.Filters.in;
 import static com.mongodb.client.model.Filters.lte;
 import static com.mongodb.client.model.Updates.combine;
+import static com.mongodb.client.model.Updates.inc;
 import static com.mongodb.client.model.Updates.set;
 import static io.foojay.api.pkg.Pkg.FIELD_DISTRIBUTION;
 import static io.foojay.api.pkg.Pkg.FIELD_FILENAME;
 import static io.foojay.api.pkg.Pkg.FIELD_LATEST_BUILD_AVAILABLE;
 import static io.foojay.api.util.Constants.API_VERSION_V1;
+import static io.foojay.api.util.Constants.COMMA;
 import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_OPEN;
 import static io.foojay.api.util.Constants.SENTINEL_PKG_ID;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 public enum MongoDbManager {
@@ -84,6 +94,9 @@ public enum MongoDbManager {
     private static final String                           FIELD_DOWNLOADS                = "downloads";
     private static final String                           FIELD_ID                       = "id";
     private static final String                           FIELD_DISTRO                   = "distro";
+    private static final String                           FIELD_DISTRIBUTIONS            = "distributions";
+    private static final String                           FIELD_VERSION                  = "version";
+    private static final String                           FIELD_DAY                      = "day";
     private static final String                           FIELD_TIMESTAMP                = "timestamp";
     private static final String                           FIELD_STATE                    = "state";
     private static final String                           FIELD_TYPE                     = "type";
@@ -652,6 +665,121 @@ public enum MongoDbManager {
         LOGGER.debug("Successfully added download for id {} and user-agent {}", pkgId, userAgent);
     }
 
+    public void addDownloadToToday(final Distro distro, final int majorVersion) {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, downloads per distro not set.");
+            return;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Could not upsert update because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.DOWNLOADS_PER_DAY_COLLECTION) {
+            LOGGER.error("Constants.DOWNLOADS_PER_DAY_COLLECTION not set.");
+            return;
+        }
+        if (!collectionExists(database, Constants.DOWNLOADS_PER_DAY_COLLECTION)) { database.createCollection(Constants.DOWNLOADS_PER_DAY_COLLECTION); }
+
+        final String featureVersion = Integer.toString(majorVersion);
+        final String day            = DateTimeFormatter.ISO_LOCAL_DATE.format(ZonedDateTime.now());
+
+        final MongoCollection<Document> collection = database.getCollection(Constants.DOWNLOADS_PER_DAY_COLLECTION);
+
+        Document dayDoc = collection.find(eq(FIELD_DAY, day)).first();
+        if (null == dayDoc) {
+            dayDoc = new Document();
+        }
+
+        Document distributionsDoc;
+        if (dayDoc.containsKey(FIELD_DISTRIBUTIONS)) {
+            distributionsDoc = (Document) dayDoc.get(FIELD_DISTRIBUTIONS);
+            Document distroDoc;
+            long     numberOfAllDownloads = 0;
+            Document versionsDoc;
+            long     downloadsPerVersion = 0;
+            if (distributionsDoc.containsKey(distro.getApiString())) {
+                distroDoc = (Document) distributionsDoc.get(distro.getApiString());
+                if (distroDoc.containsKey(FIELD_DOWNLOADS)) {
+                    numberOfAllDownloads = distroDoc.getLong(FIELD_DOWNLOADS);
+                }
+                if (distroDoc.containsKey(FIELD_VERSION)) {
+                    versionsDoc = (Document) distroDoc.get(FIELD_VERSION);
+                    if (versionsDoc.containsKey(featureVersion)) {
+                        downloadsPerVersion = versionsDoc.getLong(featureVersion);
+                    }
+                } else {
+                    versionsDoc = new Document();
+                }
+                versionsDoc.put(featureVersion, downloadsPerVersion + 1);
+            } else {
+                versionsDoc = new Document();
+                versionsDoc.put(featureVersion, downloadsPerVersion + 1);
+                distroDoc = new Document();
+            }
+            distroDoc.put(FIELD_DOWNLOADS, numberOfAllDownloads + 1);
+            distroDoc.put(FIELD_VERSION, versionsDoc);
+
+            distributionsDoc.append(distro.getApiString(), distroDoc);
+        } else {
+            Document versions = new Document();
+            versions.put(featureVersion, 1);
+
+            Document distroDoc = new Document();
+            distroDoc.put(FIELD_DOWNLOADS, 1);
+            distroDoc.put(FIELD_VERSION, versions);
+
+            distributionsDoc = new Document();
+            distributionsDoc.put(distro.getApiString(), distroDoc);
+        }
+        dayDoc.put(day, distributionsDoc);
+
+        collection.updateOne(eq(FIELD_DAY, day), combine(set(FIELD_DISTRIBUTIONS, distributionsDoc)), new UpdateOptions().upsert(true));
+
+        LOGGER.debug("Successfully updated downloads for distro {} at {}", distro.getApiString(), day);
+    }
+    public String getDownloadsPerDay(final Set<ZonedDateTime> days) {
+        if (days.isEmpty()) {
+            days.add(ZonedDateTime.of(2021, 9, 6, 12, 0, 0, 0, ZoneId.systemDefault()));
+            days.add(ZonedDateTime.now());
+        }
+        List<String> daysToFetch = days.stream().map(day -> DateTimeFormatter.ISO_LOCAL_DATE.format(day)).collect(Collectors.toList());
+
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, returned empty list of downloads");
+            return SQUARE_BRACKET_OPEN + SQUARE_BRACKET_CLOSE;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Cannot return packages because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return SQUARE_BRACKET_OPEN + SQUARE_BRACKET_CLOSE;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.DOWNLOADS_PER_DAY_COLLECTION) {
+            LOGGER.error("Constants.DOWNLOADS_PER_DAY_COLLECTION not set.");
+            return SQUARE_BRACKET_OPEN + SQUARE_BRACKET_CLOSE;
+        };
+        if (!collectionExists(database, Constants.DOWNLOADS_PER_DAY_COLLECTION)) { database.createCollection(Constants.DOWNLOADS_PER_DAY_COLLECTION); }
+
+        final MongoCollection<Document> collection = database.getCollection(Constants.DOWNLOADS_PER_DAY_COLLECTION);
+
+        StringBuilder msgBuilder = new StringBuilder();
+        msgBuilder.append(SQUARE_BRACKET_OPEN);
+        collection.find(in(FIELD_DAY, daysToFetch)).forEach(document -> {
+            msgBuilder.append(document.toJson());
+            msgBuilder.append(COMMA);
+        });
+        msgBuilder.append(SQUARE_BRACKET_CLOSE);
+        return msgBuilder.toString();
+    }
+
     public void updateLatestBuildAvailable(final List<Pkg> pkgs) {
         connect();
         if (!connected) {
@@ -699,10 +827,6 @@ public enum MongoDbManager {
         if (!collectionExists(database, Constants.DISTRO_UPDATES_COLLECTION)) { database.createCollection(Constants.DISTRO_UPDATES_COLLECTION); }
 
         final MongoCollection<Document> collection = database.getCollection(Constants.DISTRO_UPDATES_COLLECTION);
-
-        if (!collectionExists(database, Constants.DISTRO_UPDATES_COLLECTION)) {
-            database.createCollection(Constants.DISTRO_UPDATES_COLLECTION);
-        }
 
         Document document = collection.find(eq(FIELD_DISTRO, distro.getApiString())).first();
         if (null == document) {

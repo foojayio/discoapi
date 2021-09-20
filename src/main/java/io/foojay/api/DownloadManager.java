@@ -20,6 +20,7 @@
 package io.foojay.api;
 
 
+import io.foojay.api.pkg.Pkg;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,8 +60,10 @@ public enum DownloadManager {
 
         // Store package id and no of downloads for this package
         try {
+            Pkg pkg = CacheManager.INSTANCE.pkgCache.get(pkgId);
             MongoDbManager.INSTANCE.upsertDownloadForId(pkgId, noOfDownloads);
             MongoDbManager.INSTANCE.addDownloadFromUserAgent(pkgId, userAgent, ipAddress);
+            MongoDbManager.INSTANCE.addDownloadToToday(pkg.getDistribution().getDistro(), pkg.getMajorVersion().getAsInt());
             LOGGER.debug("Successfully stored download for package id {} to mongodb.", pkgId);
         } catch (Exception e) {
             LOGGER.error("Error storing download download for package id {} to mongodb. {}", pkgId, e);
