@@ -77,6 +77,7 @@ public class Pkg {
     public  static final String            FIELD_EPHEMERAL_ID           = "ephemeral_id";
     public  static final String            FIELD_LINKS                  = "links";
     public  static final String            FIELD_DOWNLOAD               = "pkg_info_uri";
+    public  static final String            FIELD_REDIRECT               = "pkg_download_redirect";
     public  static final String            FIELD_FREE_USE_IN_PROD       = "free_use_in_production";
     public  static final String            FIELD_FEATURE                = "feature";
     private              Distribution      distribution;
@@ -336,7 +337,8 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                          .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES)
+                                          .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA_NEW_LINE)
+                                          .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append("/redirect").append(QUOTES)
                                           .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                           .append(CURLY_BRACKET_CLOSE)
@@ -387,7 +389,9 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                          .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(CURLY_BRACKET_CLOSE).append(COMMA)
+                                          .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA)
+                                          .append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append("/redirect").append(QUOTES)
+                                          .append(CURLY_BRACKET_CLOSE).append(COMMA)
                                           .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
                                           .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                           .append(CURLY_BRACKET_CLOSE)
@@ -405,14 +409,30 @@ public class Pkg {
         return distribution.equals(pkg.distribution) &&
                getFeatureVersion().getAsInt() == pkg.getFeatureVersion().getAsInt() &&
                getInterimVersion().getAsInt() == pkg.getInterimVersion().getAsInt() &&
-               architecture                 == pkg.architecture &&
-               operatingSystem              == pkg.operatingSystem &&
-               packageType                  == pkg.packageType &&
-               releaseStatus                == pkg.releaseStatus &&
-               archiveType                  == pkg.archiveType &&
-               termOfSupport                == pkg.termOfSupport &&
-               javafxBundled                == pkg.javafxBundled &&
-               directlyDownloadable         == pkg.directlyDownloadable &&
+               architecture                   == pkg.getArchitecture() &&
+               operatingSystem                == pkg.getOperatingSystem() &&
+               packageType                    == pkg.getPackageType() &&
+               releaseStatus                  == pkg.getReleaseStatus() &&
+               archiveType                    == pkg.getArchiveType() &&
+               termOfSupport                  == pkg.getTermOfSupport() &&
+               javafxBundled                  == pkg.isJavaFXBundled() &&
+               directlyDownloadable           == pkg.isDirectlyDownloadable() &&
+               !getId().equals(pkg.getId());
+    }
+
+    public boolean equalsExceptJavaFXAndPackageType(final Pkg pkg) {
+        if (this.equals(pkg)) { return false; }
+        if (null == pkg) { return false; }
+        return distribution.equals(pkg.distribution) &&
+               getJavaVersion().compareTo(pkg.getJavaVersion()) == 0 &&
+               architecture                   == pkg.getArchitecture() &&
+               operatingSystem                == pkg.getOperatingSystem() &&
+               libCType                       == pkg.getLibCType() &&
+               packageType                    == pkg.getPackageType() &&
+               releaseStatus                  == pkg.getReleaseStatus() &&
+               termOfSupport                  == pkg.getTermOfSupport() &&
+               directlyDownloadable           == pkg.isDirectlyDownloadable() &&
+               javafxBundled                  != pkg.isJavaFXBundled() &&
                !getId().equals(pkg.getId());
     }
 
