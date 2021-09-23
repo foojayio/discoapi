@@ -57,14 +57,33 @@ import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 
+import static io.foojay.api.pkg.Architecture.AARCH64;
+import static io.foojay.api.pkg.Architecture.ARM;
+import static io.foojay.api.pkg.Architecture.MIPS;
+import static io.foojay.api.pkg.Architecture.PPC64;
+import static io.foojay.api.pkg.Architecture.PPC64LE;
+import static io.foojay.api.pkg.Architecture.SPARCV9;
+import static io.foojay.api.pkg.Architecture.X64;
+import static io.foojay.api.pkg.Architecture.X86;
+import static io.foojay.api.pkg.ArchiveType.getFromFileName;
+import static io.foojay.api.pkg.OperatingSystem.AIX;
+import static io.foojay.api.pkg.OperatingSystem.LINUX;
+import static io.foojay.api.pkg.OperatingSystem.MACOS;
+import static io.foojay.api.pkg.OperatingSystem.SOLARIS;
+import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
+import static io.foojay.api.pkg.PackageType.JDK;
+import static io.foojay.api.pkg.PackageType.JRE;
 import static io.foojay.api.pkg.ReleaseStatus.EA;
 import static io.foojay.api.pkg.ReleaseStatus.GA;
+import static io.foojay.api.pkg.TermOfSupport.MTS;
+import static io.foojay.api.pkg.TermOfSupport.STS;
 
 
 public class Temurin implements Distribution {
     private static final Logger LOGGER = LoggerFactory.getLogger(Temurin.class);
 
     private static final String        PACKAGE_URL            = "https://api.github.com/repos/adoptium/";
+    private static final String        PACKAGE_API_URL        = "https://api.adoptium.net/v3/assets/feature_releases/";
 
     // URL parameters
     private static final String        ARCHITECTURE_PARAM     = "architecture";
@@ -74,6 +93,28 @@ public class Temurin implements Distribution {
     private static final String        RELEASE_STATUS_PARAM   = "release_type";
     private static final String        SUPPORT_TERM_PARAM     = "";
     private static final String        BITNESS_PARAM          = "";
+
+    // Mappings for url parameters
+    private static final Map<Architecture, String>    ARCHITECTURE_MAP       = Map.of(AARCH64, "aarch64", ARM, "arm", MIPS, "mips", PPC64, "ppc64", PPC64LE, "ppc64le", SPARCV9, "sparcv9", X64, "x64", X86, "x32");
+    private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP   = Map.of(LINUX, "linux", MACOS, "mac", WINDOWS, "windows", SOLARIS, "solaris", AIX, "aix");
+    private static final Map<PackageType, String>     PACKAGE_TYPE_MAP       = Map.of(JDK, "jdk", JRE, "jre");
+    private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP     = Map.of(EA, "ea", GA, "ga");
+
+    // JSON fields
+    private static final String        FIELD_BINARIES         = "binaries";
+    private static final String        FIELD_INSTALLER        = "installer";
+    private static final String        FIELD_PACKAGE          = "package";
+    private static final String        FIELD_LINK             = "link";
+    private static final String        FIELD_NAME             = "name";
+    private static final String        FIELD_VERSION_DATA     = "version_data";
+    private static final String        FIELD_SEMVER           = "semver";
+    private static final String        FIELD_RELEASE_TYPE     = "release_type";
+    private static final String        FIELD_RELEASE_NAME     = "release_name";
+    private static final String        FIELD_ARCHITECTURE     = "architecture";
+    private static final String        FIELD_IMAGE_TYPE       = "image_type";
+    private static final String        FIELD_JVM_IMPL         = "jvm_impl";
+    private static final String        FIELD_OS               = "os";
+    private static final String        FIELD_CHECKSUM         = "checksum";
 
     private static final HashAlgorithm HASH_ALGORITHM         = HashAlgorithm.NONE;
     private static final String        HASH_URI               = "";
@@ -137,9 +178,48 @@ public class Temurin implements Distribution {
                                                    final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         StringBuilder queryBuilder = new StringBuilder();
 
-        queryBuilder.append(PACKAGE_URL);
+        queryBuilder.append(PACKAGE_API_URL);
+        queryBuilder.append(versionNumber.getFeature().getAsInt()).append("/");
 
-        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder.toString());
+        if (null == RELEASE_STATUS_MAP.get(releaseStatus)) {
+            queryBuilder.append(RELEASE_STATUS_MAP.get(ReleaseStatus.GA));
+        } else {
+            queryBuilder.append(RELEASE_STATUS_MAP.get(releaseStatus));
+        }
+
+        int initialSize = queryBuilder.length();
+
+        if (architecture != Architecture.NONE) {
+            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+            queryBuilder.append(ARCHITECTURE_PARAM).append("=").append(ARCHITECTURE_MAP.get(architecture));
+        }
+
+        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+        queryBuilder.append("heap_size=").append("normal");
+
+        if (packageType != PackageType.NONE) {
+            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+            queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(packageType));
+        }
+
+        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+        queryBuilder.append("jvm_impl=").append("hotspot");
+
+        if (null != operatingSystem && OperatingSystem.NONE != operatingSystem && OperatingSystem.NOT_FOUND != operatingSystem) {
+            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+            queryBuilder.append(OPERATING_SYSTEM_PARAM).append("=").append(OPERATING_SYSTEM_MAP.get(operatingSystem));
+        }
+
+        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+        queryBuilder.append("page_size=").append("100");
+
+        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+        queryBuilder.append("project=").append("jdk");
+
+        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+        queryBuilder.append("vendor=").append("adoptium");
+
+        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
 
         return queryBuilder.toString();
     }
@@ -148,6 +228,136 @@ public class Temurin implements Distribution {
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                                               final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         List<Pkg> pkgs = new ArrayList<>();
+
+        TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
+        supTerm = MTS == supTerm ? STS : supTerm;
+
+        JsonArray binaries = jsonObj.get(FIELD_BINARIES).getAsJsonArray();
+        for (int i = 0 ; i < binaries.size() ; i++) {
+            JsonObject    binariesObj    = binaries.get(i).getAsJsonObject();
+            JsonObject    versionDataObj = jsonObj.get(FIELD_VERSION_DATA).getAsJsonObject();
+            VersionNumber vNumber        = SemVer.fromText(versionDataObj.get(FIELD_SEMVER).getAsString()).getSemVer1().getVersionNumber();
+            if (latest) {
+                if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }
+            }
+            VersionNumber dNumber = SemVer.fromText(versionDataObj.get(FIELD_SEMVER).getAsString()).getSemVer1().getVersionNumber();
+
+            Architecture arc = Constants.ARCHITECTURE_LOOKUP.entrySet()
+                                                            .stream()
+                                                            .filter(entry -> entry.getKey().equals(binariesObj.get(FIELD_ARCHITECTURE).getAsString()))
+                                                            .findFirst()
+                                                            .map(Entry::getValue)
+                                                            .orElse(Architecture.NONE);
+
+            PackageType pkgTypeFound = PackageType.fromText(binariesObj.get(FIELD_IMAGE_TYPE).getAsString());
+
+            OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
+                                                                  .stream()
+                                                                  .filter(entry -> entry.getKey().equals(binariesObj.get(FIELD_OS).getAsString()))
+                                                                  .findFirst()
+                                                                  .map(Entry::getValue)
+                                                                  .orElse(OperatingSystem.NONE);
+
+            if (OperatingSystem.NONE == os) {
+                LOGGER.debug("Operating System not found in Temurin for field value: {}", binariesObj.get(FIELD_OS).getAsString());
+                continue;
+            }
+
+            JsonElement installerElement = binariesObj.get(FIELD_INSTALLER);
+            if (null != installerElement) {
+                JsonObject installerObj      = installerElement.getAsJsonObject();
+                String installerName         = installerObj.get(FIELD_NAME).getAsString();
+                String installerDownloadLink = installerObj.get(FIELD_LINK).getAsString();
+
+                if (installerName.contains("testimage") || installerName.contains("debugimage")) { continue; }
+
+                if (Architecture.NONE == arc) {
+                    arc = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                                                       .filter(entry -> installerName.contains(entry.getKey()))
+                                                       .findFirst()
+                                                       .map(Entry::getValue)
+                                                       .orElse(Architecture.NONE);
+                }
+
+                if (Architecture.NONE == arc) {
+                    LOGGER.debug("Architecture not found in Temurin for filename: {}", installerName);
+                    continue;
+                }
+
+                if (PackageType.NONE == pkgTypeFound) {
+                    LOGGER.debug("PackageType not found in Temurin json object");
+                    continue;
+                }
+
+                Pkg installerPkg = new Pkg();
+                installerPkg.setDistribution(Distro.TEMURIN.get());
+                installerPkg.setVersionNumber(vNumber);
+                installerPkg.setJavaVersion(vNumber);
+                installerPkg.setDistributionVersion(vNumber);
+                installerPkg.setTermOfSupport(supTerm);
+                installerPkg.setPackageType(pkgTypeFound);
+                installerPkg.setArchitecture(arc);
+                installerPkg.setBitness(arc.getBitness());
+                installerPkg.setOperatingSystem(os);
+                installerPkg.setReleaseStatus(ReleaseStatus.NONE == releaseStatus ? GA : releaseStatus);
+                Helper.setTermOfSupport(versionNumber, installerPkg);
+                ArchiveType ext = getFromFileName(installerName);
+                if(ArchiveType.NONE == archiveType || ext == archiveType) {
+                    installerPkg.setArchiveType(ext);
+                    installerPkg.setFileName(installerName);
+                    installerPkg.setDirectDownloadUri(installerDownloadLink);
+                    installerPkg.setFreeUseInProduction(Boolean.TRUE);
+                    pkgs.add(installerPkg);
+                }
+            }
+
+            JsonElement packageElement = binariesObj.get(FIELD_PACKAGE);
+            if (null != packageElement) {
+                JsonObject packageObj      = packageElement.getAsJsonObject();
+                String packageName         = packageObj.get(FIELD_NAME).getAsString();
+                String packageDownloadLink = packageObj.get(FIELD_LINK).getAsString();
+
+                if (packageName.contains("testimage") || packageName.contains("debugimage")) { continue; }
+
+                if (Architecture.NONE == arc) {
+                    arc = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                                                       .filter(entry -> packageName.contains(entry.getKey()))
+                                                       .findFirst()
+                                                       .map(Entry::getValue)
+                                                       .orElse(Architecture.NONE);
+                }
+
+                if (Architecture.NONE == arc) {
+                    LOGGER.debug("Architecture not found in Temurin for filename: {}", packageName);
+                    continue;
+                }
+
+                if (PackageType.NONE == pkgTypeFound) {
+                    LOGGER.debug("PackageType not found in Temurin json object");
+                    continue;
+                }
+
+                Pkg packagePkg = new Pkg();
+                packagePkg.setDistribution(Distro.TEMURIN.get());
+                packagePkg.setVersionNumber(vNumber);
+                packagePkg.setJavaVersion(vNumber);
+                packagePkg.setDistributionVersion(dNumber);
+                packagePkg.setTermOfSupport(supTerm);
+                packagePkg.setPackageType(pkgTypeFound);
+                packagePkg.setArchitecture(arc);
+                packagePkg.setBitness(arc.getBitness());
+                packagePkg.setOperatingSystem(os);
+                packagePkg.setReleaseStatus(ReleaseStatus.NONE == releaseStatus ? GA : releaseStatus);
+                ArchiveType ext = getFromFileName(packageName);
+                if(ArchiveType.NONE == archiveType || ext == archiveType) {
+                    packagePkg.setArchiveType(ext);
+                    packagePkg.setFileName(packageName);
+                    packagePkg.setDirectDownloadUri(packageDownloadLink);
+                    packagePkg.setFreeUseInProduction(Boolean.TRUE);
+                    pkgs.add(packagePkg);
+                }
+            }
+        }
 
         return pkgs;
     }

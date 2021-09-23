@@ -308,6 +308,16 @@ public class Helper {
                     break;
                 case TEMURIN:
                     Temurin temurin = (Temurin) distro.get();
+                    CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> majorVersion.getAsInt() >= 8).forEach(majorVersion -> {
+                        VersionNumber versionNumber = majorVersion.getVersionNumber();
+
+                        pkgs.addAll(getPkgs(temurin, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                                            ReleaseStatus.GA, TermOfSupport.NONE));
+
+                        pkgs.addAll(getPkgs(temurin, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
+                                            ReleaseStatus.EA, TermOfSupport.NONE));
+                    });
+                    /*
                         List<Pkg> temurinPkgs = temurin.getAllPkgs();
                         List<MajorVersion> earlyAccessOnly = CacheManager.INSTANCE.getMajorVersions().stream()
                                                                                   .filter(majorVersion -> majorVersion.isEarlyAccessOnly())
@@ -327,6 +337,7 @@ public class Helper {
                         }
                     });
                     pkgs.addAll(temurinPkgs);
+                    */
                     break;
                 case MICROSOFT:
                     Microsoft microsoft = (Microsoft) distro.get();

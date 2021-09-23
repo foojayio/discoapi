@@ -68,7 +68,7 @@ public enum Distro implements ApiFeature {
     RED_HAT("Red Hat", "redhat", new RedHat(), 720),
     SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 720),
     SEMERU("Semeru", "semeru", new Semeru(), 720),
-    TEMURIN("Temurin", "temurin", new Temurin(), 720),
+    TEMURIN("Temurin", "temurin", new Temurin(), 60),
     TRAVA("Trava", "trava", new Trava(), 1440),
     ZULU("Zulu", "zulu", new Zulu(), 15),
     ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), 1440),
