@@ -70,7 +70,8 @@ public class JetBrains implements Distribution {
     private static final String        GITHUB_REPOSITORY      = "JetBrainsRuntime";
     public  static final String        PKGS_PROPERTIES        = "https://github.com/foojayio/openjdk_releases/raw/main/jetbrains.properties";
     public  static final String        GITHUB_RELEASES        = "https://github.com/JetBrains/JetBrainsRuntime/releases/latest";
-    public  static final String        GITHUB_RELEASES_URL    = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases/latest";
+    //public  static final String        GITHUB_RELEASES_URL    = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases/latest";
+    public  static final String        GITHUB_RELEASES_URL    = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases?pages=100";
 
 
 
@@ -83,10 +84,10 @@ public class JetBrains implements Distribution {
     private static final String        SUPPORT_TERM_PARAM     = "";
     private static final String        BITNESS_PARAM          = "";
 
-    private static final HashAlgorithm HASH_ALGORITHM      = HashAlgorithm.NONE;
-    private static final String        HASH_URI            = "";
-    private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
-    private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
+    private static final HashAlgorithm HASH_ALGORITHM         = HashAlgorithm.NONE;
+    private static final String        HASH_URI               = "";
+    private static final SignatureType SIGNATURE_TYPE         = SignatureType.NONE;
+    private static final HashAlgorithm SIGNATURE_ALGORITHM    = HashAlgorithm.NONE;
     private static final String        SIGNATURE_URI          = "";
     private static final String        OFFICIAL_URI           = "https://confluence.jetbrains.com/display/JBR/JetBrains+Runtime";
 
@@ -247,6 +248,7 @@ public class JetBrains implements Distribution {
             }
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkg.setTckTested(Boolean.FALSE);
 
             pkgs.add(pkg);
         }
@@ -317,6 +319,7 @@ public class JetBrains implements Distribution {
                 }
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
+                pkg.setTckTested(Boolean.FALSE);
 
                 pkgs.add(pkg);
             }
@@ -392,6 +395,7 @@ public class JetBrains implements Distribution {
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkg.setTckTested(Boolean.FALSE);
             pkgs.add(pkg);
         }
         return pkgs;

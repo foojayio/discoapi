@@ -29,11 +29,39 @@ public enum Config {
     private static final Logger LOGGER                    = LoggerFactory.getLogger(Config.class);
 
     public static final String FOOJAY_API_BASE_URL         = "FOOJAY_API_BASE_URL";         // https://api.foojay.io/disco
+    public static final String FOOJAY_API_ENVIRONMENT      = "FOOJAY_API_ENVIRONMENT";
     public static final String FOOJAY_API_MONGODB_URL      = "FOOJAY_API_MONGODB_URL";
     public static final String FOOJAY_API_MONGODB_PORT     = "FOOJAY_API_MONGODB_PORT";
     public static final String FOOJAY_API_MONGODB_DATABASE = "FOOJAY_API_MONGODB_DATABASE";
     public static final String FOOJAY_API_MONGODB_USER     = "FOOJAY_API_MONGODB_USER";
     public static final String FOOJAY_API_MONGODB_PASSWORD = "FOOJAY_API_MONGODB_PASSWORD";
+
+    public static final String FOOJAY_MQTT_BROKER          = "FOOJAY_MQTT_BROKER";
+    public static final String FOOJAY_MQTT_PORT            = "FOOJAY_MQTT_PORT";
+    public static final String FOOJAY_MQTT_USER            = "FOOJAY_MQTT_USER";
+    public static final String FOOJAY_MQTT_PASSWORD        = "FOOJAY_MQTT_PASSWORD";
+
+
+    public String getFoojayApiBaseUrl() {
+        final String baseUrl = System.getenv(FOOJAY_API_BASE_URL);
+        if (null == baseUrl) {
+            LOGGER.warn("No environment variable {} found.", FOOJAY_API_BASE_URL);
+            return null;
+        } else {
+            return baseUrl;
+        }
+    }
+
+
+    public String getFoojayApiEnvironment() {
+        final String environment = System.getenv(FOOJAY_API_ENVIRONMENT);
+        if (null == environment) {
+            LOGGER.warn("No environment variable {} found.", FOOJAY_API_ENVIRONMENT);
+            return "production";
+        } else {
+            return environment;
+        }
+    }
 
 
     public String getFoojayMongoDbUrl() {
@@ -92,13 +120,50 @@ public enum Config {
         }
     }
 
-    public String getFoojayApiBaseUrl() {
-        final String baseUrl = System.getenv(FOOJAY_API_BASE_URL);
-        if (null == baseUrl) {
-            LOGGER.warn("No environment variable {} found.", FOOJAY_API_BASE_URL);
+
+    public String getFoojayMqttBroker() {
+        final String mqttBroker = System.getenv(FOOJAY_MQTT_BROKER);
+        if (null == mqttBroker) {
+            LOGGER.warn("No environment variable {} found.", FOOJAY_MQTT_BROKER);
             return null;
         } else {
-            return baseUrl;
+            return mqttBroker;
+        }
+    }
+
+    public Integer getFoojayMqttPort() {
+        final String portString = System.getenv(FOOJAY_MQTT_PORT);
+        if (null == portString) {
+            LOGGER.warn("No environment variable {} found.", FOOJAY_MQTT_PORT);
+            return 8883;
+        } else {
+            try {
+                Integer port = Integer.valueOf(portString);
+                return port;
+            } catch (NumberFormatException e) {
+                LOGGER.warn("Environment variable {} contains wrong value.", FOOJAY_MQTT_PORT);
+                return 8883;
+            }
+        }
+    }
+
+    public String getFoojayMqttUser() {
+        final String mqttUser = System.getenv(FOOJAY_MQTT_USER);
+        if (null == mqttUser) {
+            LOGGER.warn("No environment variable {} found.", FOOJAY_MQTT_USER);
+            return null;
+        } else {
+            return mqttUser;
+        }
+    }
+
+    public String getFoojayMqttPassword() {
+        final String mqttPassword = System.getenv(FOOJAY_MQTT_PASSWORD);
+        if (null == mqttPassword) {
+            LOGGER.warn("No environment variable {} found.", FOOJAY_MQTT_PASSWORD);
+            return null;
+        } else {
+            return mqttPassword;
         }
     }
 }

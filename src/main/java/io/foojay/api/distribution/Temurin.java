@@ -80,7 +80,7 @@ import static io.foojay.api.pkg.TermOfSupport.STS;
 
 
 public class Temurin implements Distribution {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Temurin.class);
+    private static final Logger        LOGGER                 = LoggerFactory.getLogger(Temurin.class);
 
     private static final String        PACKAGE_URL            = "https://api.github.com/repos/adoptium/";
     private static final String        PACKAGE_API_URL        = "https://api.adoptium.net/v3/assets/feature_releases/";
@@ -307,6 +307,7 @@ public class Temurin implements Distribution {
                     installerPkg.setFileName(installerName);
                     installerPkg.setDirectDownloadUri(installerDownloadLink);
                     installerPkg.setFreeUseInProduction(Boolean.TRUE);
+                    installerPkg.setTckTested(Boolean.TRUE);
                     pkgs.add(installerPkg);
                 }
             }
@@ -354,6 +355,7 @@ public class Temurin implements Distribution {
                     packagePkg.setFileName(packageName);
                     packagePkg.setDirectDownloadUri(packageDownloadLink);
                     packagePkg.setFreeUseInProduction(Boolean.TRUE);
+                    packagePkg.setTckTested(Boolean.TRUE);
                     pkgs.add(packagePkg);
                 }
             }
@@ -379,7 +381,7 @@ public class Temurin implements Distribution {
                             JsonArray jsonArray = element.getAsJsonArray();
                             pkgs.addAll(getAllPkgsFromJson(jsonArray, i));
                         }
-            } else {
+                    } else {
                         // Problem with url request
                         LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
                     }
@@ -394,16 +396,16 @@ public class Temurin implements Distribution {
     }
 
     public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final int featureVersion) {
-        List<Pkg> pkgs = new ArrayList<>();
+        List<Pkg>              pkgs            = new ArrayList<>();
         Optional<MajorVersion> majorVersionOpt = CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> majorVersion.getAsInt() == featureVersion).findFirst();
         if (majorVersionOpt.isPresent()) {
             boolean isEarlyAccessOnly = majorVersionOpt.get().isEarlyAccessOnly();
             LocalDateTime publishedAt     = LocalDateTime.MIN;
             LocalDateTime lastPublishedAt = publishedAt;
-        for (int i = 0; i < jsonArray.size(); i++) {
-            JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
-            if (jsonObj.has("prerelease")) {
-                boolean prerelease = jsonObj.get("prerelease").getAsBoolean();
+            for (int i = 0; i < jsonArray.size(); i++) {
+                JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
+                if (jsonObj.has("prerelease")) {
+                    boolean prerelease = jsonObj.get("prerelease").getAsBoolean();
                     if (prerelease && !isEarlyAccessOnly) { continue; }
                 }
                 if (jsonObj.has("published_at")) {
@@ -445,7 +447,7 @@ public class Temurin implements Distribution {
                                                                                        .map(Entry::getValue)
                                                                                        .orElse(OperatingSystem.NOT_FOUND);
                     if (OperatingSystem.NOT_FOUND == operatingSystem) {
-                            LOGGER.debug("Operating System not found in Temurin for filename: {}", filename);
+                        LOGGER.debug("Operating System not found in Temurin for filename: {}", filename);
                         continue;
                     }
 
@@ -457,19 +459,19 @@ public class Temurin implements Distribution {
                                                                                    .map(Entry::getValue)
                                                                                    .orElse(Architecture.NOT_FOUND);
                     if (Architecture.NOT_FOUND == architecture) {
-                            LOGGER.debug("Architecture not found in Temurin for filename: {}", filename);
+                        LOGGER.debug("Architecture not found in Temurin for filename: {}", filename);
                         continue;
                     }
 
                     final ArchiveType archiveType = Helper.getFileEnding(filename);
                     if (OperatingSystem.MACOS == operatingSystem) {
                         switch (archiveType) {
-                        case DEB:
+                            case DEB:
                             case RPM:
                                 operatingSystem = OperatingSystem.LINUX;
                                 break;
-                        case CAB:
-                        case MSI:
+                            case CAB:
+                            case MSI:
                             case EXE:
                                 operatingSystem = OperatingSystem.WINDOWS;
                                 break;
@@ -492,6 +494,7 @@ public class Temurin implements Distribution {
                     pkg.setPackageType(packageType);
                     pkg.setOperatingSystem(operatingSystem);
                     pkg.setFreeUseInProduction(Boolean.TRUE);
+                    pkg.setTckTested(Boolean.TRUE);
 
                     if (isEarlyAccessOnly) {
                         if (publishedAt.isAfter(lastPublishedAt)) { pkgs.add(pkg); }

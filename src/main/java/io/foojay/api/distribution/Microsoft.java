@@ -165,10 +165,15 @@ public class Microsoft implements Distribution {
             final String          withoutPrefix   = filename.replace("microsoft-", "");
             final VersionNumber   versionNumber   = VersionNumber.fromText(withoutPrefix);
 
-            if (versionNumber.getPatch().isPresent() && versionNumber.getPatch().getAsInt() != 0 &&
-                versionNumber.getFifth().isPresent() && versionNumber.getFifth().getAsInt() != 0) {
-                    versionNumber.setPatch(0);
-                    versionNumber.setFifth(0);
+            if (versionNumber.getInterim().getAsInt() > 0) {
+                versionNumber.setBuild(versionNumber.getInterim().getAsInt());
+                versionNumber.setInterim(0);
+                versionNumber.setUpdate(0);
+                versionNumber.setPatch(0);
+            } else if (versionNumber.getPatch().isPresent() && versionNumber.getPatch().getAsInt() != 0 &&
+                       versionNumber.getFifth().isPresent() && versionNumber.getFifth().getAsInt() != 0) {
+                versionNumber.setPatch(0);
+                versionNumber.setFifth(0);
             } else if (versionNumber.getPatch().isPresent() && versionNumber.getPatch().getAsInt() != 0 &&
                        versionNumber.getFifth().isPresent() && versionNumber.getFifth().getAsInt() != 0 &&
                        versionNumber.getSixth().isPresent() && versionNumber.getSixth().getAsInt() != 0) {
@@ -229,6 +234,7 @@ public class Microsoft implements Distribution {
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkg.setTckTested(Boolean.TRUE);
 
             pkgs.add(pkg);
         }

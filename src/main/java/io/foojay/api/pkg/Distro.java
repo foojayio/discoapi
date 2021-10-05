@@ -19,6 +19,7 @@
 
 package io.foojay.api.pkg;
 
+import io.foojay.api.CacheManager;
 import io.foojay.api.distribution.*;
 import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.scopes.UsageScope;
@@ -90,7 +91,6 @@ public enum Distro implements ApiFeature {
     private        final Distribution distribution;
     private        final int          minUpdateIntervalInMinutes;
     public         final AtomicReference<Instant> lastUpdate;
-    public         final AtomicReference<Duration> lastUpdateDuration;
 
 
     Distro(final String uiString, final String apiString, final Distribution distribution, final int minUpdateIntervalInMinutes) {
@@ -99,7 +99,6 @@ public enum Distro implements ApiFeature {
         this.distribution               = distribution;
         this.minUpdateIntervalInMinutes = minUpdateIntervalInMinutes;
         this.lastUpdate                 = new AtomicReference<>();
-        this.lastUpdateDuration         = new AtomicReference<>(Duration.ofSeconds(0));
     }
 
 
@@ -360,6 +359,10 @@ public enum Distro implements ApiFeature {
 
     public static List<Distro> getDistributionsFreeForProduction() {
         return REVERSE_SCOPE_LOOKUP.get(UsageScope.FREE_TO_USE_IN_PRODUCTION);
+    }
+
+    public static long getNumberOfPkgsForDistro(final Distro distro) {
+        return CacheManager.INSTANCE.pkgCache.getPkgs().parallelStream().filter(pkg -> pkg.getDistribution().getDistro() == distro).count();
     }
 
 

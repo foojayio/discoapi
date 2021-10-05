@@ -356,6 +356,7 @@ public class Liberica implements Distribution {
         pkg.setDirectDownloadUri(downloadLink);
 
         pkg.setFreeUseInProduction(Boolean.TRUE);
+        pkg.setTckTested(versionNumber.getMajorVersion().getAsInt() > 6);
 
         pkgs.add(pkg);
         return pkgs;

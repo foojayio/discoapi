@@ -340,6 +340,7 @@ public class AOJ_OPENJ9 implements Distribution {
                     installerPkg.setDirectDownloadUri(installerDownloadLink);
 
                     installerPkg.setFreeUseInProduction(Boolean.TRUE);
+                    installerPkg.setTckTested(Boolean.FALSE);
 
                     pkgs.add(installerPkg);
                 }
@@ -406,6 +407,7 @@ public class AOJ_OPENJ9 implements Distribution {
                     packagePkg.setDirectDownloadUri(packageDownloadLink);
 
                     packagePkg.setFreeUseInProduction(Boolean.TRUE);
+                    packagePkg.setTckTested(Boolean.FALSE);
 
                     pkgs.add(packagePkg);
                 }

@@ -270,6 +270,7 @@ public class Semeru implements Distribution {
                 pkg.setPackageType(packageType);
                 pkg.setOperatingSystem(operatingSystem);
                 pkg.setFreeUseInProduction(Boolean.TRUE);
+                pkg.setTckTested(Boolean.FALSE);
                 pkgs.add(pkg);
             }
         }

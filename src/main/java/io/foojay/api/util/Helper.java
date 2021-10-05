@@ -59,6 +59,7 @@ import io.foojay.api.scopes.BasicScope;
 import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.scopes.DownloadScope;
 import io.foojay.api.scopes.IDEScope;
+import io.foojay.api.scopes.QualityScope;
 import io.foojay.api.scopes.Scope;
 import io.foojay.api.scopes.SignatureScope;
 import io.foojay.api.scopes.UsageScope;
@@ -117,7 +118,6 @@ import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
-import static io.foojay.api.util.Constants.API_VERSION_V1;
 import static io.foojay.api.util.Constants.API_VERSION_V2;
 import static io.foojay.api.util.Constants.COLON;
 import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
@@ -358,9 +358,29 @@ public class Helper {
                             String      bodyText = responseJetbrains.body();
                             Gson        gson    = new Gson();
                             JsonElement element = gson.fromJson(bodyText, JsonElement.class);
-                            if (element instanceof JsonObject) {
+                            if (element instanceof JsonArray) {
+                                JsonArray jsonArray = element.getAsJsonArray();
+                                for (int i = 0 ; i < jsonArray.size() ; i++) {
+                                    JsonElement arrayElement = jsonArray.get(i);
+                                    if (arrayElement instanceof JsonObject) {
+                                        JsonObject jsonObject = arrayElement.getAsJsonObject();
+                                        if (jsonObject.has("prerelease")) {
+                                            if (jsonObject.get("prerelease").getAsBoolean()) {
+                                                continue;
+                                            }
+                                        }
+                                        if (jsonObject.has("body")) {
+                                            pkgs.addAll(jetbrains.getAllPkgsFromString(jsonObject.get("body").getAsString()));
+                                        }
+                                    }
+                                }
+                            } else if (element instanceof JsonObject) {
                                 JsonObject jsonObject = element.getAsJsonObject();
-                                if (jsonObject.has("body")) {
+                                boolean addPkg = true;
+                                if (jsonObject.has("prerelease")) {
+                                    addPkg = !jsonObject.get("prerelease").getAsBoolean();
+                                }
+                                if (jsonObject.has("body") && addPkg) {
                                     pkgs.addAll(jetbrains.getAllPkgsFromString(jsonObject.get("body").getAsString()));
                                 }
                             }
@@ -1278,6 +1298,9 @@ public class Helper {
 
                 Scope usageScope = UsageScope.fromText(scopeString);
                 if (Scope.NOT_FOUND != usageScope) { scopesFound.add(usageScope); }
+
+                Scope qualityScope = QualityScope.fromText(scopeString);
+                if (Scope.NOT_FOUND != qualityScope) { scopesFound.add(qualityScope); }
             }
             if (scopesFound.isEmpty()) {
                 scopes = List.of(BasicScope.PUBLIC);

@@ -70,7 +70,6 @@ import static com.mongodb.client.model.Filters.gte;
 import static com.mongodb.client.model.Filters.in;
 import static com.mongodb.client.model.Filters.lte;
 import static com.mongodb.client.model.Updates.combine;
-import static com.mongodb.client.model.Updates.inc;
 import static com.mongodb.client.model.Updates.set;
 import static io.foojay.api.pkg.Pkg.FIELD_DISTRIBUTION;
 import static io.foojay.api.pkg.Pkg.FIELD_FILENAME;
@@ -80,7 +79,6 @@ import static io.foojay.api.util.Constants.COMMA;
 import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_OPEN;
-import static io.foojay.api.util.Constants.SENTINEL_PKG_ID;
 import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
 import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
@@ -101,9 +99,11 @@ public enum MongoDbManager {
     private static final String                           FIELD_STATE                    = "state";
     private static final String                           FIELD_TYPE                     = "type";
     private static final String                           FIELD_REMOVED_AT               = "removedat";
+    private static final String                           FIELD_AVAILABLE                = "available";
     private static final String                           FIELD_USER_AGENT               = "useragent";
     private static final String                           FIELD_COUNTRY_CODE             = "countrycode";
     private static final String                           FIELD_LAST_EPHEMERAL_ID_UPDATE = "lastephemeralidupdate";
+    private static final String                           FIELD_LAST_UPDATE              = "lastupdate";
     public final         EphemeralIdCache<String, String> ephemeralIdCache               = new EphemeralIdCache<>();
     private              MongoClient                      mongoClient;
     private              boolean                          connected;
@@ -890,11 +890,11 @@ public enum MongoDbManager {
     public boolean removeDownloads() {
         connect();
         if (!connected) {
-            LOGGER.debug("MongoDB not connected, no locks have been removed");
+            LOGGER.debug("MongoDB not connected, no downloads have been removed");
             return false;
         }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
-            LOGGER.debug("Locks have not been removed because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            LOGGER.debug("Downloads have not been removed because FOOJAY_MONGODB_DATABASE environment variable was not set.");
             return false;
         }
         if (null == database) {
@@ -976,11 +976,11 @@ public enum MongoDbManager {
     public void updateEphemeralIds() {
         connect();
         if (!connected) {
-            LOGGER.debug("MongoDB not connected, no packages updated");
+            LOGGER.debug("MongoDB not connected, no ephemeral id's updated");
             return;
         }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
-            LOGGER.debug("Could not update latest build available because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            LOGGER.debug("Could not update ephemeral id's because FOOJAY_MONGODB_DATABASE environment variable was not set.");
             return;
         }
         if (null == database) {
@@ -988,7 +988,7 @@ public enum MongoDbManager {
             database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
         }
         if (null == Constants.STATE_COLLECTION) {
-            LOGGER.error("Constants.UPDATES_COLLECTION not set.");
+            LOGGER.error("Constants.STATE_COLLECTION not set.");
             return;
         }
         if (null == Constants.PACKAGES_COLLECTION) {
@@ -1044,44 +1044,35 @@ public enum MongoDbManager {
         LOGGER.debug("Successfully updated ephemeral id cache in {} ms", (System.currentTimeMillis() - start));
     }
 
-    public boolean removeSentinelPackage() {
+    public Instant getLastUpdateTimestamp() {
         connect();
         if (!connected) {
-            LOGGER.debug("MongoDB not connected, sentinel not removed.");
-            return false;
+            LOGGER.debug("MongoDB not connected.");
+            return Instant.ofEpochSecond(0);
         }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
-            LOGGER.debug("Cannot remove sentinel because FOOJAY_MONGODB_DATABASE environment variable was not set.");
-            return false;
+            LOGGER.debug("FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return Instant.ofEpochSecond(0);
         }
         if (null == database) {
-            LOGGER.error("Database is not set, sentinel not removed.");
+            LOGGER.error("Database is not set.");
             database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
         }
-        if (null == Constants.PACKAGES_COLLECTION) {
-            LOGGER.error("Constants.PACKAGES_COLLECTION not set, sentinel not removed.");
-            return false;
+        if (null == Constants.STATE_COLLECTION) {
+            LOGGER.error("Constants.STATE_COLLECTION not set.");
+            return Instant.ofEpochSecond(0);
         };
-        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
+        if (!collectionExists(database, Constants.STATE_COLLECTION)) { database.createCollection(Constants.STATE_COLLECTION); }
 
-        final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
-        final Document                  sentinel   = collection.find(eq(FIELD_ID, Constants.SENTINEL_PKG_ID)).first();
-        if (null == sentinel) {
-            LOGGER.debug("Sentinel not removed from mongodb because it was not found.");
-            return false;
+        final MongoCollection<Document> collection = database.getCollection(Constants.STATE_COLLECTION);
+        final Document                  document   = collection.find(eq(FIELD_TYPE, FIELD_LAST_UPDATE)).first();
+        if (null == document) {
+            return Instant.ofEpochSecond(0);
+        } else {
+            return Instant.ofEpochSecond(document.getLong(FIELD_TIMESTAMP));
+        }
         }
 
-        collection.deleteOne(eq(FIELD_ID, Constants.SENTINEL_PKG_ID));
-        LOGGER.debug("Sentinel successfully removed from mongodb.");
-        CacheManager.INSTANCE.pkgCache.remove(Constants.SENTINEL_PKG_ID);
-        LOGGER.debug("Sentinel successfully removed from pkgCache.");
-
-        if (!collectionExists(database, Constants.SENTINEL_COLLECTION)) { database.createCollection(Constants.SENTINEL_COLLECTION); }
-        database.getCollection(Constants.SENTINEL_COLLECTION)
-                .updateOne(eq(FIELD_ID, Constants.SENTINEL_PKG_ID), set(FIELD_REMOVED_AT, Instant.now().getEpochSecond()), new UpdateOptions().upsert(true));
-
-        return true;
-    }
     public boolean isSentinelAvailable() {
         connect();
         if (!connected) {
@@ -1096,21 +1087,23 @@ public enum MongoDbManager {
             LOGGER.error("Database is not set, cannot get sentinel.");
             database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
         }
-        if (null == Constants.PACKAGES_COLLECTION) {
-            LOGGER.error("Constants.PACKAGES_COLLECTION not set, cannot get sentinel.");
+        if (null == Constants.SENTINEL_COLLECTION) {
+            LOGGER.error("Constants.SENTINEL_COLLECTION not set, cannot get sentinel.");
             return false;
         };
-        if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
+        if (!collectionExists(database, Constants.SENTINEL_COLLECTION)) { database.createCollection(Constants.SENTINEL_COLLECTION); }
 
-        final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
+        final MongoCollection<Document> collection = database.getCollection(Constants.SENTINEL_COLLECTION);
         final Document                  sentinel   = collection.find(eq(FIELD_ID, Constants.SENTINEL_PKG_ID)).first();
 
-        if (null == sentinel && CacheManager.INSTANCE.pkgCache.containsKey(SENTINEL_PKG_ID)) {
-            Document document = Document.parse(CacheManager.INSTANCE.pkgCache.get(SENTINEL_PKG_ID).toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1));
-            collection.replaceOne(eq(FIELD_PACKAGE_ID, SENTINEL_PKG_ID), document, new ReplaceOptions().upsert(true));
-            return true;
+        if (null == sentinel) {
+            return false;
         } else {
-        return null != sentinel;
+            if(sentinel.containsKey(FIELD_AVAILABLE)) {
+                return Boolean.parseBoolean(sentinel.get(FIELD_AVAILABLE).toString());
+        } else {
+                return false;
+            }
     }
     }
     public Instant getSentinelLastRemovedAt() {

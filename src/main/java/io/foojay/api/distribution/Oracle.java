@@ -257,9 +257,9 @@ public class Oracle implements Distribution {
                 if (filename.startsWith("jdk")) {
                     nameParts = filename.replace("jdk-", "").split("-");
                 } else if (filename.startsWith("jre")) {
-                        nameParts = filename.replace("jre-", "").split("-");
+                    nameParts = filename.replace("jre-", "").split("-");
                 } else if (filename.startsWith("serverjre")) {
-                        nameParts = filename.replace("serverjre-", "").split("-");
+                    nameParts = filename.replace("serverjre-", "").split("-");
                 } else {
                     continue;
                 }
@@ -324,12 +324,13 @@ public class Oracle implements Distribution {
             pkg.setJavaFXBundled(javafxBundled);
             pkg.setDirectlyDownloadable(false);
             pkg.setFreeUseInProduction(Boolean.FALSE);
+            pkg.setTckTested(Boolean.TRUE);
 
             pkgs.add(pkg);
         }
 
         return pkgs;
-    }
+                }
 
     public List<Pkg> getAllPkgsFrom17AndAbove() {
         final List<Pkg>                                                  pkgs             = new ArrayList<>();
@@ -390,6 +391,7 @@ public class Oracle implements Distribution {
                                                      pkg.setJavaFXBundled(false);
                                                      pkg.setDirectlyDownloadable(true);
                                                      pkg.setFreeUseInProduction(Boolean.TRUE);
+                                                     pkg.setTckTested(Boolean.TRUE);
                                                      pkg.setDirectDownloadUri(fileDownloadUri);
 
                                                      pkgs.add(pkg);

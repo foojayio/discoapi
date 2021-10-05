@@ -84,7 +84,7 @@ public class Trava implements Distribution {
     private static final String        HASH_URI            = "";
     private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
     private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
-    private static final String        SIGNATURE_URI           = "";
+    private static final String        SIGNATURE_URI       = "";
     private static final String        OFFICIAL_URI        = "https://github.com/TravaOpenJDK";
 
 
@@ -413,6 +413,7 @@ public class Trava implements Distribution {
                 pkg.setOperatingSystem(os);
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
+                pkg.setTckTested(Boolean.FALSE);
 
                 pkgs.add(pkg);
             }

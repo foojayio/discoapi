@@ -134,6 +134,7 @@ public class Dragonwell implements Distribution {
         switch(versionNumber.getFeature().getAsInt()) {
             case 8:
             case 11:
+            case 17:
                 queryBuilder.append(versionNumber.getFeature().getAsInt()).append("/releases/latest").append("?per_page=100");
                 break;
             default:
@@ -251,6 +252,7 @@ public class Dragonwell implements Distribution {
             pkg.setOperatingSystem(os);
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkg.setTckTested(Boolean.FALSE);
 
             pkgs.add(pkg);
         }

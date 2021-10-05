@@ -143,7 +143,7 @@ public class Corretto implements Distribution {
         if (TermOfSupport.LTS == versionNumber.getMajorVersion().getTermOfSupport()) {
             queryBuilder.append("corretto-").append(featureVersion).append("/releases").append("?per_page=100");
         } else {
-                queryBuilder.append("corretto-jdk").append("/releases").append("?per_page=100");
+            queryBuilder.append("corretto-jdk").append("/releases").append("?per_page=100");
         }
 
         LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
@@ -391,6 +391,7 @@ public class Corretto implements Distribution {
             pkg.setDirectDownloadUri(fileHref);
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkg.setTckTested(Boolean.TRUE);
 
             pkgs.add(pkg);
         }

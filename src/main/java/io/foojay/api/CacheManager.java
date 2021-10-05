@@ -19,6 +19,10 @@
 
 package io.foojay.api;
 
+import com.hivemq.client.mqtt.datatypes.MqttQos;
+import io.foojay.api.mqtt.MqttEvt;
+import io.foojay.api.mqtt.MqttEvtObserver;
+import io.foojay.api.mqtt.MqttManager;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
@@ -54,8 +58,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -69,6 +71,8 @@ public enum CacheManager {
     INSTANCE;
 
     private static final Logger                           LOGGER                                    = LoggerFactory.getLogger(CacheManager.class);
+    public final         MqttManager                      mqttManager                               = new MqttManager();
+    public final         MqttEvtObserver                  mqttEvtObserver                           = evt -> handleMqttEvt(evt);
     public final         PkgCache<String, Pkg>            pkgCache                                  = new PkgCache<>();
     public final         Map<Integer, Boolean>            maintainedMajorVersions                   = new ConcurrentHashMap<>() {{
         put(1, false);
@@ -90,6 +94,8 @@ public enum CacheManager {
         put(17, true);
         put(18, true);
     }};
+    public               AtomicBoolean                    syncWithDatabaseInProgress                = new AtomicBoolean(false);
+    public               AtomicBoolean                    updateMajorVersionsInProgress             = new AtomicBoolean(false);
     public               AtomicBoolean                    ephemeralIdCacheIsUpdating                = new AtomicBoolean(false);
     public               AtomicReference<String>          publicPkgs                                = new AtomicReference<>();
     public               AtomicReference<String>          publicPkgsIncldugingEa                    = new AtomicReference<>();
@@ -106,7 +112,7 @@ public enum CacheManager {
     public               AtomicReference<String>          publicPkgsGraalVMDownloadable             = new AtomicReference<>();
     public               AtomicReference<String>          publicPkgsGraalVMIncldugingEaDownloadable = new AtomicReference<>();
 
-    public               AtomicLong                       msToGetAllPkgsFromDB                      = new AtomicLong(-1);
+    public               AtomicLong                       msToFillCacheWithPkgsFromDB               = new AtomicLong(-1);
     public               AtomicReference<Duration>        durationToUpdateMongoDb                   = new AtomicReference<>();
     public               AtomicReference<Duration>        durationForLastUpdateRun                  = new AtomicReference();
     public               AtomicInteger                    distrosUpdatedInLastRun                   = new AtomicInteger(-1);
@@ -114,6 +120,12 @@ public enum CacheManager {
     public               AtomicLong                       numberOfPackages                          = new AtomicLong(-1);
     private final        List<MajorVersion>               majorVersions                             = new LinkedList<>();
 
+
+    CacheManager() {
+        mqttManager.subscribe(Constants.MQTT_PKG_UPDATE_TOPIC, MqttQos.EXACTLY_ONCE);
+        mqttManager.subscribe(Constants.MQTT_EPHEMERAL_ID_UPDATE_TOPIC, MqttQos.EXACTLY_ONCE);
+        mqttManager.addMqttObserver(mqttEvtObserver);
+    }
 
 
     public void updateAllDistros(final boolean forceUpdate) {
@@ -131,11 +143,9 @@ public enum CacheManager {
             final Instant lastUpdateForDistro = MongoDbManager.INSTANCE.getLastUpdateForDistro(distro);
             final double  delta               = (lastUpdateForDistro.until(Instant.now(), ChronoUnit.MINUTES));
             if (delta > distro.getMinUpdateIntervalInMinutes() || forceUpdate) {
-                final Instant updateDistroStart = Instant.now();
                 List<Pkg> pkgsOfDistro = Helper.getPkgsOfDistro(distro);
                 pkgsFound.addAll(pkgsOfDistro);
                 LOGGER.debug("{} packages added from {}", pkgsOfDistro.size(), distro.getName());
-                distro.lastUpdateDuration.set(Duration.between(updateDistroStart, Instant.now()));
 
                 MongoDbManager.INSTANCE.setLastUpdateForDistro(distro);
 
@@ -444,26 +454,56 @@ public enum CacheManager {
     }
 
     public void syncCacheWithDatabase() {
-        try {
-            TimeUnit.MILLISECONDS.sleep(ThreadLocalRandom.current().nextLong(3500));
-        } catch (InterruptedException e) {
-            LOGGER.debug("Synchronizing wait interrupted. {}", e.getMessage());
+        final long startSyncronizingCache = System.currentTimeMillis();
+        LOGGER.debug("Get last updates per distro from mongodb");
+        Distro.getAsListWithoutNoneAndNotFound().forEach(distro -> {
+            final Instant lastUpdateForDistro = MongoDbManager.INSTANCE.getLastUpdateForDistro(distro);
+            distro.lastUpdate.set(lastUpdateForDistro);
+        });
+
+        LOGGER.debug("Fill cache with packages from mongodb");
+        List<Pkg> pkgsFromMongoDb = MongoDbManager.INSTANCE.getPkgs();
+        pkgCache.setAll(pkgsFromMongoDb.stream().collect(Collectors.toMap(Pkg::getId, pkg -> pkg)));
+        numberOfPackages.set(pkgCache.size());
+        msToFillCacheWithPkgsFromDB.set(System.currentTimeMillis() - startSyncronizingCache);
         }
 
-        final State state = MongoDbManager.INSTANCE.getState();
-        if (State.IDLE != state) { return; }
 
-        LOGGER.debug("Synchronizing local cache with data from mongodb");
-        final long startGettingAllPkgsFromMongoDb = System.currentTimeMillis();
-        MongoDbManager.INSTANCE.setState(State.SYNCRONIZING);
-        List<Pkg> pkgsFromMongoDb = MongoDbManager.INSTANCE.getPkgs();
-        MongoDbManager.INSTANCE.setState(State.IDLE);
-        msToGetAllPkgsFromDB.set(System.currentTimeMillis() - startGettingAllPkgsFromMongoDb);
+    // ******************** MQTT Message handling *****************************
+    public void handleMqttEvt(final MqttEvt evt) {
+        final String topic = evt.getTopic();
+        final String msg   = evt.getMsg();
 
-        Map<String, Pkg> pkgsToAdd = pkgsFromMongoDb.stream()
-                                                    .filter(pkg -> !pkgCache.containsKey(pkg.getId()))
-                                                    .collect(Collectors.toMap(Pkg::getId, pkg -> pkg));
-        pkgCache.addAll(pkgsToAdd);
-        numberOfPackages.set(pkgCache.size());
+        if (topic.equals(Constants.MQTT_PKG_UPDATE_TOPIC)) {
+            switch(msg) {
+                case Constants.MQTT_PKG_UPDATE_FINISHED_MSG -> {
+                    if (syncWithDatabaseInProgress.get()) { return; }
+                    LOGGER.debug(evt.toString());
+                    syncWithDatabaseInProgress.set(true);
+
+                    // Update cache with pkgs from mongodb
+                    syncCacheWithDatabase();
+
+                    // Update msgs that contain all pkgs
+                    updateAllPkgsMsgs();
+                    syncWithDatabaseInProgress.set(false);
+                }
+            }
+        } else if (topic.equals(Constants.MQTT_EPHEMERAL_ID_UPDATE_TOPIC)) {
+            switch(msg) {
+                case Constants.MQTT_EPEHMERAL_ID_UPDATE_FINISHED_MSG -> {
+                    if (updateMajorVersionsInProgress.get()) { return; }
+                    LOGGER.debug(evt.toString());
+                    updateMajorVersionsInProgress.set(true);
+
+                    // Update all available major versions
+                    updateMajorVersions();
+
+                    // Update maintained major versions
+                    updateMaintainedMajorVersions();
+                    updateMajorVersionsInProgress.set(false);
+                }
+            }
+        }
     }
 }

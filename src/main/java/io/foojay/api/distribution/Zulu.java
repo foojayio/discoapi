@@ -27,6 +27,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.FPU;
 import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
@@ -247,17 +248,17 @@ public class Zulu implements Distribution {
                                               final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         List<Pkg> pkgs = new ArrayList<>();
 
-        String fileName     = jsonObj.get(FIELD_NAME).getAsString();
+        String filename     = jsonObj.get(FIELD_NAME).getAsString();
         String downloadLink = jsonObj.get(FIELD_URL).getAsString();
 
 
         JsonArray jdkVersionArray = jsonObj.get(FIELD_JDK_VERSION).getAsJsonArray();
         VersionNumber vNumber;
-        if (fileName.toLowerCase().startsWith("zulu1.")) {
+        if (filename.toLowerCase().startsWith("zulu1.")) {
             vNumber = new VersionNumber(jdkVersionArray.get(0).getAsInt(), jdkVersionArray.get(1).getAsInt(), jdkVersionArray.get(2).getAsInt(), 0);
         } else {
             //Get the real version number from the filename without the prefix
-            final String fileNameWithoutPrefix = fileName.replaceAll(FILENAME_PREFIX_VN_PATTERN.pattern(), "");
+            final String fileNameWithoutPrefix = filename.replaceAll(FILENAME_PREFIX_VN_PATTERN.pattern(), "");
             vNumber = VersionNumber.fromText(fileNameWithoutPrefix);
         }
 
@@ -280,7 +281,7 @@ public class Zulu implements Distribution {
         pkg.setVersionNumber(vNumber);
         pkg.setJavaVersion(vNumber);
         pkg.setDistributionVersion(dNumber);
-        pkg.setFileName(fileName);
+        pkg.setFileName(filename);
         pkg.setDirectDownloadUri(downloadLink);
 
         if (jsonObj.has(FIELD_SIGNATURES)) {
@@ -300,19 +301,29 @@ public class Zulu implements Distribution {
             }
         }
 
-        String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
+        FPU fpu;
+        if (filename.contains("32sf.")) {
+            fpu = FPU.SOFT_FLOAT;
+        } else if (filename.contains("32hf.")) {
+            fpu = FPU.HARD_FLOAT;
+        } else {
+            fpu = FPU.UNKNOWN;
+        }
+        pkg.setFPU(fpu);
+
+        String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
 
         if (null != javafxBundled && javafxBundled && !withoutPrefix.contains(Constants.FX_POSTFIX)) { return pkgs; }
         pkg.setJavaFXBundled(withoutPrefix.contains(Constants.FX_POSTFIX));
 
         ArchiveType ext = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
-                                                       .filter(entry -> fileName.endsWith(entry.getKey()))
+                                                       .filter(entry -> filename.endsWith(entry.getKey()))
                                                        .findFirst()
                                                        .map(Entry::getValue)
                                                        .orElse(ArchiveType.NONE);
 
         if (ArchiveType.NONE == ext) {
-            LOGGER.debug("Archive Type not found in Zulu for filename: {}", fileName);
+            LOGGER.debug("Archive Type not found in Zulu for filename: {}", filename);
             return pkgs;
         }
 
@@ -351,24 +362,24 @@ public class Zulu implements Distribution {
         pkg.setHeadless(withoutFeaturePrefix.contains(Constants.HEADLESS_POSTFIX));
 
         Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                         .filter(entry -> fileName.contains(entry.getKey()))
+                                                         .filter(entry -> filename.contains(entry.getKey()))
                                                          .findFirst()
                                                          .map(Entry::getValue)
                                                          .orElse(Architecture.NONE);
 
-        if (Architecture.NONE == arch && fileName.contains("macos")) {
+        if (Architecture.NONE == arch && filename.contains("macos")) {
             arch = X64;
         }
 
         if (Architecture.NONE == arch) {
-            LOGGER.debug("Architecture not found in Zulu for filename: {}", fileName);
+            LOGGER.debug("Architecture not found in Zulu for filename: {}", filename);
             return pkgs;
         }
         pkg.setArchitecture(arch);
         pkg.setBitness(arch.getBitness());
 
         OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                              .filter(entry -> fileName.contains(entry.getKey()))
+                                                              .filter(entry -> filename.contains(entry.getKey()))
                                                               .findFirst()
                                                               .map(Entry::getValue)
                                                               .orElse(OperatingSystem.NONE);
@@ -392,7 +403,7 @@ public class Zulu implements Distribution {
         }
 
         if (OperatingSystem.NONE == os) {
-            LOGGER.debug("Operating System not found in Zulu for filename: {}", fileName);
+            LOGGER.debug("Operating System not found in Zulu for filename: {}", filename);
             return pkgs;
         }
 
@@ -401,6 +412,7 @@ public class Zulu implements Distribution {
         pkg.setTermOfSupport(supTerm);
 
         pkg.setFreeUseInProduction(Boolean.TRUE);
+        pkg.setTckTested(versionNumber.getMajorVersion().getAsInt() > 6);
 
         pkgs.add(pkg);
 
@@ -439,6 +451,16 @@ public class Zulu implements Distribution {
                 pkg.setVersionNumber(versionNumber);
                 pkg.setJavaVersion(versionNumber);
                 pkg.setDistributionVersion(distroVersionNumber);
+
+                FPU fpu;
+                if (filename.contains("32sf.")) {
+                    fpu = FPU.SOFT_FLOAT;
+                } else if (filename.contains("32hf.")) {
+                    fpu = FPU.HARD_FLOAT;
+                } else {
+                    fpu = FPU.UNKNOWN;
+                }
+                pkg.setFPU(fpu);
 
                 PackageType packageType = Constants.PACKAGE_TYPE_LOOKUP.entrySet().stream()
                                                                        .filter(entry -> filename.contains(entry.getKey()))
@@ -492,6 +514,7 @@ public class Zulu implements Distribution {
                 pkg.setJavaFXBundled(filename.contains("-fx"));
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
+                pkg.setTckTested(versionNumber.getMajorVersion().getAsInt() > 6);
 
                 pkgs.add(pkg);
             }
