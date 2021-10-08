@@ -25,6 +25,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.FPU;
 import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
@@ -101,7 +102,7 @@ public class Liberica implements Distribution {
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP              = Map.of(EA, "ea", GA, "all");
     private static final Map<TermOfSupport, String>   TERMS_OF_SUPPORT_MAP            = Map.of(STS, "sts", MTS, "mts", LTS, "lts");
     private static final Map<Bitness, String>         BITNESS_MAP                     = Map.of(BIT_32, "32", BIT_64, "64");
-    
+
     // JSON fields
     private static final String                       FIELD_FILENAME                  = "filename";
     private static final String                       FIELD_DOWNLOAD_URL              = "downloadUrl";
@@ -211,7 +212,7 @@ public class Liberica implements Distribution {
         }
 
         if (null != javafxBundled) {
-        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
             queryBuilder.append(FX_PARAM).append("=").append(javafxBundled);
         }
 
@@ -249,7 +250,7 @@ public class Liberica implements Distribution {
             queryBuilder.append(PACKAGE_TYPE_PARAM).append("=").append(PACKAGE_TYPE_MAP.get(packageType));
         }
 
-        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder.toString());
+        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
 
         return queryBuilder.toString();
     }
@@ -259,7 +260,7 @@ public class Liberica implements Distribution {
                                               final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
         List<Pkg> pkgs = new ArrayList<>();
 
-        String        fileName      = jsonObj.get(FIELD_FILENAME).getAsString();
+        String        filename      = jsonObj.get(FIELD_FILENAME).getAsString();
         String        downloadLink  = jsonObj.get(FIELD_DOWNLOAD_URL).getAsString();
         VersionNumber vNumber       = new VersionNumber(jsonObj.get(FIELD_FEATURE_VERSION).getAsInt(), jsonObj.get(FIELD_INTERIM_VERSION).getAsInt(), jsonObj.get(FIELD_UPDATE_VERSION).getAsInt(), jsonObj.get(FIELD_PATCH_VERSION).getAsInt());
         VersionNumber dNumber       = new VersionNumber(versionNumber);
@@ -269,7 +270,7 @@ public class Liberica implements Distribution {
         String        packageType   = jsonObj.get(FIELD_PACKAGE_TYPE).toString().replaceAll("\"", "");
         String        bundleTyp     = jsonObj.get(FIELD_BUNDLE_TYPE).toString().replaceAll("\"", "");
         boolean       isGA          = jsonObj.get(FIELD_GA).getAsBoolean();
-        boolean       isFX          = jsonObj.get(FIELD_FX).getAsBoolean() || fileName.contains("-full");
+        boolean       isFX          = jsonObj.get(FIELD_FX).getAsBoolean() || filename.contains("-full");
         boolean       isLTS         = jsonObj.get(FIELD_LTS).getAsBoolean();
         Integer       bits          = jsonObj.get(FIELD_BITNESS).getAsInt();
         String        os            = jsonObj.get(FIELD_OS).getAsString();
@@ -319,14 +320,19 @@ public class Liberica implements Distribution {
         pkg.setArchiveType(ArchiveType.fromText(packageType));
 
         Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                         .filter(entry -> fileName.contains(entry.getKey()))
+                                                         .filter(entry -> filename.contains(entry.getKey()))
                                                          .findFirst()
                                                          .map(Entry::getValue)
                                                          .orElse(Architecture.NONE);
+
+        if (filename.contains("hflt")) {
+            pkg.setFPU(FPU.HARD_FLOAT);
+        }
+
         Bitness bit = arch.getBitness();
 
         if (Architecture.NONE == arch) {
-            LOGGER.debug("Architecture not found in Liberica for filename: {}", fileName);
+            LOGGER.debug("Architecture not found in Liberica for filename: {}", filename);
             return pkgs;
         }
 
@@ -336,13 +342,13 @@ public class Liberica implements Distribution {
         OperatingSystem osFound = OperatingSystem.fromText(os);
         if (OperatingSystem.NONE == osFound) {
             osFound = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                       .filter(entry -> fileName.contains(entry.getKey()))
+                                                       .filter(entry -> filename.contains(entry.getKey()))
                                                        .findFirst()
                                                        .map(Entry::getValue)
                                                        .orElse(OperatingSystem.NONE);
         }
         if (OperatingSystem.NONE == osFound) {
-            LOGGER.debug("Operating Sytsem not found in Liberica for filename: {}", fileName);
+            LOGGER.debug("Operating Sytsem not found in Liberica for filename: {}", filename);
             return pkgs;
         }
         pkg.setOperatingSystem(OperatingSystem.NONE == osFound ? OperatingSystem.fromText(os) : osFound);
@@ -352,7 +358,7 @@ public class Liberica implements Distribution {
 
         pkg.setTermOfSupport(supTerm);
 
-        pkg.setFileName(fileName);
+        pkg.setFileName(filename);
         pkg.setDirectDownloadUri(downloadLink);
 
         pkg.setFreeUseInProduction(Boolean.TRUE);
@@ -362,4 +368,3 @@ public class Liberica implements Distribution {
         return pkgs;
     }
 }
-

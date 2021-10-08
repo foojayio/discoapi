@@ -24,6 +24,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
+import io.foojay.api.MongoDbManager;
 import io.foojay.api.distribution.AOJ;
 import io.foojay.api.distribution.AOJ_OPENJ9;
 import io.foojay.api.distribution.Corretto;
@@ -55,6 +56,8 @@ import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
+import io.foojay.api.requester.JBang;
+import io.foojay.api.requester.Requester;
 import io.foojay.api.scopes.BasicScope;
 import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.scopes.DownloadScope;
@@ -91,6 +94,7 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -108,6 +112,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutionException;
@@ -118,6 +123,7 @@ import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
+import static io.foojay.api.util.Constants.API_VERSION_V1;
 import static io.foojay.api.util.Constants.API_VERSION_V2;
 import static io.foojay.api.util.Constants.COLON;
 import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
@@ -146,6 +152,8 @@ public class Helper {
     public  static final Pattern    HREF_FILE_PATTERN                      = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
     public  static final Pattern    HREF_SIG_FILE_PATTERN                  = Pattern.compile("href=\"([^\"]*(\\.sig))\"");
     public  static final Pattern    HREF_DOWNLOAD_PATTERN                  = Pattern.compile("(\\>)(\\s|\\h?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(\\<)");
+    private static final Pattern    JBANG_HEADER_PATTERN                   = Pattern.compile("(JBang)\\/([0-9]+\\.[0-9]+\\.[0-9]+(\\.[0-9]+)?)\\s+\\(([0-9A-Za-z\\s]+)\\/([a-zA-Z0-9_\\.\\-]+)\\/([a-z0-9A-Z_\\s]+)\\)\\s(Java\\/([0-9]+(\\.[0-9]+)?(\\.[0-9]+)?([_0-9]+)?))\\/(.*)");
+    private static final Matcher    JBANG_HEADER_MATCHER                   = JBANG_HEADER_PATTERN.matcher("");
     public  static final Matcher    FILE_URL_MATCHER                       = FILE_URL_PATTERN.matcher("");
     public  static final Matcher    FILE_URL_MD5_MATCHER                   = FILE_URL_MD5_PATTERN.matcher("");
     public  static final Matcher    CORRETTO_SIG_URI_MATCHER               = CORRETTO_SIG_URI_PATTERN.matcher("");
@@ -156,6 +164,8 @@ public class Helper {
     public  static final Matcher    HREF_DOWNLOAD_MATCHER                  = HREF_DOWNLOAD_PATTERN.matcher("");
     private static       HttpClient httpClient;
     private static       HttpClient httpClientAsync;
+
+    public record DownloadInfo(String pkgId, String userAgent, String countryCode, Instant timestamp) {}
 
 
     public static final Callable<List<Pkg>> createTask(final Distro distro) {
@@ -1352,6 +1362,101 @@ public class Helper {
             } else {
                 // Problem with url request
                 LOGGER.debug("Response (Status Code {}) {} ", response.statusCode(), response.body());
+            }
+        }
+        return "";
+    }
+
+    public static JBang getJBangFromHeader(final String headerText) {
+        JBANG_HEADER_MATCHER.reset(headerText);
+        final List<MatchResult> results     = JBANG_HEADER_MATCHER.results().collect(Collectors.toList());
+        final int               noOfResults = results.size();
+        if (noOfResults > 0) {
+            MatchResult result = results.get(0);
+            String group2 = result.group(2);  // version
+            String group4 = result.group(4);  // environment
+            String group5 = result.group(5);  // environmentVersion
+            String group6 = result.group(6);  // architecture
+            String group8 = result.group(8);  // java version
+            String group9 = result.group(12); // vendor
+
+            return new JBang(group2, group4, group5, group6, group8, group9);
+        }
+        return null;
+    }
+
+    public static final String getStatsFor(final String requester, final Long from, final Long to) {
+        Requester req   = Requester.fromText(requester);
+        if (Requester.NOT_FOUND == req) { return ""; }
+
+        Long      start = null == from ? Instant.MIN.getEpochSecond() : from;
+        Long      end   = null == to   ? Instant.MAX.getEpochSecond() : to;
+        if (null != from && null != to) {
+            if (from > to) { start = Instant.MIN.getEpochSecond(); }
+            if (to < from) { end   = Instant.MAX.getEpochSecond(); }
+        }
+
+        switch(req) {
+            case JBANG -> {
+                Map<String, List<Pkg>> downloadsFromJBang = new HashMap<>();
+                Map<String, JBang>     jBangMap           = new HashMap<>();
+
+                List<DownloadInfo> downloads = MongoDbManager.INSTANCE.getPkgDownloadsForRequester(req, start, end);
+                Instant jbangMinTimestamp = Instant.MAX;
+                Instant jbangMaxTimestamp = Instant.MIN;
+                long    jbangDownloads    = downloads.size();
+                for (DownloadInfo downloadInfo : downloads) {
+                    String  userAgent = downloadInfo.userAgent();
+                    Pkg     pkg       = CacheManager.INSTANCE.pkgCache.get(downloadInfo.pkgId());
+                    Instant timestamp = downloadInfo.timestamp();
+
+                    if (!downloadsFromJBang.containsKey(userAgent)) { downloadsFromJBang.put(userAgent, new ArrayList<>()); }
+                    downloadsFromJBang.get(userAgent).add(pkg);
+
+                    jbangMinTimestamp = timestamp.isBefore(jbangMinTimestamp) ? timestamp : jbangMinTimestamp;
+                    jbangMaxTimestamp = timestamp.isAfter(jbangMaxTimestamp)  ? timestamp : jbangMaxTimestamp;
+                }
+                downloadsFromJBang.entrySet().forEach(entry -> {
+                    String jbangHeader = entry.getKey();
+                    JBang  jbangTemp   = getJBangFromHeader(jbangHeader);
+                    if (null != jbangTemp) {
+                        JBang jbang;
+                        if (jBangMap.containsKey(jbangTemp.toString())) {
+                            jbang = jBangMap.get(jbangTemp.toString());
+                        } else {
+                            jbang = jbangTemp;
+                            jBangMap.put(jbang.toString(), jbang);
+                        }
+                        List<Pkg> pkgsForJBang = entry.getValue();
+                        pkgsForJBang.stream().forEach(pkg -> {
+                            SemVer semver = pkg.getSemver();
+                            String os_arc = String.join("_", pkg.getOperatingSystem().getApiString(), pkg.getArchitecture().getApiString());
+                            if (jbang.getDownloads().containsKey(semver.toString(true))) {
+                                if (jbang.getDownloads().get(semver.toString(true)).containsKey(os_arc)) {
+                                    long numberOfDownloads = jbang.getDownloads().get(semver.toString(true)).get(os_arc);
+                                    jbang.getDownloads().get(semver.toString(true)).put(os_arc, numberOfDownloads + 1L);
+                                } else {
+                                    jbang.getDownloads().get(semver.toString(true)).put(os_arc, 1L);
+                                }
+                            } else {
+                                jbang.getDownloads().put(semver.toString(true), new HashMap<>());
+                                jbang.getDownloads().get(semver.toString(true)).put(os_arc, 1L);
+                            }
+                        });
+                    }
+                });
+
+                if (jBangMap.isEmpty()) { return ""; }
+                StringBuilder jsonBuilder = new StringBuilder().append("{")
+                                                               .append("\"").append("min_timestamp").append("\":").append(jbangMinTimestamp.getEpochSecond()).append(",")
+                                                               .append("\"").append("max_timestamp").append("\":").append(jbangMaxTimestamp.getEpochSecond()).append(",")
+                                                               .append("\"").append("number_of_downloads").append("\":").append(jbangDownloads).append(",")
+                                                               .append("\"").append("stats").append("\":");
+                jsonBuilder.append(jBangMap.values().parallelStream()
+                                           .map(n -> n.toString())
+                                           .collect(Collectors.joining(",\n", "[", "]")));
+                jsonBuilder.append("}");
+                return jsonBuilder.toString();
             }
         }
         return "";

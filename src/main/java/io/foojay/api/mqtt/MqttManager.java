@@ -43,6 +43,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class MqttManager {
     private static final Logger                LOGGER = LoggerFactory.getLogger(MqttManager.class);
+    private static final String                PRODUCTION_ENVIRONMENT = "production";
+    private static final String                STAGING_ENVIRONMENT    = "staging";
+    private static final String                TESTING_ENVIRONMENT    = "testing";
+    private static final boolean               GHOST                  = !Config.INSTANCE.getFoojayApiEnvironment().equals(PRODUCTION_ENVIRONMENT) && !Config.INSTANCE.getFoojayApiEnvironment().equals(STAGING_ENVIRONMENT) && !Config.INSTANCE.getFoojayApiEnvironment().equals(TESTING_ENVIRONMENT);
     private              Mqtt5AsyncClient      asyncClient;
     private              BooleanProperty       connected;
     private              List<MqttEvtObserver> observers;
@@ -77,6 +81,7 @@ public class MqttManager {
         return publish(topic, MqttQos.AT_LEAST_ONCE, false, msg);
     }
     public CompletableFuture<Mqtt5PublishResult> publish(final String topic, final MqttQos qos, final boolean retain, final String msg) {
+        if (GHOST) { return new CompletableFuture<>(); }
         if (null == asyncClient || !asyncClient.getState().isConnected()) { connect(true); }
         return asyncClient.publishWith()
                           .topic(topic)
@@ -95,6 +100,7 @@ public class MqttManager {
     }
 
     public CompletableFuture<Mqtt5SubAck> subscribe(final String topic, final MqttQos qos) {
+        if (GHOST) { return null; }
         if (null == asyncClient || !asyncClient.getState().isConnected()) { connect(true); }
         return asyncClient.subscribeWith()
                           .topicFilter(topic)
@@ -108,11 +114,13 @@ public class MqttManager {
     }
 
     public void unsubscribe(final String topic) {
+        if (GHOST) { return; }
         if (null == asyncClient || !asyncClient.getState().isConnected()) { connect(true); }
         asyncClient.unsubscribeWith().topicFilter(topic).send();
     }
 
-    private void connect(final boolean cleanStart) {
+    public void connect(final boolean cleanStart) {
+        if (GHOST) { return; }
         if (null == asyncClient) {
             asyncClient = MqttClient.builder()
                                     .useMqttVersion5()
@@ -159,10 +167,11 @@ public class MqttManager {
 
     // ******************** Event Handling ************************************
     public void addMqttObserver(final MqttEvtObserver observer) {
-        if (observers.contains(observer)) { return; }
+        if (GHOST || observers.contains(observer)) { return; }
         observers.add(observer);
     }
     public void removeMqttObserver(final MqttEvtObserver observer) {
+        if (GHOST) { return; }
         if (observers.contains(observer)) { observers.remove(observer); }
     }
 

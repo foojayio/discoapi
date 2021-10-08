@@ -33,10 +33,12 @@ import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.UpdateOptions;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.Pkg;
+import io.foojay.api.requester.Requester;
 import io.foojay.api.util.Config;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.EphemeralIdCache;
 import io.foojay.api.util.Helper;
+import io.foojay.api.util.Helper.DownloadInfo;
 import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.State;
 import org.bson.BsonDocument;
@@ -62,6 +64,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.logging.Level;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.mongodb.client.model.Filters.and;
@@ -69,16 +72,20 @@ import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.gte;
 import static com.mongodb.client.model.Filters.in;
 import static com.mongodb.client.model.Filters.lte;
+import static com.mongodb.client.model.Filters.regex;
 import static com.mongodb.client.model.Updates.combine;
+import static com.mongodb.client.model.Updates.inc;
 import static com.mongodb.client.model.Updates.set;
 import static io.foojay.api.pkg.Pkg.FIELD_DISTRIBUTION;
 import static io.foojay.api.pkg.Pkg.FIELD_FILENAME;
 import static io.foojay.api.pkg.Pkg.FIELD_LATEST_BUILD_AVAILABLE;
 import static io.foojay.api.util.Constants.API_VERSION_V1;
+import static io.foojay.api.util.Constants.API_VERSION_V2;
 import static io.foojay.api.util.Constants.COMMA;
 import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_OPEN;
+import static io.foojay.api.util.Constants.SENTINEL_PKG_ID;
 import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
 import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
@@ -586,7 +593,7 @@ public enum MongoDbManager {
         if (null == Constants.DOWNLOADS_COLLECTION) {
             LOGGER.error("Constants.DOWNLOADS_USER_AGENT_COLLECTION not set.");
             return CURLY_BRACKET_OPEN + CURLY_BRACKET_CLOSE;
-        };
+        }
         if (!collectionExists(database, Constants.DOWNLOADS_USER_AGENT_COLLECTION)) { database.createCollection(Constants.DOWNLOADS_USER_AGENT_COLLECTION); }
 
         final MongoCollection<Document> collection = database.getCollection(Constants.DOWNLOADS_USER_AGENT_COLLECTION);
@@ -600,6 +607,58 @@ public enum MongoDbManager {
         }
 
         return msgBuilder.toString();
+    }
+
+    /**
+     * Get a list of downloads for a specific requester for a given timeframe
+     * @param requester the useragent you are interested int e.g. jbang, sdkman etc.
+     * @param from start point in epochseconds
+     * @param to end point in epochseconds
+     * @return a list of downloads for a specific requester for a given timeframe
+     */
+    public List<DownloadInfo> getPkgDownloadsForRequester(final Requester requester, final Long from, final Long to) {
+        Long start = null == from ? Instant.MIN.getEpochSecond() : from;
+        Long end   = null == to   ? Instant.MAX.getEpochSecond() : to;
+        if (null != from && null != to) {
+            if (from > to) { start = Instant.MIN.getEpochSecond(); }
+            if (to < from) { end   = Instant.MAX.getEpochSecond(); }
+        }
+
+        List<DownloadInfo> downloads = new ArrayList<>();
+
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, return empty map of downloads");
+            return downloads;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Cannot return downloads because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return downloads;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.DOWNLOADS_COLLECTION) {
+            LOGGER.error("Constants.DOWNLOADS_USER_AGENT_COLLECTION not set.");
+            return downloads;
+        }
+        if (!collectionExists(database, Constants.DOWNLOADS_USER_AGENT_COLLECTION)) { database.createCollection(Constants.DOWNLOADS_USER_AGENT_COLLECTION); }
+
+        final MongoCollection<Document> collection = database.getCollection(Constants.DOWNLOADS_USER_AGENT_COLLECTION);
+
+        final Consumer<Document> downloadConsumer = document -> {
+            final String  pkgId       = document.getString(FIELD_ID);
+            final String  userAgent   = document.getString(FIELD_USER_AGENT);
+            final String  countryCode = document.getString(FIELD_COUNTRY_CODE);
+            final Instant timestamp   = Instant.ofEpochSecond(document.getLong(FIELD_TIMESTAMP));
+            downloads.add(new DownloadInfo(pkgId, userAgent, countryCode, timestamp));
+        };
+
+        Pattern pattern = Pattern.compile(".*" + Pattern.quote(requester.getApiString()) + ".*", Pattern.CASE_INSENSITIVE);
+        collection.find(and(regex(FIELD_USER_AGENT, pattern),gte(FIELD_TIMESTAMP, start), lte(FIELD_TIMESTAMP, end))).forEach(downloadConsumer);
+
+        return downloads;
     }
 
     /**
@@ -699,18 +758,18 @@ public enum MongoDbManager {
         if (dayDoc.containsKey(FIELD_DISTRIBUTIONS)) {
             distributionsDoc = (Document) dayDoc.get(FIELD_DISTRIBUTIONS);
             Document distroDoc;
-            long     numberOfAllDownloads = 0;
+            int     numberOfAllDownloads = 0;
             Document versionsDoc;
-            long     downloadsPerVersion = 0;
+            int     downloadsPerVersion = 0;
             if (distributionsDoc.containsKey(distro.getApiString())) {
                 distroDoc = (Document) distributionsDoc.get(distro.getApiString());
                 if (distroDoc.containsKey(FIELD_DOWNLOADS)) {
-                    numberOfAllDownloads = distroDoc.getLong(FIELD_DOWNLOADS);
+                    numberOfAllDownloads = distroDoc.getInteger(FIELD_DOWNLOADS);
                 }
                 if (distroDoc.containsKey(FIELD_VERSION)) {
                     versionsDoc = (Document) distroDoc.get(FIELD_VERSION);
                     if (versionsDoc.containsKey(featureVersion)) {
-                        downloadsPerVersion = versionsDoc.getLong(featureVersion);
+                        downloadsPerVersion = versionsDoc.getInteger(featureVersion);
                     }
                 } else {
                     versionsDoc = new Document();

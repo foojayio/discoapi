@@ -65,6 +65,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static io.foojay.api.util.Constants.API_VERSION_V1;
+import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
+
 
 @Requires(notEnv = Environment.TEST) // Don't run in tests
 public enum CacheManager {
@@ -95,7 +100,6 @@ public enum CacheManager {
         put(18, true);
     }};
     public               AtomicBoolean                    syncWithDatabaseInProgress                = new AtomicBoolean(false);
-    public               AtomicBoolean                    updateMajorVersionsInProgress             = new AtomicBoolean(false);
     public               AtomicBoolean                    ephemeralIdCacheIsUpdating                = new AtomicBoolean(false);
     public               AtomicReference<String>          publicPkgs                                = new AtomicReference<>();
     public               AtomicReference<String>          publicPkgsIncldugingEa                    = new AtomicReference<>();
@@ -119,6 +123,8 @@ public enum CacheManager {
     public               AtomicInteger                    packagesAddedInUpdate                     = new AtomicInteger(0);
     public               AtomicLong                       numberOfPackages                          = new AtomicLong(-1);
     private final        List<MajorVersion>               majorVersions                             = new LinkedList<>();
+    private              Instant                          lastMajorVersionsUpdate                   = Instant.MIN;
+    private              Instant                          lastMaintainedMajorVersionsUpdate         = Instant.MIN;
 
 
     CacheManager() {
@@ -257,22 +263,21 @@ public enum CacheManager {
         ephemeralIdCacheIsUpdating.set(true);
         MongoDbManager.INSTANCE.updateEphemeralIds();
         ephemeralIdCacheIsUpdating.set(false);
-
-        // Update all available major versions
-        updateMajorVersions();
-
-        // Update maintained major versions
-        updateMaintainedMajorVersions();
     }
 
     public void updateMajorVersions() {
+        if (Instant.now().getEpochSecond() - lastMajorVersionsUpdate.getEpochSecond() < Constants.ONE_HOUR_IN_SECONDS) { return; }
         LOGGER.debug("Updating major versions");
         // Update all available major versions (exclude GraalVM based pkgs because they have different version numbers)
         majorVersions.clear();
 
         if (pkgCache.isEmpty()) {
-            maintainedMajorVersions.keySet().forEach(key -> majorVersions.add(new MajorVersion(key, Helper.getTermOfSupport(key))));
-            Collections.sort(majorVersions, Comparator.comparing(MajorVersion::getVersionNumber).reversed());
+            majorVersions.addAll(maintainedMajorVersions.keySet()
+                                                        .stream()
+                                                        .distinct()
+                                                        .map(key -> new MajorVersion(key, Helper.getTermOfSupport(key)))
+                                                        .sorted(Comparator.comparing(MajorVersion::getAsInt).reversed())
+                                                        .collect(Collectors.toList()));
         } else {
             majorVersions.addAll(pkgCache.getPkgs()
                                          .stream()
@@ -284,8 +289,8 @@ public enum CacheManager {
                                          .filter(pkg -> pkg.getDistribution().getDistro() != Distro.MANDREL)
                                          .map(pkg -> pkg.getVersionNumber().getFeature().getAsInt())
                                          .distinct()
-                                         .map(majorVersion -> new MajorVersion(majorVersion))
-                                         .sorted(Comparator.comparing(MajorVersion::getVersionNumber).reversed())
+                                         .map(majorVersion -> new MajorVersion(majorVersion, Helper.getTermOfSupport(majorVersion)))
+                                         .sorted(Comparator.comparing(MajorVersion::getAsInt).reversed())
                                          .collect(Collectors.toList()));
         }
         // Validate major versions
@@ -301,7 +306,7 @@ public enum CacheManager {
 
         if (!maintainedMajorVersions.isEmpty()) {
             Optional<Integer> maxMajorVersionInMaintainedMajorVersions = maintainedMajorVersions.keySet().stream().max(Comparator.comparingInt(Integer::intValue));
-            Optional<Integer> maxMajorVersionInMajorVersions           = majorVersions.stream().max(Comparator.comparing(MajorVersion::getVersionNumber)).map(majorVersion -> majorVersion.getAsInt());
+            Optional<Integer> maxMajorVersionInMajorVersions           = majorVersions.stream().max(Comparator.comparing(MajorVersion::getAsInt)).map(majorVersion -> majorVersion.getAsInt());
             if (maxMajorVersionInMaintainedMajorVersions.isPresent() && maxMajorVersionInMajorVersions.isPresent()) {
                 if (maxMajorVersionInMaintainedMajorVersions.get() > maxMajorVersionInMajorVersions.get()) {
                     MajorVersion majorVersionToAdd = new MajorVersion(maxMajorVersionInMaintainedMajorVersions.get());
@@ -312,12 +317,15 @@ public enum CacheManager {
                 LOGGER.debug("Error updating major versions. Please check package cache.");
             }
         }
+        lastMajorVersionsUpdate = Instant.now();
         LOGGER.debug("Successfully updated major versions");
     }
 
     public void updateMaintainedMajorVersions() {
+        if (Instant.now().getEpochSecond() - lastMaintainedMajorVersionsUpdate.getEpochSecond() < Constants.ONE_HOUR_IN_SECONDS) { return; }
         LOGGER.debug("Updating maintained major versions");
         final Properties maintainedProperties = new Properties();
+        final Map<Integer, Boolean> tmpMaintainedMajorVersions = new HashMap<>();
         try {
             HttpResponse<String> response = Helper.get(Constants.MAINTAINED_PROPERTIES_URL);
             if (null == response) { return; }
@@ -327,8 +335,11 @@ public enum CacheManager {
             maintainedProperties.entrySet().forEach(entry -> {
                 Integer majorVersion = Integer.valueOf(entry.getKey().toString().replaceAll("jdk-", ""));
                 Boolean maintained   = Boolean.valueOf(entry.getValue().toString().toLowerCase());
-                maintainedMajorVersions.put(majorVersion, maintained);
+                tmpMaintainedMajorVersions.put(majorVersion, maintained);
             });
+            maintainedMajorVersions.clear();
+            maintainedMajorVersions.putAll(tmpMaintainedMajorVersions);
+            lastMaintainedMajorVersionsUpdate = Instant.now();
             LOGGER.debug("Successfully updated maintained major versions");
         } catch (Exception e) {
             LOGGER.error("Error loading maintained version properties from github. {}", e);
@@ -466,6 +477,12 @@ public enum CacheManager {
         pkgCache.setAll(pkgsFromMongoDb.stream().collect(Collectors.toMap(Pkg::getId, pkg -> pkg)));
         numberOfPackages.set(pkgCache.size());
         msToFillCacheWithPkgsFromDB.set(System.currentTimeMillis() - startSyncronizingCache);
+
+        // Update maintained major versions
+        updateMaintainedMajorVersions();
+
+        // Update all available major versions
+        updateMajorVersions();
         }
 
 
@@ -476,34 +493,48 @@ public enum CacheManager {
 
         if (topic.equals(Constants.MQTT_PKG_UPDATE_TOPIC)) {
             switch(msg) {
+                case Constants.MQTT_PKG_UPDATE_FINISHED_EMPTY_MSG -> {
+                    if (pkgCache.isEmpty()) {
+                        try {
+                            if (syncWithDatabaseInProgress.get()) { return; }
+                            LOGGER.debug(evt.toString());
+                            syncWithDatabaseInProgress.set(true);
+
+                            // Update cache with pkgs from mongodb
+                            syncCacheWithDatabase();
+
+                            // Update msgs that contain all pkgs
+                            updateAllPkgsMsgs();
+                            syncWithDatabaseInProgress.set(false);
+                        } catch (Exception e) {
+                            syncWithDatabaseInProgress.set(false);
+                        }
+                    }
+                }
                 case Constants.MQTT_PKG_UPDATE_FINISHED_MSG -> {
-                    if (syncWithDatabaseInProgress.get()) { return; }
-                    LOGGER.debug(evt.toString());
-                    syncWithDatabaseInProgress.set(true);
+                    try {
+                        if (syncWithDatabaseInProgress.get()) { return; }
+                        LOGGER.debug(evt.toString());
+                        syncWithDatabaseInProgress.set(true);
 
-                    // Update cache with pkgs from mongodb
-                    syncCacheWithDatabase();
+                        // Update cache with pkgs from mongodb
+                        syncCacheWithDatabase();
 
-                    // Update msgs that contain all pkgs
-                    updateAllPkgsMsgs();
-                    syncWithDatabaseInProgress.set(false);
+                        // Update msgs that contain all pkgs
+                        updateAllPkgsMsgs();
+                        syncWithDatabaseInProgress.set(false);
+                    } catch (Exception e) {
+                        syncWithDatabaseInProgress.set(false);
+                    }
                 }
             }
-        } else if (topic.equals(Constants.MQTT_EPHEMERAL_ID_UPDATE_TOPIC)) {
+        } /*else if (topic.equals(Constants.MQTT_EPHEMERAL_ID_UPDATE_TOPIC)) {
+
             switch(msg) {
                 case Constants.MQTT_EPEHMERAL_ID_UPDATE_FINISHED_MSG -> {
-                    if (updateMajorVersionsInProgress.get()) { return; }
-                    LOGGER.debug(evt.toString());
-                    updateMajorVersionsInProgress.set(true);
-
-                    // Update all available major versions
-                    updateMajorVersions();
-
-                    // Update maintained major versions
-                    updateMaintainedMajorVersions();
-                    updateMajorVersionsInProgress.set(false);
                 }
             }
         }
+        */
     }
 }

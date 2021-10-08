@@ -25,6 +25,7 @@ import io.foojay.api.pkg.Architecture;
 import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.FPU;
 import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.PackageType;
@@ -326,6 +327,12 @@ public class Oracle implements Distribution {
             pkg.setFreeUseInProduction(Boolean.FALSE);
             pkg.setTckTested(Boolean.TRUE);
 
+            if (filename.contains("hflt")) {
+                pkg.setFPU(FPU.HARD_FLOAT);
+            } else if (filename.contains("sflt")) {
+                pkg.setFPU(FPU.SOFT_FLOAT);
+            }
+
             pkgs.add(pkg);
         }
 
@@ -393,6 +400,10 @@ public class Oracle implements Distribution {
                                                      pkg.setFreeUseInProduction(Boolean.TRUE);
                                                      pkg.setTckTested(Boolean.TRUE);
                                                      pkg.setDirectDownloadUri(fileDownloadUri);
+
+                                                     if (filename.contains("hflt")) {
+                                                         pkg.setFPU(FPU.HARD_FLOAT);
+                                                     }
 
                                                      pkgs.add(pkg);
                                                  }
