@@ -10,10 +10,12 @@ Presentation about the [Disco API](https://de.slideshare.net/han_solo/disco-api-
 #### At the moment the following distributions are supported by the API:
 * AdoptOpenJDK
 * AdoptOpenJDK OpenJ9
+* Bi Sheng
 * Corretto
 * Dragonwell
-* GraalVM CE
-* JetBrains  
+* GraalVM CE (8, 11, 16)
+* JetBrains
+* Kona
 * Liberica
 * Liberica Native  
 * Mandrel  
@@ -145,78 +147,84 @@ The response to this request is the following:
 ```JSON
 {
   "result": [
-  {
-    "id": "80667cb6036b564eb0ede541eaed69b1",
-    "archive_type": "dmg",
-    "distribution": "zulu",
-    "major_version": 11,
-    "java_version": "11.0.11",
-    "distribution_version": "11.48.21",
-    "latest_build_available": true,
-    "release_status": "ga",
-    "term_of_support": "lts",
-    "operating_system": "macos",
-    "lib_c_type": "libc",
-    "architecture": "x64",
-    "package_type": "jdk",
-    "javafx_bundled": true,
-    "directly_downloadable": true,
-    "filename": "zulu11.48.21-ca-fx-jdk11.0.11-macosx_x64.dmg",
-    "ephemeral_id": "30dba32311753589fb67efb6222ec2e9b7635b68",
-    "links": {
-        "pkg_info_uri": "https://api.foojay.io/disco/v2.0/ephemeral_ids/30dba32311753589fb67efb6222ec2e9b7635b68"
+    {
+      "id": "3fa2a57fff2224a7eba3c8d2c354ec05",
+      "archive_type": "dmg",
+      "distribution": "zulu",
+      "major_version": 11,
+      "java_version": "11.0.12+7",
+      "distribution_version": "11.50.19",
+      "latest_build_available": true,
+      "release_status": "ga",
+      "term_of_support": "lts",
+      "operating_system": "macos",
+      "lib_c_type": "libc",
+      "architecture": "x64",
+      "package_type": "jdk",
+      "javafx_bundled": true,
+      "directly_downloadable": true,
+      "filename": "zulu11.50.19-ca-fx-jdk11.0.12-macosx_x64.dmg",
+      "ephemeral_id": "8085c64617b251f5ac6d4cc4143ee3c6fa39ce10",
+      "links": {
+        "pkg_info_uri": "https://api.foojay.io/disco/v2.0/ephemeral_ids/8085c64617b251f5ac6d4cc4143ee3c6fa39ce10",
+        "pkg_download_redirect": "https://api.foojay.io/disco/v2.0/ephemeral_ids/8085c64617b251f5ac6d4cc4143ee3c6fa39ce10/redirect"
+      },
+      "free_use_in_production": true,
+      "tck_tested": true,
+      "feature": []
     },
-    "free_use_in_production": true,
-    "feature": []
-  },
-  {
-    "id": "d1e3be3805303a416c346c065403312f",
-    "archive_type": "dmg",
-    "distribution": "liberica",
-    "major_version": 11,
-    "java_version": "11.0.11+b9",
-    "distribution_version": "11+b9",
-    "latest_build_available": true,
-    "release_status": "ga",
-    "term_of_support": "lts",
-    "operating_system": "macos",
-    "lib_c_type": "libc",
-    "architecture": "amd64",
-    "package_type": "jdk",
-    "javafx_bundled": true,
-    "directly_downloadable": true,
-    "filename": "bellsoft-jdk11.0.11+9-macos-amd64-full.dmg",
-    "ephemeral_id": "a4966fad9803d9911b71871a2000e278de1632b0",
-    "links": {
-      "pkg_info_uri": "https://api.foojay.io/disco/v2.0/ephemeral_ids/a4966fad9803d9911b71871a2000e278de1632b0"
+    {
+      "id": "d8e231fb3774256719fcc4110020a352",
+      "archive_type": "pkg",
+      "distribution": "liberica",
+      "major_version": 11,
+      "java_version": "11.0.12+7",
+      "distribution_version": "11+7",
+      "latest_build_available": true,
+      "release_status": "ga",
+      "term_of_support": "lts",
+      "operating_system": "macos",
+      "lib_c_type": "libc",
+      "architecture": "amd64",
+      "package_type": "jdk",
+      "javafx_bundled": true,
+      "directly_downloadable": true,
+      "filename": "bellsoft-jdk11.0.12+7-macos-amd64-full.pkg",
+      "ephemeral_id": "2ace657a700ed1c3217c00a67913e339b0be3923",
+      "links": {
+        "pkg_info_uri": "https://api.foojay.io/disco/v2.0/ephemeral_ids/2ace657a700ed1c3217c00a67913e339b0be3923",
+        "pkg_download_redirect": "https://api.foojay.io/disco/v2.0/ephemeral_ids/2ace657a700ed1c3217c00a67913e339b0be3923/redirect"
+      },
+      "free_use_in_production": true,
+      "tck_tested": true,
+      "feature": []
     },
-    "free_use_in_production": true,
-    "feature": []
-  },
-  {
-    "id": "638edd048fab2e47861df6fe1739f978",
-    "archive_type": "pkg",
-    "distribution": "liberica",
-    "major_version": 11,
-    "java_version": "11.0.11+b9",
-    "distribution_version": "11+b9",
-    "latest_build_available": true,
-    "release_status": "ga",
-    "term_of_support": "lts",
-    "operating_system": "macos",
-    "lib_c_type": "libc",
-    "architecture": "amd64",
-    "package_type": "jdk",
-    "javafx_bundled": true,
-    "directly_downloadable": true,
-    "filename": "bellsoft-jdk11.0.11+9-macos-amd64-full.pkg",
-    "ephemeral_id": "bd3fa08579073189ca8737f2ae3b0cf19bfd5f98",
-    "links": {
-      "pkg_info_uri": "https://api.foojay.io/disco/v2.0/ephemeral_ids/bd3fa08579073189ca8737f2ae3b0cf19bfd5f98"
-    },
-    "free_use_in_production": true,
-    "feature": []
-  }
+    {
+      "id": "f9800831cd027768ff99e83c7128b729",
+      "archive_type": "dmg",
+      "distribution": "liberica",
+      "major_version": 11,
+      "java_version": "11.0.12+7",
+      "distribution_version": "11+7",
+      "latest_build_available": true,
+      "release_status": "ga",
+      "term_of_support": "lts",
+      "operating_system": "macos",
+      "lib_c_type": "libc",
+      "architecture": "amd64",
+      "package_type": "jdk",
+      "javafx_bundled": true,
+      "directly_downloadable": true,
+      "filename": "bellsoft-jdk11.0.12+7-macos-amd64-full.dmg",
+      "ephemeral_id": "34b7158fc7f31c6d6c1a55d5ae7719a40fe2ec91",
+      "links": {
+        "pkg_info_uri": "https://api.foojay.io/disco/v2.0/ephemeral_ids/34b7158fc7f31c6d6c1a55d5ae7719a40fe2ec91",
+        "pkg_download_redirect": "https://api.foojay.io/disco/v2.0/ephemeral_ids/34b7158fc7f31c6d6c1a55d5ae7719a40fe2ec91/redirect"
+      },
+      "free_use_in_production": true,
+      "tck_tested": true,
+      "feature": []
+    }
   ],
   "message": "3 package(s) found"
 }
@@ -243,15 +251,15 @@ So if we make the following request: https://api.foojay.io/disco/v2.0/ephemeral_
 we will get this response back:
 ```JSON
 {
-  "result":[
-  {
-    "filename":"zulu11.48.21-ca-fx-jdk11.0.11-macosx_x64.dmg",
-    "direct_download_uri":"https://cdn.azul.com/zulu/bin/zulu11.48.21-ca-fx-jdk11.0.11-macosx_x64.dmg",
-    "download_site_uri":"",
-    "signature_uri":""
-  }
+  "result": [
+    {
+      "filename": "zulu11.50.19-ca-fx-jdk11.0.12-macosx_x64.dmg",
+      "direct_download_uri": "https://cdn.azul.com/zulu/bin/zulu11.50.19-ca-fx-jdk11.0.12-macosx_x64.dmg",
+      "download_site_uri": "",
+      "signature_uri": "http://api.azul.com/zulu/download/community/v1.0/bundles/sha256/2437e7da00991c69060d444eb8d2f6aa73b4a6ff65150ddc5b206a0d9f958c0e/signature-binary/?sig_index=0"
+    }
   ],
-  "message":""
+  "message": ""
 }
 ```
 In this response you will now get the direct_download_uri which will let you download the package.
