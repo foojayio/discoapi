@@ -391,7 +391,6 @@ public class Corretto implements Distribution {
             pkg.setDirectDownloadUri(fileHref);
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
-            pkg.setTckTested(Boolean.TRUE);
 
             pkgs.add(pkg);
         }

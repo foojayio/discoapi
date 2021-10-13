@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.pkg;
@@ -112,7 +112,7 @@ public class Pkg {
 
 
     public Pkg() {
-        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, FPU.UNKNOWN, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, Boolean.FALSE, Boolean.TRUE, "", "", "", "", Boolean.FALSE, Boolean.FALSE, null, new ArrayList<>());
+        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, FPU.UNKNOWN, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, Boolean.FALSE, Boolean.TRUE, "", "", "", "", Boolean.FALSE, null, null, new ArrayList<>());
     }
     public Pkg(final Distribution distribution, final VersionNumber versionNumber, final Architecture architecture, final Bitness bitness, final FPU fpu, final OperatingSystem operatingSystem, final PackageType packageType,
                final ReleaseStatus releaseStatus, final ArchiveType archiveType, final TermOfSupport termOfSupport, final boolean javafxBundled, final boolean directlyDownloadable, final String filename,
@@ -139,7 +139,7 @@ public class Pkg {
         this.downloadSiteUri      = downloadSiteUri;
         this.signatureUri         = signatureUri;
         this.freeUseInProduction  = freeUseInProduction;
-        this.tckTested            = null == tckTested ? Boolean.FALSE : tckTested;
+        this.tckTested            = tckTested;
         this.aqavitCertified      = aqavitCertified;
         this.features             = features;
         this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
@@ -173,7 +173,7 @@ public class Pkg {
         this.signatureUri         = json.has(FIELD_SIGNATURE_URI) ? json.get(FIELD_SIGNATURE_URI).getAsString() : "";
         this.semver               = SemVer.fromText(json.get(FIELD_JAVA_VERSION).getAsString()).getSemVer1();
         this.freeUseInProduction  = json.has(FIELD_FREE_USE_IN_PROD) ? json.get(FIELD_FREE_USE_IN_PROD).getAsBoolean() : Boolean.FALSE;
-        this.tckTested            = json.has(FIELD_TCK_TESTED) ? json.get(FIELD_TCK_TESTED).getAsBoolean() : Boolean.FALSE;
+        this.tckTested            = json.has(FIELD_TCK_TESTED) ? json.get(FIELD_TCK_TESTED).getAsBoolean() : null;
         this.aqavitCertified      = json.has(FIELD_AQAVIT_CERTIFIED) ? json.get(FIELD_AQAVIT_CERTIFIED).getAsBoolean() : null;
         if (json.has(FIELD_FEATURE)) {
             features = new ArrayList<>();
@@ -335,7 +335,7 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(tckTested).append(COMMA_NEW_LINE)
+                                          //.append(INDENTED_QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(tckTested).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString().replaceAll("\\\\", "");
@@ -360,7 +360,7 @@ public class Pkg {
                                           .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
-                                          .append(INDENTED_QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(tckTested).append(COMMA_NEW_LINE)
+                                          //.append(INDENTED_QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(tckTested).append(COMMA_NEW_LINE)
                                           .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                                           .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA_NEW_LINE)
                                           .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append("/redirect").append(QUOTES)
@@ -391,7 +391,7 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA)
                                           .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
-                                          .append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(tckTested).append(COMMA)
+                                          //.append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(tckTested).append(COMMA)
                                           .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString().replaceAll("\\\\", "");
@@ -421,7 +421,7 @@ public class Pkg {
                                           .append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append("/redirect").append(QUOTES)
                                           .append(CURLY_BRACKET_CLOSE).append(COMMA)
                                           .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
-                                          .append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(tckTested).append(COMMA)
+                                          //.append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(tckTested).append(COMMA)
                                           .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                           .append(CURLY_BRACKET_CLOSE)
                                           .toString().replaceAll("\\\\", "");

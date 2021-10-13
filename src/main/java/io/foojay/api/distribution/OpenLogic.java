@@ -276,7 +276,6 @@ public class OpenLogic implements Distribution {
             pkg.setDirectDownloadUri(fileHref);
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
-            pkg.setTckTested(Boolean.FALSE);
 
             pkgs.add(pkg);
         }

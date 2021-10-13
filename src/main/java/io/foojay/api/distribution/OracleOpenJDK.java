@@ -483,7 +483,6 @@ public class OracleOpenJDK implements Distribution {
                 pkg.setOperatingSystem(os);
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
-                pkg.setTckTested(vNumber.getMajorVersion().getAsInt() > 6);
 
                 pkgs.add(pkg);
             }
@@ -649,7 +648,6 @@ public class OracleOpenJDK implements Distribution {
                 }
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
-                pkg.setTckTested(versionNumber.getMajorVersion().getAsInt() > 6);
 
                 if (!pkgMap.containsKey(pkg)) { pkgMap.put(pkg.getId(), pkg); }
             }
@@ -728,7 +726,6 @@ public class OracleOpenJDK implements Distribution {
         pkg.setOperatingSystem(operatingSystem);
 
         pkg.setFreeUseInProduction(Boolean.TRUE);
-        pkg.setTckTested(versionNumber.getMajorVersion().getAsInt() > 6);
 
         return pkg;
     }
@@ -787,7 +784,6 @@ public class OracleOpenJDK implements Distribution {
             pkg.setJavaFXBundled(versionNumber.getFeature().getAsInt() <= 10);
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
-            pkg.setTckTested(versionNumber.getMajorVersion().getAsInt() > 6);
             pkgs.add(pkg);
         }
         return pkgs;

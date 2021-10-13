@@ -263,7 +263,6 @@ public class LibericaNative implements Distribution {
                         Pkg pkg = new Pkg();
                         pkg.setDistribution(Distro.LIBERICA_NATIVE.get());
                         pkg.setFPU(FPU.UNKNOWN);
-                        pkg.setTckTested(true);
                         pkg.setDirectlyDownloadable(true);
                         pkg.setFreeUseInProduction(true);
                         pkg.setJavaFXBundled(false);

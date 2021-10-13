@@ -234,7 +234,6 @@ public class Microsoft implements Distribution {
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.TRUE);
-            pkg.setTckTested(Boolean.TRUE);
 
             pkgs.add(pkg);
         }

@@ -240,7 +240,6 @@ public class BiSheng implements Distribution {
                 pkg.setJavaFXBundled(Boolean.FALSE);
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
-                pkg.setTckTested(false);
 
                 pkgs.add(pkg);
             }

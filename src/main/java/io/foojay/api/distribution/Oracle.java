@@ -325,7 +325,6 @@ public class Oracle implements Distribution {
             pkg.setJavaFXBundled(javafxBundled);
             pkg.setDirectlyDownloadable(false);
             pkg.setFreeUseInProduction(Boolean.FALSE);
-            pkg.setTckTested(Boolean.TRUE);
 
             if (filename.contains("hflt")) {
                 pkg.setFPU(FPU.HARD_FLOAT);
@@ -398,7 +397,6 @@ public class Oracle implements Distribution {
                                                      pkg.setJavaFXBundled(false);
                                                      pkg.setDirectlyDownloadable(true);
                                                      pkg.setFreeUseInProduction(Boolean.TRUE);
-                                                     pkg.setTckTested(Boolean.TRUE);
                                                      pkg.setDirectDownloadUri(fileDownloadUri);
 
                                                      if (filename.contains("hflt")) {

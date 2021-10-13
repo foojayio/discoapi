@@ -244,7 +244,6 @@ public class ZuluPrime implements Distribution {
             }
 
             pkg.setFreeUseInProduction(Boolean.FALSE);
-            pkg.setTckTested(vNumber.getMajorVersion().getAsInt() > 6);
 
             pkgs.add(pkg);
         }

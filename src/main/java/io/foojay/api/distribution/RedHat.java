@@ -251,7 +251,6 @@ public class RedHat implements Distribution {
             pkg.setDownloadSiteUri("https://developers.redhat.com/products/openjdk/download");
 
             pkg.setFreeUseInProduction(Boolean.FALSE);
-            pkg.setTckTested(versionNumber.getMajorVersion().getAsInt() > 6);
 
             pkgs.add(pkg);
         }

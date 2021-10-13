@@ -412,7 +412,6 @@ public class Zulu implements Distribution {
         pkg.setTermOfSupport(supTerm);
 
         pkg.setFreeUseInProduction(Boolean.TRUE);
-        pkg.setTckTested(versionNumber.getMajorVersion().getAsInt() > 6);
 
         pkgs.add(pkg);
 
@@ -514,7 +513,6 @@ public class Zulu implements Distribution {
                 pkg.setJavaFXBundled(filename.contains("-fx"));
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
-                pkg.setTckTested(versionNumber.getMajorVersion().getAsInt() > 6);
 
                 pkgs.add(pkg);
             }

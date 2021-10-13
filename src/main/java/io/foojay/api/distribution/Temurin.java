@@ -307,7 +307,6 @@ public class Temurin implements Distribution {
                     installerPkg.setFileName(installerName);
                     installerPkg.setDirectDownloadUri(installerDownloadLink);
                     installerPkg.setFreeUseInProduction(Boolean.TRUE);
-                    installerPkg.setTckTested(Boolean.TRUE);
                     pkgs.add(installerPkg);
                 }
             }
@@ -355,7 +354,6 @@ public class Temurin implements Distribution {
                     packagePkg.setFileName(packageName);
                     packagePkg.setDirectDownloadUri(packageDownloadLink);
                     packagePkg.setFreeUseInProduction(Boolean.TRUE);
-                    packagePkg.setTckTested(Boolean.TRUE);
                     pkgs.add(packagePkg);
                 }
             }
@@ -494,7 +492,6 @@ public class Temurin implements Distribution {
                     pkg.setPackageType(packageType);
                     pkg.setOperatingSystem(operatingSystem);
                     pkg.setFreeUseInProduction(Boolean.TRUE);
-                    pkg.setTckTested(Boolean.TRUE);
 
                     if (isEarlyAccessOnly) {
                         if (publishedAt.isAfter(lastPublishedAt)) { pkgs.add(pkg); }
