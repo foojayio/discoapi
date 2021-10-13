@@ -32,6 +32,7 @@ import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.UpdateOptions;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.requester.Requester;
 import io.foojay.api.util.Config;
@@ -111,6 +112,10 @@ public enum MongoDbManager {
     private static final String                           FIELD_COUNTRY_CODE             = "countrycode";
     private static final String                           FIELD_LAST_EPHEMERAL_ID_UPDATE = "lastephemeralidupdate";
     private static final String                           FIELD_LAST_UPDATE              = "lastupdate";
+    private static final String                           FIELD_MAJOR_VERSION            = "major_version";
+    private static final String                           FIELD_TERM_OF_SUPPORT          = "term_of_support";
+    private static final String                           FIELD_RELEASE_STATUS           = "release_status";
+    private static final String                           FIELD_MAINTAINED               = "maintained";
     public final         EphemeralIdCache<String, String> ephemeralIdCache               = new EphemeralIdCache<>();
     private              MongoClient                      mongoClient;
     private              boolean                          connected;
@@ -1030,6 +1035,36 @@ public enum MongoDbManager {
 
         LOGGER.debug("Successfully removed packages of distro {}", distro.getApiString());
         return true;
+    }
+
+    public List<MajorVersion> getMajorVersions() {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, returned empty list of major versions");
+            return new ArrayList<>();
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Cannot return packages because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return new ArrayList<>();
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.MAJOR_VERSIONS_COLLECTION) {
+            LOGGER.error("Constants.MAJOR_VERSIONS_COLLECTIONS not set.");
+            return new ArrayList<>();
+        };
+        if (!collectionExists(database, Constants.MAJOR_VERSIONS_COLLECTION)) { database.createCollection(Constants.MAJOR_VERSIONS_COLLECTION); }
+
+        final MongoCollection<Document> collection = database.getCollection(Constants.MAJOR_VERSIONS_COLLECTION);
+        final List<MajorVersion>        result     = new ArrayList<>();
+        collection.find().forEach(document -> {
+            MajorVersion majorVersion = new MajorVersion(document.toJson());
+            result.add(majorVersion);
+        });
+        LOGGER.debug("Successfully returned {} major versions from mongodb.", result.size());
+        return result;
     }
 
     public void updateEphemeralIds() {

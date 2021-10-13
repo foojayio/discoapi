@@ -27,9 +27,11 @@ import io.foojay.api.CacheManager;
 import io.foojay.api.MongoDbManager;
 import io.foojay.api.distribution.AOJ;
 import io.foojay.api.distribution.AOJ_OPENJ9;
+import io.foojay.api.distribution.BiSheng;
 import io.foojay.api.distribution.Corretto;
 import io.foojay.api.distribution.Distribution;
 import io.foojay.api.distribution.JetBrains;
+import io.foojay.api.distribution.Kona;
 import io.foojay.api.distribution.LibericaNative;
 import io.foojay.api.distribution.Microsoft;
 import io.foojay.api.distribution.OJDKBuild;
@@ -184,15 +186,15 @@ public class Helper {
                     }
 
                     // Get packages from CDN
-                    List<Pkg> cdnPkgs   = ((Zulu) Distro.ZULU.get()).getAllPackagesFromCDN();
-                    List<Pkg> pkgsToAdd = new LinkedList<>();
-                    List<String> pkgsFilenames = pkgs.stream().map(pkg -> pkg.getFileName()).collect(Collectors.toList());
-                    for (Pkg cdnPkg : cdnPkgs) {
-                        if (!pkgsFilenames.contains(cdnPkg.getFileName())) {
-                            pkgsToAdd.add(cdnPkg);
+                    List<Pkg>    zuluCdnPkgs       = ((Zulu) Distro.ZULU.get()).getAllPackagesFromCDN();
+                    List<Pkg>    zuluPkgsToAdd     = new LinkedList<>();
+                    List<String> zuluPkgsFilenames = pkgs.stream().map(pkg -> pkg.getFileName()).collect(Collectors.toList());
+                    for (Pkg cdnPkg : zuluCdnPkgs) {
+                        if (!zuluPkgsFilenames.contains(cdnPkg.getFileName())) {
+                            zuluPkgsToAdd.add(cdnPkg);
                         }
                     }
-                    pkgs.addAll(pkgsToAdd);
+                    pkgs.addAll(zuluPkgsToAdd);
                     break;
                 case ZULU_PRIME:
                     ZuluPrime zuluPrime = (ZuluPrime) distro.get();
@@ -407,6 +409,24 @@ public class Helper {
                     case OPEN_LOGIC:
                         OpenLogic openLogic = (OpenLogic) distro.get();
                         pkgs.addAll(openLogic.getAllPkgs());
+                    break;
+                case BISHENG:
+                    BiSheng biSheng = (BiSheng) distro.get();
+
+                    // Get packages from CDN
+                    List<Pkg>    bishengCdnPkgs       = ((BiSheng) Distro.BISHENG.get()).getAllPackagesFromCDN();
+                    List<Pkg>    bishengPkgsToAdd     = new LinkedList<>();
+                    List<String> bishengPkgsFilenames = pkgs.stream().map(pkg -> pkg.getFileName()).collect(Collectors.toList());
+                    for (Pkg cdnPkg : bishengCdnPkgs) {
+                        if (!bishengPkgsFilenames.contains(cdnPkg.getFileName())) {
+                            bishengPkgsToAdd.add(cdnPkg);
+                        }
+                    }
+                    pkgs.addAll(bishengPkgsToAdd);
+                    break;
+                case KONA:
+                    Kona kona = (Kona) distro.get();
+                    pkgs.addAll(kona.getAllPkgs());
                     break;
                 default:
                     Distribution distribution = distro.get();

@@ -55,6 +55,7 @@ public class Constants {
     public static final String        SHEDLOCK_COLLECTION                        = "shedLock";
     public static final String        STATE_COLLECTION                           = "state";
     public static final String        SENTINEL_COLLECTION                        = "sentinel";
+    public static final String        MAJOR_VERSIONS_COLLECTION                  = "majorVersions";
 
     public static final String            BASE_URL                               = null == Config.INSTANCE.getFoojayApiBaseUrl() ? "https://api.foojay.io/disco" : Config.INSTANCE.getFoojayApiBaseUrl();
 
@@ -70,6 +71,7 @@ public class Constants {
     public static final String            MQTT_PKG_UPDATE_FINISHED_EMPTY_MSG     = "pkg_update_finished_empty";
     public static final String            MQTT_EPHEMERAL_ID_UPDATE_STARTED_MSG   = "ephemeral_id_update_started";
     public static final String            MQTT_EPEHMERAL_ID_UPDATE_FINISHED_MSG  = "ephemeral_id_update_finished";
+    public static final String            MQTT_FORCE_PKG_UPDATE_MSG              = "force_pkg_update";
     public static final String            MQTT_ONLINE_MSG                        = "1";
     public static final String            MQTT_OFFLINE_MSG                       = "0";
 
@@ -108,6 +110,7 @@ public class Constants {
     public static final String            FILE_ENDING_TXT                        = "txt";
     public static final String            FILE_ENDING_SHA1                       = "sha1";
     public static final String            FILE_ENDING_SHA256                     = "sha256";
+    public static final String            FILE_ENDING_MD5                        = "md5";
     public static final String            FILE_ENDING_SYMBOLS_TAR_GZ             = "symbols.tar.gz";
     public static final String            FILE_ENDING_SIG                        = "sig";
 
@@ -133,10 +136,10 @@ public class Constants {
 
     public static final Map<String, String> PARAMETER_LOOKUP = new HashMap<>() {{
         put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
-        put(Pkg.FIELD_ARCHIVE_TYPE, "apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip");
+        put(Pkg.FIELD_ARCHIVE_TYPE, "apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tgz, tar.Z, zip");
         put(Pkg.FIELD_BITNESS, "32, 64");
         put(Pkg.FIELD_FPU, "hard_float, soft_float, unknown");
-        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, graalvm_ce16, graalvm_ce17, jetbrains, liberica, liberica_native, mandrel, microsoft, ojdk_build, openlogic, oracle, oracle_open_jdk, redhat, sap_machine, semeru, temurin, trava, zulu, zulu_prime");
+        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, bisheng, corretto, dragonwell, graalvm_ce8, graalvm_ce11, graalvm_ce16, graalvm_ce17, jetbrains, kona, liberica, liberica_native, mandrel, microsoft, ojdk_build, openlogic, oracle, oracle_open_jdk, redhat, sap_machine, semeru, temurin, trava, zulu, zulu_prime");
         put(Pkg.FIELD_OPERATING_SYSTEM, "aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows");
         put(Pkg.FIELD_LIB_C_TYPE, "c_std_lib, glibc, libc, musl");
         put(Pkg.FIELD_PACKAGE_TYPE, "jdk, jre");
@@ -275,10 +278,12 @@ public class Constants {
         // Builds of OpenJDK
         put(Distro.AOJ, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
         put(Distro.AOJ_OPENJ9, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.BISHENG, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
         put(Distro.CORRETTO, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION, QualityScope.TCK_TESTED));
         put(Distro.DRAGONWELL, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
         put(Distro.LIBERICA, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION, QualityScope.TCK_TESTED));
         put(Distro.JETBRAINS, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.KONA, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
         put(Distro.MICROSOFT, List.of(BasicScope.PUBLIC, IDEScope.VISUAL_STUDIO_CODE, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION, QualityScope.TCK_TESTED));
         put(Distro.OJDK_BUILD, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
         put(Distro.OPEN_LOGIC, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_OPEN_JDK, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
@@ -301,13 +306,13 @@ public class Constants {
     }};
 
     public static final ConcurrentHashMap<Scope, List<Distro>> REVERSE_SCOPE_LOOKUP = new ConcurrentHashMap<>() {{
-        put(BasicScope.PUBLIC, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.JETBRAINS, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.SEMERU, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU, Distro.ZULU_PRIME));
-        put(DownloadScope.DIRECTLY, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.JETBRAINS, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.SAP_MACHINE, Distro.SEMERU, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU, Distro.ZULU_PRIME));
+        put(BasicScope.PUBLIC, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.BISHENG, Distro.CORRETTO, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.JETBRAINS, Distro.KONA, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.SEMERU, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU, Distro.ZULU_PRIME));
+        put(DownloadScope.DIRECTLY, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.BISHENG, Distro.CORRETTO, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.JETBRAINS, Distro.KONA, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.SAP_MACHINE, Distro.SEMERU, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU, Distro.ZULU_PRIME));
         put(DownloadScope.NOT_DIRECTLY, List.of(Distro.ORACLE, Distro.RED_HAT));
-        put(BuildScope.BUILD_OF_OPEN_JDK, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.JETBRAINS, Distro.LIBERICA, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.SEMERU, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU, Distro.ZULU_PRIME));
+        put(BuildScope.BUILD_OF_OPEN_JDK, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.BISHENG, Distro.CORRETTO, Distro.DRAGONWELL, Distro.JETBRAINS, Distro.KONA, Distro.LIBERICA, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.SEMERU, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU, Distro.ZULU_PRIME));
         put(BuildScope.BUILD_OF_GRAALVM, List.of(Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.LIBERICA_NATIVE, Distro.MANDREL));
-        put(IDEScope.VISUAL_STUDIO_CODE, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.LIBERICA, Distro.MICROSOFT, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.TEMURIN, Distro.SEMERU, Distro.ZULU));
-        put(UsageScope.FREE_TO_USE_IN_PRODUCTION, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.JETBRAINS, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE_OPEN_JDK, Distro.SAP_MACHINE, Distro.SEMERU, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU));
+        put(IDEScope.VISUAL_STUDIO_CODE, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.KONA, Distro.LIBERICA, Distro.MICROSOFT, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.TEMURIN, Distro.SEMERU, Distro.ZULU));
+        put(UsageScope.FREE_TO_USE_IN_PRODUCTION, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.BISHENG, Distro.CORRETTO, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.JETBRAINS, Distro.KONA, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE_OPEN_JDK, Distro.SAP_MACHINE, Distro.SEMERU, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU));
         put(UsageScope.LICENSE_NEEDED_FOR_PRODUCTION, List.of(Distro.ORACLE, Distro.RED_HAT, Distro.ZULU_PRIME));
         put(QualityScope.TCK_TESTED, List.of(Distro.CORRETTO, Distro.LIBERICA, Distro.MICROSOFT, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.TEMURIN, Distro.ZULU, Distro.ZULU_PRIME, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17));
     }};

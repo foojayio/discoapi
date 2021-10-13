@@ -76,10 +76,10 @@ public enum CacheManager {
     INSTANCE;
 
     private static final Logger                           LOGGER                                    = LoggerFactory.getLogger(CacheManager.class);
-    public final         MqttManager                      mqttManager                               = new MqttManager();
-    public final         MqttEvtObserver                  mqttEvtObserver                           = evt -> handleMqttEvt(evt);
-    public final         PkgCache<String, Pkg>            pkgCache                                  = new PkgCache<>();
-    public final         Map<Integer, Boolean>            maintainedMajorVersions                   = new ConcurrentHashMap<>() {{
+    public  final        MqttManager                      mqttManager                               = new MqttManager();
+    public  final        MqttEvtObserver                  mqttEvtObserver                           = evt -> handleMqttEvt(evt);
+    public  final        PkgCache<String, Pkg>            pkgCache                                  = new PkgCache<>();
+    public  final        Map<Integer, Boolean>            maintainedMajorVersions                   = new ConcurrentHashMap<>() {{
         put(1, false);
         put(2, false);
         put(3, false);
@@ -99,38 +99,37 @@ public enum CacheManager {
         put(17, true);
         put(18, true);
     }};
-    public               AtomicBoolean                    syncWithDatabaseInProgress                = new AtomicBoolean(false);
-    public               AtomicBoolean                    ephemeralIdCacheIsUpdating                = new AtomicBoolean(false);
-    public               AtomicReference<String>          publicPkgs                                = new AtomicReference<>();
-    public               AtomicReference<String>          publicPkgsIncldugingEa                    = new AtomicReference<>();
-    public               AtomicReference<String>          publicPkgsDownloadable                    = new AtomicReference<>();
-    public               AtomicReference<String>          publicPkgsIncldugingEaDownloadable        = new AtomicReference<>();
+    public  final        AtomicBoolean                    syncWithDatabaseInProgress                = new AtomicBoolean(false);
+    public  final        AtomicBoolean                    ephemeralIdCacheIsUpdating                = new AtomicBoolean(false);
+    public  final        AtomicReference<String>          publicPkgs                                = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsIncldugingEa                    = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsDownloadable                    = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsIncldugingEaDownloadable        = new AtomicReference<>();
 
-    public               AtomicReference<String>          publicPkgsOpenJDK                         = new AtomicReference<>();
-    public               AtomicReference<String>          publicPkgsOpenJDKIncldugingEa             = new AtomicReference<>();
-    public               AtomicReference<String>          publicPkgsOpenJDKDownloadable             = new AtomicReference<>();
-    public               AtomicReference<String>          publicPkgsOpenJDKIncldugingEaDownloadable = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsOpenJDK                         = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsOpenJDKIncldugingEa             = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsOpenJDKDownloadable             = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsOpenJDKIncldugingEaDownloadable = new AtomicReference<>();
 
-    public               AtomicReference<String>          publicPkgsGraalVM                         = new AtomicReference<>();
-    public               AtomicReference<String>          publicPkgsGraalVMIncldugingEa             = new AtomicReference<>();
-    public               AtomicReference<String>          publicPkgsGraalVMDownloadable             = new AtomicReference<>();
-    public               AtomicReference<String>          publicPkgsGraalVMIncldugingEaDownloadable = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsGraalVM                         = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsGraalVMIncldugingEa             = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsGraalVMDownloadable             = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsGraalVMIncldugingEaDownloadable = new AtomicReference<>();
 
-    public               AtomicLong                       msToFillCacheWithPkgsFromDB               = new AtomicLong(-1);
-    public               AtomicReference<Duration>        durationToUpdateMongoDb                   = new AtomicReference<>();
-    public               AtomicReference<Duration>        durationForLastUpdateRun                  = new AtomicReference();
-    public               AtomicInteger                    distrosUpdatedInLastRun                   = new AtomicInteger(-1);
-    public               AtomicInteger                    packagesAddedInUpdate                     = new AtomicInteger(0);
-    public               AtomicLong                       numberOfPackages                          = new AtomicLong(-1);
+    public  final        AtomicLong                       msToFillCacheWithPkgsFromDB               = new AtomicLong(-1);
+    public  final        AtomicReference<Duration>        durationToUpdateMongoDb                   = new AtomicReference<>();
+    public  final        AtomicReference<Duration>        durationForLastUpdateRun                  = new AtomicReference();
+    public  final        AtomicInteger                    distrosUpdatedInLastRun                   = new AtomicInteger(-1);
+    public  final        AtomicInteger                    packagesAddedInUpdate                     = new AtomicInteger(0);
+    public  final        AtomicLong                       numberOfPackages                          = new AtomicLong(-1);
     private final        List<MajorVersion>               majorVersions                             = new LinkedList<>();
-    private              Instant                          lastMajorVersionsUpdate                   = Instant.MIN;
-    private              Instant                          lastMaintainedMajorVersionsUpdate         = Instant.MIN;
 
 
     CacheManager() {
         mqttManager.subscribe(Constants.MQTT_PKG_UPDATE_TOPIC, MqttQos.EXACTLY_ONCE);
         mqttManager.subscribe(Constants.MQTT_EPHEMERAL_ID_UPDATE_TOPIC, MqttQos.EXACTLY_ONCE);
         mqttManager.addMqttObserver(mqttEvtObserver);
+        maintainedMajorVersions.entrySet().forEach(entry-> majorVersions.add(new MajorVersion(entry.getKey(), Helper.getTermOfSupport(entry.getKey()), entry.getValue())));
     }
 
 
@@ -146,8 +145,9 @@ public enum CacheManager {
         AtomicInteger counter = new AtomicInteger(0);
 
         Distro.getAsListWithoutNoneAndNotFound().forEach(distro -> {
+            final Instant now                 = Instant.now();
             final Instant lastUpdateForDistro = MongoDbManager.INSTANCE.getLastUpdateForDistro(distro);
-            final double  delta               = (lastUpdateForDistro.until(Instant.now(), ChronoUnit.MINUTES));
+            final double  delta               = (lastUpdateForDistro.until(now, ChronoUnit.MINUTES));
             if (delta > distro.getMinUpdateIntervalInMinutes() || forceUpdate) {
                 List<Pkg> pkgsOfDistro = Helper.getPkgsOfDistro(distro);
                 pkgsFound.addAll(pkgsOfDistro);
@@ -155,7 +155,7 @@ public enum CacheManager {
 
                 MongoDbManager.INSTANCE.setLastUpdateForDistro(distro);
 
-                distro.lastUpdate.set(Instant.now());
+                distro.lastUpdate.set(now);
                 counter.incrementAndGet();
                 }
         });
@@ -242,6 +242,9 @@ public enum CacheManager {
 
                 // Synchronize latestBuildAvailable in mongodb database with cache
                 MongoDbManager.INSTANCE.syncLatestBuildAvailableInDatabaseWithCache(pkgCache.getPkgs());
+
+            // Update all available major versions and maintained major versions
+            updateMajorVersions();
         }
         MongoDbManager.INSTANCE.setState(State.IDLE);
 
@@ -266,84 +269,16 @@ public enum CacheManager {
     }
 
     public void updateMajorVersions() {
-        if (Instant.now().getEpochSecond() - lastMajorVersionsUpdate.getEpochSecond() < Constants.ONE_HOUR_IN_SECONDS) { return; }
-        LOGGER.debug("Updating major versions");
-        // Update all available major versions (exclude GraalVM based pkgs because they have different version numbers)
-        majorVersions.clear();
-
-        if (pkgCache.isEmpty()) {
-            majorVersions.addAll(maintainedMajorVersions.keySet()
-                                                        .stream()
-                                                        .distinct()
-                                                        .map(key -> new MajorVersion(key, Helper.getTermOfSupport(key)))
-                                                        .sorted(Comparator.comparing(MajorVersion::getAsInt).reversed())
-                                                        .collect(Collectors.toList()));
+        List<MajorVersion> majorVersionsFromDb = MongoDbManager.INSTANCE.getMajorVersions();
+        if (null == majorVersionsFromDb || majorVersionsFromDb.isEmpty()) {
+            LOGGER.error("Error updating major versions from mongodb");
         } else {
-            majorVersions.addAll(pkgCache.getPkgs()
-                                         .stream()
-                                         .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8)
-                                         .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11)
-                                         .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE16)
-                                         .filter(pkg -> pkg.getDistribution().getDistro() != Distro.GRAALVM_CE17)
-                                         .filter(pkg -> pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE)
-                                         .filter(pkg -> pkg.getDistribution().getDistro() != Distro.MANDREL)
-                                         .map(pkg -> pkg.getVersionNumber().getFeature().getAsInt())
-                                         .distinct()
-                                         .map(majorVersion -> new MajorVersion(majorVersion, Helper.getTermOfSupport(majorVersion)))
-                                         .sorted(Comparator.comparing(MajorVersion::getAsInt).reversed())
-                                         .collect(Collectors.toList()));
-        }
-        // Validate major versions
-        final Optional<MajorVersion> largestFeatureVersion       = majorVersions.stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).limit(1).findFirst();
-        final Optional<MajorVersion> secondLargestFeatureVersion = majorVersions.stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).limit(2).skip(1).findFirst();
-        if (largestFeatureVersion.isPresent() && secondLargestFeatureVersion.isPresent()) {
-            final Integer largestFeatureVersionFound       = largestFeatureVersion.get().getAsInt();
-            final Integer secondLargestFeatureVersionFound = secondLargestFeatureVersion.get().getAsInt();
-            if (largestFeatureVersionFound - secondLargestFeatureVersionFound > 20) {
-                majorVersions.remove(largestFeatureVersion.get());
-            }
+        majorVersions.clear();
+            majorVersions.addAll(majorVersionsFromDb);
+            majorVersions.forEach(majorVersion -> maintainedMajorVersions.put(majorVersion.getAsInt(), majorVersion.isMaintained()));
         }
 
-        if (!maintainedMajorVersions.isEmpty()) {
-            Optional<Integer> maxMajorVersionInMaintainedMajorVersions = maintainedMajorVersions.keySet().stream().max(Comparator.comparingInt(Integer::intValue));
-            Optional<Integer> maxMajorVersionInMajorVersions           = majorVersions.stream().max(Comparator.comparing(MajorVersion::getAsInt)).map(majorVersion -> majorVersion.getAsInt());
-            if (maxMajorVersionInMaintainedMajorVersions.isPresent() && maxMajorVersionInMajorVersions.isPresent()) {
-                if (maxMajorVersionInMaintainedMajorVersions.get() > maxMajorVersionInMajorVersions.get()) {
-                    MajorVersion majorVersionToAdd = new MajorVersion(maxMajorVersionInMaintainedMajorVersions.get());
-                majorVersions.add(0, majorVersionToAdd);
-                LOGGER.debug("Added {} to major versions.", majorVersionToAdd);
-            }
-            } else {
-                LOGGER.debug("Error updating major versions. Please check package cache.");
-            }
-        }
-        lastMajorVersionsUpdate = Instant.now();
         LOGGER.debug("Successfully updated major versions");
-    }
-
-    public void updateMaintainedMajorVersions() {
-        if (Instant.now().getEpochSecond() - lastMaintainedMajorVersionsUpdate.getEpochSecond() < Constants.ONE_HOUR_IN_SECONDS) { return; }
-        LOGGER.debug("Updating maintained major versions");
-        final Properties maintainedProperties = new Properties();
-        final Map<Integer, Boolean> tmpMaintainedMajorVersions = new HashMap<>();
-        try {
-            HttpResponse<String> response = Helper.get(Constants.MAINTAINED_PROPERTIES_URL);
-            if (null == response) { return; }
-            String maintainedPropertiesText = response.body();
-            if (null == maintainedPropertiesText) { return; }
-            maintainedProperties.load(new StringReader(maintainedPropertiesText));
-            maintainedProperties.entrySet().forEach(entry -> {
-                Integer majorVersion = Integer.valueOf(entry.getKey().toString().replaceAll("jdk-", ""));
-                Boolean maintained   = Boolean.valueOf(entry.getValue().toString().toLowerCase());
-                tmpMaintainedMajorVersions.put(majorVersion, maintained);
-            });
-            maintainedMajorVersions.clear();
-            maintainedMajorVersions.putAll(tmpMaintainedMajorVersions);
-            lastMaintainedMajorVersionsUpdate = Instant.now();
-            LOGGER.debug("Successfully updated maintained major versions");
-        } catch (Exception e) {
-            LOGGER.error("Error loading maintained version properties from github. {}", e);
-        }
     }
 
     public void updateAllPkgsMsgs() {
@@ -465,6 +400,10 @@ public enum CacheManager {
     }
 
     public void syncCacheWithDatabase() {
+        if (syncWithDatabaseInProgress.get()) { return; }
+
+        syncWithDatabaseInProgress.set(true);
+
         final long startSyncronizingCache = System.currentTimeMillis();
         LOGGER.debug("Get last updates per distro from mongodb");
         Distro.getAsListWithoutNoneAndNotFound().forEach(distro -> {
@@ -478,11 +417,10 @@ public enum CacheManager {
         numberOfPackages.set(pkgCache.size());
         msToFillCacheWithPkgsFromDB.set(System.currentTimeMillis() - startSyncronizingCache);
 
-        // Update maintained major versions
-        updateMaintainedMajorVersions();
-
-        // Update all available major versions
+        // Update all available major versions and maintained major versions
         updateMajorVersions();
+
+        syncWithDatabaseInProgress.set(false);
         }
 
 
@@ -494,35 +432,41 @@ public enum CacheManager {
         if (topic.equals(Constants.MQTT_PKG_UPDATE_TOPIC)) {
             switch(msg) {
                 case Constants.MQTT_PKG_UPDATE_FINISHED_EMPTY_MSG -> {
-                    if (pkgCache.isEmpty()) {
+                    if (!pkgCache.isEmpty()) { return; }
                         try {
-                            if (syncWithDatabaseInProgress.get()) { return; }
-                            LOGGER.debug(evt.toString());
-                            syncWithDatabaseInProgress.set(true);
+                        LOGGER.debug("PkgCache is empty -> syncCacheWithDatabase(). MQTT event: {}", evt);
 
                             // Update cache with pkgs from mongodb
                             syncCacheWithDatabase();
 
                             // Update msgs that contain all pkgs
                             updateAllPkgsMsgs();
-                            syncWithDatabaseInProgress.set(false);
                         } catch (Exception e) {
                             syncWithDatabaseInProgress.set(false);
                         }
                     }
-                }
                 case Constants.MQTT_PKG_UPDATE_FINISHED_MSG -> {
                     try {
-                        if (syncWithDatabaseInProgress.get()) { return; }
-                        LOGGER.debug(evt.toString());
-                        syncWithDatabaseInProgress.set(true);
+                        LOGGER.debug("Database updated -> syncCacheWithDatabase(). MQTT event: {}", evt);
 
                         // Update cache with pkgs from mongodb
                         syncCacheWithDatabase();
 
                         // Update msgs that contain all pkgs
                         updateAllPkgsMsgs();
+                    } catch (Exception e) {
                         syncWithDatabaseInProgress.set(false);
+                    }
+                }
+                case Constants.MQTT_FORCE_PKG_UPDATE_MSG -> {
+                    try {
+                        LOGGER.debug("Force pkg update -> syncCacheWithDatabase(). MQTT event: {}", evt);
+
+                        // Update cache with pkgs from mongodb
+                        syncCacheWithDatabase();
+
+                        // Update msgs that contain all pkgs
+                        updateAllPkgsMsgs();
                     } catch (Exception e) {
                         syncWithDatabaseInProgress.set(false);
                     }

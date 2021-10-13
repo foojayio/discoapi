@@ -81,6 +81,7 @@ public class Pkg {
     public  static final String            FIELD_REDIRECT               = "pkg_download_redirect";
     public  static final String            FIELD_FREE_USE_IN_PROD       = "free_use_in_production";
     public  static final String            FIELD_TCK_TESTED             = "tck_tested";
+    public  static final String            FIELD_AQAVIT_CERTIFIED       = "aqavit_certified";
     public  static final String            FIELD_FEATURE                = "feature";
     private              Distribution      distribution;
     private              VersionNumber     versionNumber;
@@ -106,15 +107,16 @@ public class Pkg {
     private              String            signatureUri;
     private              Boolean           freeUseInProduction;
     private              Boolean           tckTested;
+    private              Boolean           aqavitCertified;
     private              List<Feature>     features;
 
 
     public Pkg() {
-        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, FPU.UNKNOWN, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, Boolean.FALSE, Boolean.TRUE, "", "", "", "", Boolean.FALSE, Boolean.FALSE, new ArrayList<>());
+        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, FPU.UNKNOWN, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, Boolean.FALSE, Boolean.TRUE, "", "", "", "", Boolean.FALSE, Boolean.FALSE, null, new ArrayList<>());
     }
     public Pkg(final Distribution distribution, final VersionNumber versionNumber, final Architecture architecture, final Bitness bitness, final FPU fpu, final OperatingSystem operatingSystem, final PackageType packageType,
                final ReleaseStatus releaseStatus, final ArchiveType archiveType, final TermOfSupport termOfSupport, final boolean javafxBundled, final boolean directlyDownloadable, final String filename,
-               final String directDownloadUri, final String downloadSiteUri, final String signatureUri, final Boolean freeUseInProduction, final Boolean tckTested, final List<Feature> features) {
+               final String directDownloadUri, final String downloadSiteUri, final String signatureUri, final Boolean freeUseInProduction, final Boolean tckTested, final Boolean aqavitCertified, final List<Feature> features) {
         this.distribution         = distribution;
         this.versionNumber        = versionNumber;
         this.javaVersion          = new VersionNumber();
@@ -138,6 +140,7 @@ public class Pkg {
         this.signatureUri         = signatureUri;
         this.freeUseInProduction  = freeUseInProduction;
         this.tckTested            = null == tckTested ? Boolean.FALSE : tckTested;
+        this.aqavitCertified      = aqavitCertified;
         this.features             = features;
         this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
     }
@@ -171,6 +174,7 @@ public class Pkg {
         this.semver               = SemVer.fromText(json.get(FIELD_JAVA_VERSION).getAsString()).getSemVer1();
         this.freeUseInProduction  = json.has(FIELD_FREE_USE_IN_PROD) ? json.get(FIELD_FREE_USE_IN_PROD).getAsBoolean() : Boolean.FALSE;
         this.tckTested            = json.has(FIELD_TCK_TESTED) ? json.get(FIELD_TCK_TESTED).getAsBoolean() : Boolean.FALSE;
+        this.aqavitCertified      = json.has(FIELD_AQAVIT_CERTIFIED) ? json.get(FIELD_AQAVIT_CERTIFIED).getAsBoolean() : null;
         if (json.has(FIELD_FEATURE)) {
             features = new ArrayList<>();
             JsonArray featureArray = json.getAsJsonArray(FIELD_FEATURE);
@@ -292,6 +296,9 @@ public class Pkg {
 
     public Boolean isTckTested() { return tckTested; }
     public void setTckTested(final Boolean tckTested) { this.tckTested = tckTested; }
+
+    public Boolean isAqavitCertified() { return aqavitCertified; }
+    public void setAqavitCertified(final Boolean aqavitCertified) { this.aqavitCertified = aqavitCertified; }
 
 
     public String getId() {

@@ -13,12 +13,14 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.pkg;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.scopes.Scope;
 import io.foojay.api.util.Constants;
@@ -49,11 +51,12 @@ import static java.util.stream.Collectors.toSet;
  */
 
 public class MajorVersion {
-    public  static final String        FIELD_MAJOR_VERSION   = "major_version";
-    public  static final String        FIELD_TERM_OF_SUPPORT = "term_of_support";
-    public  static final String        FIELD_MAINTAINED      = "maintained";
+    public  static final String        FIELD_MAJOR_VERSION     = "major_version";
+    public  static final String        FIELD_TERM_OF_SUPPORT   = "term_of_support";
+    public  static final String        FIELD_MAINTAINED        = "maintained";
     public  static final String        FIELD_EARLY_ACCESS_ONLY = "early_access_only";
-    public  static final String        FIELD_VERSIONS        = "versions";
+    public  static final String        FIELD_RELEASE_STATUS    = "release_status";
+    public  static final String        FIELD_VERSIONS          = "versions";
     private        final int           majorVersion;
     private        final TermOfSupport termOfSupport;
     private        final boolean       maintained;
@@ -64,13 +67,28 @@ public class MajorVersion {
     }
     public MajorVersion(final int majorVersion, final TermOfSupport termOfSupport) {
         if (majorVersion <= 0) { throw new IllegalArgumentException("Major version cannot be <= 0"); }
-        this.majorVersion  = majorVersion;
-        this.termOfSupport = termOfSupport;
+        this.majorVersion    = majorVersion;
+        this.termOfSupport   = termOfSupport;
         if (CacheManager.INSTANCE.maintainedMajorVersions.containsKey(majorVersion)) {
             this.maintained = CacheManager.INSTANCE.maintainedMajorVersions.get(majorVersion);
         } else {
             this.maintained = false;
         }
+    }
+    public MajorVersion(final int majorVersion, final TermOfSupport termOfSupport, final boolean maintained) {
+        if (majorVersion <= 0) { throw new IllegalArgumentException("Major version cannot be <= 0"); }
+        this.majorVersion  = majorVersion;
+        this.termOfSupport = termOfSupport;
+        this.maintained    = maintained;
+    }
+    public MajorVersion(final String jsonText) {
+        if (null == jsonText || jsonText.isEmpty()) { throw new IllegalArgumentException("Json text cannot be null or empty"); }
+        final Gson       gson = new Gson();
+        final JsonObject json = gson.fromJson(jsonText, JsonObject.class);
+
+        this.majorVersion  = json.get(FIELD_MAJOR_VERSION).getAsInt();
+        this.termOfSupport = TermOfSupport.fromText(json.get(FIELD_TERM_OF_SUPPORT).getAsString());
+        this.maintained    = json.get(FIELD_MAINTAINED).getAsBoolean();
     }
 
 
@@ -88,7 +106,7 @@ public class MajorVersion {
     }
     public static MajorVersion getLatest(final boolean includingEa) {
         if (includingEa) {
-        return CacheManager.INSTANCE.getMajorVersions().get(0);
+            return CacheManager.INSTANCE.getMajorVersions().get(0);
         } else {
             return CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> !majorVersion.getVersions().isEmpty()).findFirst().get();
         }
@@ -98,10 +116,10 @@ public class MajorVersion {
         int featureVersion = 1;
         for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
             if (includingEa) {
-            if (termOfSupport == Helper.getTermOfSupport(majorVersion.getAsInt())) {
-                featureVersion = majorVersion.getAsInt();
-                break;
-            }
+                if (termOfSupport == Helper.getTermOfSupport(majorVersion.getAsInt())) {
+                    featureVersion = majorVersion.getAsInt();
+                    break;
+                }
             } else {
                 if (termOfSupport == Helper.getTermOfSupport(majorVersion.getAsInt()) && !majorVersion.getVersions().isEmpty()) {
                     featureVersion = majorVersion.getAsInt();
@@ -197,6 +215,9 @@ public class MajorVersion {
     // Maintained
     public Boolean isMaintained() { return maintained; }
 
+    // Release Status
+    public ReleaseStatus getReleaseStatus() { return isEarlyAccessOnly() ? ReleaseStatus.EA : ReleaseStatus.GA; }
+
     // Early Access only
     public Boolean isEarlyAccessOnly() {
         return getVersions().stream().filter(semver -> ReleaseStatus.EA == semver.getReleaseStatus()).count() == getVersions().size();
@@ -267,6 +288,7 @@ public class MajorVersion {
                                                                         .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.name()).append(QUOTES).append(COMMA_NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA_NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_EARLY_ACCESS_ONLY).append(QUOTES).append(COLON).append(isEarlyAccessOnly()).append(COMMA_NEW_LINE)
+                                                                        .append(INDENTED_QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(getReleaseStatus().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_VERSIONS).append(QUOTES).append(COLON).append(" ").append(SQUARE_BRACKET_OPEN).append(versions.isEmpty() ? "" : NEW_LINE);
         versions.forEach(versionNumber -> majorVersionMsgBuilder.append(INDENT).append(INDENTED_QUOTES).append(versionNumber).append(QUOTES).append(COMMA_NEW_LINE));
         if (!versions.isEmpty()) {

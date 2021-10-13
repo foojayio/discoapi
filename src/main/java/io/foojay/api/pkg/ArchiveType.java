@@ -36,6 +36,7 @@ public enum ArchiveType implements ApiFeature {
     SRC_TAR("src.tar.gz", "src_tar",".src.tar.gz", ".source.tar.gz", ".source.tar.gz"),
     TAR("tar", "tar", ".tar"),
     TAR_GZ("tar.gz", "tar.gz", ".tar.gz"),
+    TGZ("tgz", "tgz", ".tgz"),
     TAR_Z("tar.Z", "tar.z", ".tar.Z"),
     ZIP("zip", "zip", ".zip"),
     EXE("exe", "exe", ".exe"),
@@ -114,6 +115,10 @@ public enum ArchiveType implements ApiFeature {
             case ".tar.gz":
             case "TAR.GZ":
                 return TAR_GZ;
+            case "tgz":
+            case ".tgz":
+            case "TGZ":
+                return TGZ;
             case "tar":
             case ".tar":
             case "TAR":

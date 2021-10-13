@@ -51,6 +51,7 @@ import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 public enum Distro implements ApiFeature {
     AOJ("AOJ", "aoj", new AOJ(), 2880),
     AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 2880),
+    BISHENG("Bi Sheng", "bisheng", new BiSheng(), 1440),
     CORRETTO("Corretto", "corretto", new Corretto(), 720),
     DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 1440),
     GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 720),
@@ -58,6 +59,7 @@ public enum Distro implements ApiFeature {
     GRAALVM_CE16("Graal VM CE 16", "graalvm_ce16", new GraalVMCE16(), 725),
     GRAALVM_CE17("Graal VM CE 17", "graalvm_ce17", new GraalVMCE17(), 725),
     JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 720),
+    KONA("Kona", "kona", new Kona(), 730),
     LIBERICA("Liberica", "liberica", new Liberica(), 180),
     LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 1440),
     MANDREL("Mandrel", "mandrel", new Mandrel(), 1440),
@@ -295,6 +297,21 @@ public enum Distro implements ApiFeature {
             case "trava openjdk":
             case "TRAVA OPENJDK":
                 return TRAVA;
+            case "kona":
+            case "KONA":
+            case "Kona":
+                return KONA;
+            case "bisheng":
+            case "BISHENG":
+            case "BiSheng":
+            case "bi_sheng":
+            case "BI_SHENG":
+            case "bi-sheng":
+            case "BI-SHENG":
+            case "bi sheng":
+            case "Bi Sheng":
+            case "BI SHENG":
+                return BISHENG;
             default:
                 return NOT_FOUND;
         }
