@@ -181,6 +181,7 @@ public class Corretto implements Distribution {
         for (Pair<String, String> pair : pairsFound) {
             final PackageType pkgType = PackageType.fromText(pair.getKey());
             final String      url     = pair.getValue();
+            if (url.contains("latest_checksum")) { continue; }
 
             Pkg pkg = new Pkg();
 
@@ -330,6 +331,8 @@ public class Corretto implements Distribution {
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
 
         for (String fileHref : fileHrefs) {
+            if (fileHref.contains("latest_checksum")) { continue; }
+
             String filename = Helper.getFileNameFromText(fileHref.replaceAll("\"", ""));
 
             Pkg pkg = new Pkg();
