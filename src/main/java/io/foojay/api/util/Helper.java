@@ -1228,6 +1228,9 @@ public class Helper {
 
 
     public static final String getAllPackagesV2Msg(final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
+        return getAllPackagesV2Msg(downloadable, include_ea, scope, OutputFormat.REDUCED_COMPRESSED);
+    }
+    public static final String getAllPackagesV2Msg(final Boolean downloadable, final Boolean include_ea, final BuildScope scope, final OutputFormat outputFormat) {
         final List<Distro> publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
         final boolean gaOnly = null == include_ea || !include_ea;
         final StringBuilder msgBuilder = new StringBuilder();
@@ -1240,8 +1243,8 @@ public class Helper {
                                                                        .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
                                                                        .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
                                                                        .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
-                                                                       .sorted(Comparator.comparing(Pkg::getDistributionName).reversed())
-                                                                       .map(pkg -> pkg.toString(OutputFormat.REDUCED_COMPRESSED, API_VERSION_V2))
+                                                                       .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
+                                                                       .map(pkg -> pkg.toString(outputFormat, API_VERSION_V2))
                                                                        .collect(Collectors.joining(COMMA_NEW_LINE, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(COMMA_NEW_LINE)
                   .append(INDENTED_QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES).append(NEW_LINE)
                   .append(CURLY_BRACKET_CLOSE);
