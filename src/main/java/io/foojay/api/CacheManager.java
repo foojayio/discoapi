@@ -106,6 +106,11 @@ public enum CacheManager {
     public  final        AtomicReference<String>          publicPkgsDownloadable                    = new AtomicReference<>();
     public  final        AtomicReference<String>          publicPkgsIncldugingEaDownloadable        = new AtomicReference<>();
 
+    public  final        AtomicReference<String>          publicPkgsOpenJDKMinimized                         = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsOpenJDKIncldugingEaMinimized             = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsOpenJDKDownloadableMinimized             = new AtomicReference<>();
+    public  final        AtomicReference<String>          publicPkgsOpenJDKIncldugingEaDownloadableMinimized = new AtomicReference<>();
+
     public  final        AtomicReference<String>          publicPkgsOpenJDK                         = new AtomicReference<>();
     public  final        AtomicReference<String>          publicPkgsOpenJDKIncldugingEa             = new AtomicReference<>();
     public  final        AtomicReference<String>          publicPkgsOpenJDKDownloadable             = new AtomicReference<>();
@@ -148,7 +153,7 @@ public enum CacheManager {
             final Instant now                 = Instant.now();
             final Instant lastUpdateForDistro = MongoDbManager.INSTANCE.getLastUpdateForDistro(distro);
             final double  delta               = (lastUpdateForDistro.until(now, ChronoUnit.MINUTES));
-            if (delta > distro.getMinUpdateIntervalInMinutes() || forceUpdate) {
+            if (delta > distro.getUpdateIntervalInMinutes() || forceUpdate) {
                 List<Pkg> pkgsOfDistro = Helper.getPkgsOfDistro(distro);
                 pkgsFound.addAll(pkgsOfDistro);
                 LOGGER.debug("{} packages added from {}", pkgsOfDistro.size(), distro.getName());
@@ -256,6 +261,7 @@ public enum CacheManager {
         durationForLastUpdateRun.set(Duration.between(updateAllDistrosStart, now));
 
         if (packagesAddedInUpdate.get() > 0 || null == publicPkgs.get() || null == publicPkgsIncldugingEa.get() || null == publicPkgsDownloadable.get() || null == publicPkgsIncldugingEaDownloadable.get() ||
+            null == publicPkgsOpenJDKMinimized.get() || null == publicPkgsOpenJDKIncldugingEaMinimized.get() || null == publicPkgsOpenJDKDownloadableMinimized.get() || null == publicPkgsOpenJDKIncldugingEaDownloadableMinimized.get() ||
             null == publicPkgsOpenJDK.get() || null == publicPkgsOpenJDKIncldugingEa.get() || null == publicPkgsOpenJDKDownloadable.get() || null == publicPkgsOpenJDKIncldugingEaDownloadable.get() ||
             null == publicPkgsGraalVM.get() || null == publicPkgsGraalVMIncldugingEa.get() || null == publicPkgsGraalVMDownloadable.get() || null == publicPkgsGraalVMIncldugingEaDownloadable.get()) {
             updateAllPkgsMsgs();
@@ -286,6 +292,11 @@ public enum CacheManager {
         publicPkgsIncldugingEa.set(Helper.getAllPackagesV2Msg(false, true, null));
         publicPkgsDownloadable.set(Helper.getAllPackagesV2Msg(true, false, null));
         publicPkgsIncldugingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, null));
+
+        publicPkgsOpenJDKMinimized.set(Helper.getAllPackagesV2Msg(false, false, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
+        publicPkgsOpenJDKIncldugingEaMinimized.set(Helper.getAllPackagesV2Msg(false, true, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
+        publicPkgsOpenJDKDownloadableMinimized.set(Helper.getAllPackagesV2Msg(true, false, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
+        publicPkgsOpenJDKIncldugingEaDownloadableMinimized.set(Helper.getAllPackagesV2Msg(true, true, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
 
         publicPkgsOpenJDK.set(Helper.getAllPackagesV2Msg(false, false, BuildScope.BUILD_OF_OPEN_JDK));
         publicPkgsOpenJDKIncldugingEa.set(Helper.getAllPackagesV2Msg(false, true, BuildScope.BUILD_OF_OPEN_JDK));
