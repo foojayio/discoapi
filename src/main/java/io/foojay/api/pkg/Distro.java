@@ -25,7 +25,6 @@ import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.scopes.UsageScope;
 import io.foojay.api.util.OutputFormat;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -54,19 +53,19 @@ public enum Distro implements ApiFeature {
     BISHENG("Bi Sheng", "bisheng", new BiSheng(), 1440),
     CORRETTO("Corretto", "corretto", new Corretto(), 720),
     DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 1440),
-    GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 720),
-    GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 720),
-    GRAALVM_CE16("Graal VM CE 16", "graalvm_ce16", new GraalVMCE16(), 725),
-    GRAALVM_CE17("Graal VM CE 17", "graalvm_ce17", new GraalVMCE17(), 725),
+    GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 1380),
+    GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 1380),
+    GRAALVM_CE16("Graal VM CE 16", "graalvm_ce16", new GraalVMCE16(), 1380),
+    GRAALVM_CE17("Graal VM CE 17", "graalvm_ce17", new GraalVMCE17(), 1380),
     JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 720),
     KONA("Kona", "kona", new Kona(), 730),
-    LIBERICA("Liberica", "liberica", new Liberica(), 180),
-    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 1440),
+    LIBERICA("Liberica", "liberica", new Liberica(), 60),
+    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 1380),
     MANDREL("Mandrel", "mandrel", new Mandrel(), 1440),
     MICROSOFT("Microsoft", "microsoft", new Microsoft(), 720),
     OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 1440),
     OPEN_LOGIC("OpenLogic", "openlogic", new OpenLogic(), 1440),
-    ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 180),
+    ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 120),
     ORACLE("Oracle", "oracle", new Oracle(), 720),
     RED_HAT("Red Hat", "redhat", new RedHat(), 720),
     SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 720),
@@ -78,29 +77,29 @@ public enum Distro implements ApiFeature {
     NONE("-", "", null, 0),
     NOT_FOUND("", "", null, 0);
 
-    public  static final String       FIELD_NAME                = "name";
-    public  static final String       FIELD_API_PARAMETER       = "api_parameter";
-    public  static final String       FIELD_HASH_ALGORITHM      = "hash_algorithm";
-    public  static final String       FIELD_HASH_URI            = "hash_uri";
-    public  static final String       FIELD_SIGNATURE_TYPE      = "signature_type";
-    public  static final String       FIELD_SIGNATURE_ALGORITHM = "signature_algorithm";
-    public  static final String       FIELD_SIGNATURE_URI       = "signature_uri";
-    public  static final String       FIELD_OFFICIAL_URI        = "official_uri";
-    public  static final String       FIELD_SYNONYMS            = "synonyms";
-    public  static final String       FIELD_VERSIONS            = "versions";
-    private        final String       uiString;
-    private        final String       apiString;
-    private        final Distribution distribution;
-    private        final int          minUpdateIntervalInMinutes;
-    public         final AtomicReference<Instant> lastUpdate;
+    public static final String                    FIELD_NAME                = "name";
+    public static final String                    FIELD_API_PARAMETER       = "api_parameter";
+    public static final String                    FIELD_HASH_ALGORITHM      = "hash_algorithm";
+    public static final String                    FIELD_HASH_URI            = "hash_uri";
+    public static final String                    FIELD_SIGNATURE_TYPE      = "signature_type";
+    public static final String                    FIELD_SIGNATURE_ALGORITHM = "signature_algorithm";
+    public static final String                    FIELD_SIGNATURE_URI       = "signature_uri";
+    public static final String                    FIELD_OFFICIAL_URI        = "official_uri";
+    public static final String                    FIELD_SYNONYMS            = "synonyms";
+    public static final String                    FIELD_VERSIONS            = "versions";
+    private final       String                    uiString;
+    private final       String                    apiString;
+    private final       Distribution              distribution;
+    private final       int                       updateIntervalInMinutes;
+    public  final       AtomicReference<Instant>  lastUpdate;
 
 
-    Distro(final String uiString, final String apiString, final Distribution distribution, final int minUpdateIntervalInMinutes) {
-        this.uiString                   = uiString;
-        this.apiString                  = apiString;
-        this.distribution               = distribution;
-        this.minUpdateIntervalInMinutes = minUpdateIntervalInMinutes;
-        this.lastUpdate                 = new AtomicReference<>();
+    Distro(final String uiString, final String apiString, final Distribution distribution, final int updateIntervalInMinutes) {
+        this.uiString                = uiString;
+        this.apiString               = apiString;
+        this.distribution            = distribution;
+        this.updateIntervalInMinutes = updateIntervalInMinutes;
+        this.lastUpdate              = new AtomicReference<>();
     }
 
 
@@ -319,7 +318,7 @@ public enum Distro implements ApiFeature {
 
     public Distribution get() { return distribution; }
 
-    public int getMinUpdateIntervalInMinutes() { return minUpdateIntervalInMinutes; }
+    public int getUpdateIntervalInMinutes() { return updateIntervalInMinutes; }
 
     public static List<Distribution> getDistributions() {
         return Arrays.stream(values())
