@@ -30,6 +30,7 @@ import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
+import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.PkgCache;
 import io.foojay.api.util.State;
 import io.micronaut.context.annotation.Requires;
