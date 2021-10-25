@@ -332,6 +332,12 @@ public class Oracle implements Distribution {
                 pkg.setFPU(FPU.SOFT_FLOAT);
             }
 
+            if (filename.contains("hflt")) {
+                pkg.setFPU(FPU.HARD_FLOAT);
+            } else if (filename.contains("sflt")) {
+                pkg.setFPU(FPU.SOFT_FLOAT);
+            }
+
             pkgs.add(pkg);
         }
 
