@@ -136,7 +136,7 @@ public class Semeru implements Distribution {
 
         queryBuilder.append(PACKAGE_URL);
 
-        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder.toString());
+        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
 
         return queryBuilder.toString();
     }
