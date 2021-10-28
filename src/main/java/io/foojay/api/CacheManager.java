@@ -33,6 +33,7 @@ import io.foojay.api.util.Helper;
 import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.PkgCache;
 import io.foojay.api.util.State;
+import io.foojay.api.util.UpdateState;
 import io.micronaut.context.annotation.Requires;
 import io.micronaut.context.env.Environment;
 import org.slf4j.Logger;
@@ -128,6 +129,8 @@ public enum CacheManager {
     public  final        AtomicInteger                    distrosUpdatedInLastRun                   = new AtomicInteger(-1);
     public  final        AtomicInteger                    packagesAddedInUpdate                     = new AtomicInteger(0);
     public  final        AtomicLong                       numberOfPackages                          = new AtomicLong(-1);
+    public final         AtomicReference<Instant>         lastSync                                  = new AtomicReference<>(Instant.MIN);
+    public  final        AtomicReference<UpdateState>     updateState                               = new AtomicReference<>(UpdateState.NOMINAL);
     private final        List<MajorVersion>               majorVersions                             = new LinkedList<>();
 
 
@@ -432,6 +435,8 @@ public enum CacheManager {
         // Update all available major versions and maintained major versions
         updateMajorVersions();
 
+        lastSync.set(Instant.now());
+
         syncWithDatabaseInProgress.set(false);
         }
 
@@ -444,6 +449,7 @@ public enum CacheManager {
         if (topic.equals(Constants.MQTT_PKG_UPDATE_TOPIC)) {
             switch(msg) {
                 case Constants.MQTT_PKG_UPDATE_FINISHED_EMPTY_MSG -> {
+                    updateState.set(UpdateState.NOMINAL);
                     if (!pkgCache.isEmpty()) { return; }
                         try {
                         LOGGER.debug("PkgCache is empty -> syncCacheWithDatabase(). MQTT event: {}", evt);
@@ -458,6 +464,7 @@ public enum CacheManager {
                         }
                     }
                 case Constants.MQTT_PKG_UPDATE_FINISHED_MSG -> {
+                    updateState.set(UpdateState.NOMINAL);
                     try {
                         LOGGER.debug("Database updated -> syncCacheWithDatabase(). MQTT event: {}", evt);
 
@@ -471,6 +478,7 @@ public enum CacheManager {
                     }
                 }
                 case Constants.MQTT_FORCE_PKG_UPDATE_MSG -> {
+                    updateState.set(UpdateState.NOMINAL);
                     try {
                         LOGGER.debug("Force pkg update -> syncCacheWithDatabase(). MQTT event: {}", evt);
 
