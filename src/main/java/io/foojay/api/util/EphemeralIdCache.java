@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class EphemeralIdCache<T extends String, U extends String> implements Cache<T, U> {
     private static final Logger LOGGER = LoggerFactory.getLogger(EphemeralIdCache.class);
 
-    private final ConcurrentHashMap<T, U> ephemeralIdCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<T, U> ephemeralIdCache = new ConcurrentHashMap<>(16, 0.9f, 1);
 
     @Override public void add(final T ephemeralId, final U pkgId) {
         if (null == ephemeralId) { return; }
@@ -67,6 +67,11 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
     }
 
     @Override public boolean isEmpty() { return ephemeralIdCache.isEmpty(); }
+
+    public void setAll(final Map<T,U> entries) {
+        ephemeralIdCache.clear();
+        ephemeralIdCache.putAll(entries);
+    }
 
     public boolean containsEphemeralId(final T ephemeralId) { return ephemeralIdCache.containsKey(ephemeralId); }
 

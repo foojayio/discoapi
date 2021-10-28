@@ -1133,8 +1133,7 @@ public enum MongoDbManager {
         } else {
             ephemeralIdsCollection.find().forEach(document -> tmpEphemeralIdCache.put(document.getString(FIELD_EPHEMERAL_ID), document.getString(FIELD_PACKAGE_ID)));
         }
-        ephemeralIdCache.clear();
-        ephemeralIdCache.addAll(tmpEphemeralIdCache);
+        ephemeralIdCache.setAll(tmpEphemeralIdCache);
         LOGGER.debug("Successfully updated ephemeral id cache in {} ms", (System.currentTimeMillis() - start));
     }
 

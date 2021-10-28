@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PkgCache<T extends String, U extends Pkg> implements Cache<T, U> {
     private static final Logger LOGGER = LoggerFactory.getLogger(PkgCache.class);
 
-    private final ConcurrentHashMap<T, U> cache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<T, U> cache = new ConcurrentHashMap<>(16, 0.9f, 1);
 
     @Override public void add(final T key, final U pkg) {
         if (null == key) { return; }
