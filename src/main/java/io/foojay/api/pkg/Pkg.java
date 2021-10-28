@@ -80,6 +80,7 @@ public class Pkg {
     public  static final String            FIELD_DIRECT_DOWNLOAD_URI    = "direct_download_uri";
     public  static final String            FIELD_DOWNLOAD_SITE_URI      = "download_site_uri";
     public  static final String            FIELD_SIGNATURE_URI          = "signature_uri";
+    public  static final String            FIELD_SHA256_HASH            = "sha256_hash";
     public  static final String            FIELD_EPHEMERAL_ID           = "ephemeral_id";
     public  static final String            FIELD_LINKS                  = "links";
     public  static final String            FIELD_DOWNLOAD               = "pkg_info_uri";
