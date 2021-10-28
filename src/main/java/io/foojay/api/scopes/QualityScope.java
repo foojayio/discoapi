@@ -24,7 +24,8 @@ import java.util.List;
 
 
 public enum QualityScope implements Scope {
-    TCK_TESTED("Build of OpenJDK", "build_of_openjdk");
+    TCK_TESTED("TCK tested", "tck_tested"),
+    AQAVIT_CERTIFIED("AQAVIT certified", "aqavit_certified");
 
     private final String uiString;
     private final String apiString;
@@ -45,6 +46,8 @@ public enum QualityScope implements Scope {
         switch(text) {
             case "tck_tested":
                 return TCK_TESTED;
+            case "aqavit_certified":
+                return AQAVIT_CERTIFIED;
             default:
                 return NOT_FOUND;
         }
