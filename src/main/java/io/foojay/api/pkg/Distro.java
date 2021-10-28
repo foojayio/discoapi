@@ -48,57 +48,61 @@ import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 public enum Distro implements ApiFeature {
-    AOJ("AOJ", "aoj", new AOJ(), 2880),
-    AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 2880),
-    BISHENG("Bi Sheng", "bisheng", new BiSheng(), 1440),
-    CORRETTO("Corretto", "corretto", new Corretto(), 720),
-    DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 1440),
-    GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 1380),
-    GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 1380),
-    GRAALVM_CE16("Graal VM CE 16", "graalvm_ce16", new GraalVMCE16(), 1380),
-    GRAALVM_CE17("Graal VM CE 17", "graalvm_ce17", new GraalVMCE17(), 1380),
-    JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 720),
-    KONA("Kona", "kona", new Kona(), 730),
-    LIBERICA("Liberica", "liberica", new Liberica(), 60),
-    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 1380),
-    MANDREL("Mandrel", "mandrel", new Mandrel(), 1440),
-    MICROSOFT("Microsoft", "microsoft", new Microsoft(), 720),
-    OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 1440),
-    OPEN_LOGIC("OpenLogic", "openlogic", new OpenLogic(), 1440),
-    ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 120),
-    ORACLE("Oracle", "oracle", new Oracle(), 720),
-    RED_HAT("Red Hat", "redhat", new RedHat(), 720),
-    SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 720),
-    SEMERU("Semeru", "semeru", new Semeru(), 720),
-    TEMURIN("Temurin", "temurin", new Temurin(), 60),
-    TRAVA("Trava", "trava", new Trava(), 1440),
-    ZULU("Zulu", "zulu", new Zulu(), 15),
-    ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), 1440),
-    NONE("-", "", null, 0),
-    NOT_FOUND("", "", null, 0);
+    AOJ("AOJ", "aoj", new AOJ(), 2880, false),
+    AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 2880, false),
+    BISHENG("Bi Sheng", "bisheng", new BiSheng(), 1440, true),
+    CORRETTO("Corretto", "corretto", new Corretto(), 720, true),
+    DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 1440, true),
+    GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 1380, true),
+    GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 1380, true),
+    GRAALVM_CE16("Graal VM CE 16", "graalvm_ce16", new GraalVMCE16(), 1380, true),
+    GRAALVM_CE17("Graal VM CE 17", "graalvm_ce17", new GraalVMCE17(), 1380, true),
+    JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 720, true),
+    KONA("Kona", "kona", new Kona(), 730, true),
+    LIBERICA("Liberica", "liberica", new Liberica(), 60, true),
+    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 1380, true),
+    MANDREL("Mandrel", "mandrel", new Mandrel(), 1440, true),
+    MICROSOFT("Microsoft", "microsoft", new Microsoft(), 720, true),
+    OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 1440, true),
+    OPEN_LOGIC("OpenLogic", "openlogic", new OpenLogic(), 1440, true),
+    ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 120, true),
+    ORACLE("Oracle", "oracle", new Oracle(), 720, true),
+    RED_HAT("Red Hat", "redhat", new RedHat(), 720, true),
+    SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 720, true),
+    SEMERU("Semeru", "semeru", new Semeru(), 720, true),
+    SEMERU_CERTIFIED("Semeru certified", "semeru_certified", new SemeruCertified(), 720, true),
+    TEMURIN("Temurin", "temurin", new Temurin(), 60, true),
+    TRAVA("Trava", "trava", new Trava(), 1440, true),
+    ZULU("Zulu", "zulu", new Zulu(), 15, true),
+    ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), 1440, true),
+    NONE("-", "", null, 0, false),
+    NOT_FOUND("", "", null, 0, false);
 
-    public static final String                    FIELD_NAME                = "name";
-    public static final String                    FIELD_API_PARAMETER       = "api_parameter";
-    public static final String                    FIELD_HASH_ALGORITHM      = "hash_algorithm";
-    public static final String                    FIELD_HASH_URI            = "hash_uri";
-    public static final String                    FIELD_SIGNATURE_TYPE      = "signature_type";
-    public static final String                    FIELD_SIGNATURE_ALGORITHM = "signature_algorithm";
-    public static final String                    FIELD_SIGNATURE_URI       = "signature_uri";
-    public static final String                    FIELD_OFFICIAL_URI        = "official_uri";
-    public static final String                    FIELD_SYNONYMS            = "synonyms";
-    public static final String                    FIELD_VERSIONS            = "versions";
-    private final       String                    uiString;
-    private final       String                    apiString;
-    private final       Distribution              distribution;
-    private final       int                       updateIntervalInMinutes;
-    public  final       AtomicReference<Instant>  lastUpdate;
+    public  static final String                    FIELD_NAME                = "name";
+    public  static final String                    FIELD_API_PARAMETER       = "api_parameter";
+    public  static final String                    FIELD_HASH_ALGORITHM      = "hash_algorithm";
+    public  static final String                    FIELD_HASH_URI            = "hash_uri";
+    public  static final String                    FIELD_SIGNATURE_TYPE      = "signature_type";
+    public  static final String                    FIELD_SIGNATURE_ALGORITHM = "signature_algorithm";
+    public  static final String                    FIELD_SIGNATURE_URI       = "signature_uri";
+    public  static final String                    FIELD_OFFICIAL_URI        = "official_uri";
+    public  static final String                    FIELD_SYNONYMS            = "synonyms";
+    public  static final String                    FIELD_VERSIONS            = "versions";
+    public  static final String                    FIELD_MAINTAINED          = "maintained";
+    private        final String                    uiString;
+    private        final String                    apiString;
+    private        final Distribution              distribution;
+    private        final int                       updateIntervalInMinutes;
+    private        final boolean                   maintained;
+    public         final AtomicReference<Instant>  lastUpdate;
 
 
-    Distro(final String uiString, final String apiString, final Distribution distribution, final int updateIntervalInMinutes) {
+    Distro(final String uiString, final String apiString, final Distribution distribution, final int updateIntervalInMinutes, final boolean maintained) {
         this.uiString                = uiString;
         this.apiString               = apiString;
         this.distribution            = distribution;
         this.updateIntervalInMinutes = updateIntervalInMinutes;
+        this.maintained              = maintained;
         this.lastUpdate              = new AtomicReference<>();
     }
 
@@ -284,6 +288,15 @@ public enum Distro implements ApiFeature {
             case "Semeru":
             case "SEMERU":
                 return SEMERU;
+            case "semeru_certified":
+            case "SEMERU_CERTIFIED":
+            case "Semeru_Certified":
+            case "Semeru_certified":
+            case "semeru certified":
+            case "SEMERU CERTIFIED":
+            case "Semeru Certified":
+            case "Semeru certified":
+                return SEMERU_CERTIFIED;
             case "temurin":
             case "Temurin":
             case "TEMURIN":
@@ -319,6 +332,8 @@ public enum Distro implements ApiFeature {
     public Distribution get() { return distribution; }
 
     public int getUpdateIntervalInMinutes() { return updateIntervalInMinutes; }
+
+    public boolean isMaintained() { return maintained; }
 
     public static List<Distribution> getDistributions() {
         return Arrays.stream(values())
@@ -416,6 +431,7 @@ public enum Distro implements ApiFeature {
                 msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
@@ -451,6 +467,7 @@ public enum Distro implements ApiFeature {
                 msgBuilder.append(CURLY_BRACKET_OPEN)
                           .append(QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
@@ -484,6 +501,7 @@ public enum Distro implements ApiFeature {
                 msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
@@ -497,6 +515,7 @@ public enum Distro implements ApiFeature {
                 msgBuilder.append(CURLY_BRACKET_OPEN)
                           .append(QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
