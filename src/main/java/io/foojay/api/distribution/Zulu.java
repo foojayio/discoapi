@@ -107,6 +107,7 @@ public class Zulu implements Distribution {
     private static final String                       JAVAFX_PARAM               = "javafx";
     private static final String                       INCLUDE_FIELDS_PARAM       = "include_fields";
     private static final String                       SIGNATURES_PARAM           = "signatures";
+    private static final String                       SHA256_PARAM               = "sha256_hash";
 
     // Mappings for url parameters
     private static final Map<Architecture, String>    ARCHITECTURE_MAP           = Map.of(ARM, "arm", MIPS, "mips", PPC, "ppc", SPARCV9, "sparcv9", X86, "x86", X64, "x86");
@@ -237,7 +238,7 @@ public class Zulu implements Distribution {
         }
 
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-        queryBuilder.append(INCLUDE_FIELDS_PARAM).append("=").append(SIGNATURES_PARAM);
+        queryBuilder.append(INCLUDE_FIELDS_PARAM).append("=").append(SIGNATURES_PARAM).append(",").append(SHA256_PARAM);
 
         LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
         return queryBuilder.toString();
