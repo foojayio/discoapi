@@ -41,6 +41,7 @@ import io.foojay.api.distribution.OracleOpenJDK;
 import io.foojay.api.distribution.RedHat;
 import io.foojay.api.distribution.SAPMachine;
 import io.foojay.api.distribution.Semeru;
+import io.foojay.api.distribution.SemeruCertified;
 import io.foojay.api.distribution.Temurin;
 import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
@@ -95,6 +96,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.CharacterIterator;
+import java.text.StringCharacterIterator;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -152,6 +155,7 @@ public class Helper {
     public  static final Pattern    DRAGONWELL_11_FILE_NAME_SHA256_PATTERN = Pattern.compile("(OpenJDK[0-9]+U[a-z0-9_\\-\\.]+)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)(\\s+\\(Experimental ONLY\\))?\\h+\\|\\h+([0-9a-z]{64})");
     public  static final Pattern    DRAGONWELL_8_FILE_NAME_SHA256_PATTERN  = Pattern.compile("(\\()?(Alibaba_Dragonwell[0-9\\.A-Za-z_\\-]+)(\\)=\\s+)?|([\\\\r\\\\n]+)?([a-z0-9]{64})");
     public  static final Pattern    HREF_FILE_PATTERN                      = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
+    public  static final Pattern    DOWNLOAD_LINK_PATTERN                  = Pattern.compile("downloadLink:\\s'(.*)'");
     public  static final Pattern    HREF_SIG_FILE_PATTERN                  = Pattern.compile("href=\"([^\"]*(\\.sig))\"");
     public  static final Pattern    HREF_DOWNLOAD_PATTERN                  = Pattern.compile("(\\>)(\\s|\\h?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(\\<)");
     private static final Pattern    JBANG_HEADER_PATTERN                   = Pattern.compile("(JBang)\\/([0-9]+\\.[0-9]+\\.[0-9]+(\\.[0-9]+)?)\\s+\\(([0-9A-Za-z\\s]+)\\/([a-zA-Z0-9_\\.\\-]+)\\/([a-z0-9A-Z_\\s]+)\\)\\s(Java\\/([0-9]+(\\.[0-9]+)?(\\.[0-9]+)?([_0-9]+)?))\\/(.*)");
@@ -162,6 +166,7 @@ public class Helper {
     public  static final Matcher    DRAGONWELL_11_FILE_NAME_SHA256_MATCHER = DRAGONWELL_11_FILE_NAME_SHA256_PATTERN.matcher("");
     public  static final Matcher    DRAGONWELL_8_FILE_NAME_SHA256_MATCHER  = DRAGONWELL_8_FILE_NAME_SHA256_PATTERN.matcher("");
     public  static final Matcher    HREF_FILE_MATCHER                      = HREF_FILE_PATTERN.matcher("");
+    public  static final Matcher    DOWNLOAD_LINK_MATCHER                  = DOWNLOAD_LINK_PATTERN.matcher("");
     public  static final Matcher    HREF_SIG_FILE_MATCHER                  = HREF_SIG_FILE_PATTERN.matcher("");
     public  static final Matcher    HREF_DOWNLOAD_MATCHER                  = HREF_DOWNLOAD_PATTERN.matcher("");
     private static       HttpClient httpClient;
@@ -293,6 +298,10 @@ public class Helper {
                 case SEMERU:
                     Semeru semeru = (Semeru) distro.get();
                     pkgs.addAll(semeru.getAllPkgs());
+                    break;
+                case SEMERU_CERTIFIED:
+                    SemeruCertified semeruCertified = (SemeruCertified) distro.get();
+                    pkgs.addAll(semeruCertified.getAllPkgs());
                     break;
                 case TRAVA:
                     Trava trava = (Trava) distro.get();
@@ -715,6 +724,15 @@ public class Helper {
             hrefsFound.add(HREF_FILE_MATCHER.group(1));
         }
         return hrefsFound;
+    }
+
+    public static final Set<String> getDownloadLinkFromString(final String text) {
+        Set<String> downloadLinksFound = new HashSet<>();
+        DOWNLOAD_LINK_MATCHER.reset(text);
+        while (DOWNLOAD_LINK_MATCHER.find()) {
+            downloadLinksFound.add(DOWNLOAD_LINK_MATCHER.group(1));
+        }
+        return downloadLinksFound;
     }
 
     public static final Set<String> getSigFileHrefsFromString(final String text) {
@@ -1483,6 +1501,34 @@ public class Helper {
             }
         }
         return "";
+    }
+
+    public static final String getSystemInfo() {
+        final Runtime runtime        = Runtime.getRuntime();
+        final int     availableCores = runtime.availableProcessors();
+        final long    totalMemory    = runtime.totalMemory();
+        final long    maxMemory      = runtime.maxMemory();
+        final long    freeMemory     = runtime.freeMemory();
+        StringBuilder msgBuilder     = new StringBuilder();
+        msgBuilder.append(QUOTES).append("system_info").append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                  .append(INDENTED_QUOTES).append("no_of_cpus").append(QUOTES).append(COLON).append(availableCores).append(COMMA_NEW_LINE)
+                  .append(INDENTED_QUOTES).append("total_mem").append(QUOTES).append(COLON).append(QUOTES).append(formatBytes(totalMemory)).append(QUOTES).append(COMMA_NEW_LINE)
+                  .append(INDENTED_QUOTES).append("max_mem").append(QUOTES).append(COLON).append(QUOTES).append(formatBytes(maxMemory)).append(QUOTES).append(COMMA_NEW_LINE)
+                  .append(INDENTED_QUOTES).append("free_mem").append(QUOTES).append(COLON).append(QUOTES).append(formatBytes(freeMemory)).append(QUOTES).append(NEW_LINE)
+                  .append(CURLY_BRACKET_CLOSE);
+        return msgBuilder.toString();
+    }
+
+    public static String formatBytes(long bytes) {
+        if (-1000 < bytes && bytes < 1000) {
+            return bytes + " B";
+        }
+        CharacterIterator ci = new StringCharacterIterator("kMGTPE");
+        while (bytes <= -999_950 || bytes >= 999_950) {
+            bytes /= 1000;
+            ci.next();
+        }
+        return String.format("%.1f %cB", bytes / 1000.0, ci.current());
     }
 
 
