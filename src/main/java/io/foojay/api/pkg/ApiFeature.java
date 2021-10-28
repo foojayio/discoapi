@@ -13,11 +13,14 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.pkg;
+
+
+import io.foojay.api.util.OutputFormat;
 
 
 public interface ApiFeature {
@@ -30,6 +33,8 @@ public interface ApiFeature {
     ApiFeature getNotFound();
 
     ApiFeature[] getAll();
+
+    String toString(OutputFormat outputFormat);
 
     static ApiFeature fromText(final String text) { return null; }
 }
