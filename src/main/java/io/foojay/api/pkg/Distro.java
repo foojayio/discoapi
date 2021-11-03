@@ -52,6 +52,7 @@ public enum Distro implements ApiFeature {
     AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 2880, false),
     BISHENG("Bi Sheng", "bisheng", new BiSheng(), 1440, true),
     CORRETTO("Corretto", "corretto", new Corretto(), 720, true),
+    DEBIAN("Debian", "debian", new Debian(), 1440, true),
     DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 1440, true),
     GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 1380, true),
     GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 1380, true),
@@ -324,6 +325,10 @@ public enum Distro implements ApiFeature {
             case "Bi Sheng":
             case "BI SHENG":
                 return BISHENG;
+            case "debian":
+            case "DEBIAN":
+            case "Debian":
+                return DEBIAN;
             default:
                 return NOT_FOUND;
         }
@@ -348,6 +353,15 @@ public enum Distro implements ApiFeature {
         return getAsList().stream()
                           .filter(distro -> Distro.NONE != distro)
                           .filter(distro -> Distro.NOT_FOUND != distro)
+                          .sorted(Comparator.comparing(Distro::name).reversed())
+                          .collect(Collectors.toList());
+    }
+
+    public static List<Distro> getMaintainedAsListWithoutNoneAndNotFound() {
+        return getAsList().stream()
+                          .filter(distro -> Distro.NONE != distro)
+                          .filter(distro -> Distro.NOT_FOUND != distro)
+                          .filter(distro -> distro.isMaintained())
                           .sorted(Comparator.comparing(Distro::name).reversed())
                           .collect(Collectors.toList());
     }
