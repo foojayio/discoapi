@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.util;
@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -55,11 +56,17 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
         ephemeralIdCache.remove(bundleInfoId);
     }
 
-    @Override public void addAll(final Map<T,U> entries) { ephemeralIdCache.putAll(entries); }
+    @Override public void addAll(final Map<T,U> entries) {
+        synchronized (ephemeralIdCache) {
+            ephemeralIdCache.putAll(entries);
+        }
+    }
 
     @Override public void clear() {
-        LOGGER.debug("EphemeralID cache cleared");
-        ephemeralIdCache.clear();
+        synchronized (ephemeralIdCache) {
+            ephemeralIdCache.clear();
+            LOGGER.debug("EphemeralID cache cleared");
+        }
     }
 
     @Override public long size() {
@@ -68,9 +75,43 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
 
     @Override public boolean isEmpty() { return ephemeralIdCache.isEmpty(); }
 
-    public void setAll(final Map<T,U> entries) {
-        ephemeralIdCache.clear();
-        ephemeralIdCache.putAll(entries);
+    public void setAll(final Map<T, U> entries) {
+        synchronized (ephemeralIdCache) {
+            ephemeralIdCache.clear();
+            ephemeralIdCache.putAll(entries);
+            LOGGER.debug("EphemeralID cache cleared and set with new values");
+        }
+    }
+
+    /**
+     * Updates the cache with the values from the given patch map without updating
+     * existing entries.
+     * @param patch Map that contains existing and new entries
+     */
+    public void synchronize(final Map<T, U> patch) {
+        synchronized (ephemeralIdCache) {
+            patch.forEach(ephemeralIdCache::putIfAbsent);
+        }
+    }
+
+    /**
+     * Updates the cache with the values from the given patch map including updates
+     * of existing entries in cache. In addition entries that are in the cache but not
+     * in the patch map can be removed if removeIfNotInPatch flag is true
+     * @param patch
+     * @param removeIfNotInPatch
+     */
+    public void update(final Map<T, U> patch, final boolean removeIfNotInPatch) {
+        synchronized (ephemeralIdCache) {
+            patch.forEach((key, value) -> ephemeralIdCache.merge(key, value, (v1, v2) -> v1.equals(v2) ? v1 : v2));
+            if (removeIfNotInPatch) {
+                if (ephemeralIdCache.size() > patch.size()) {
+                    Map<T, U> toRemoveFromTarget = new HashMap<>();
+                    ephemeralIdCache.entrySet().stream().filter(entry -> !patch.containsKey(entry.getKey())).forEach(entry -> toRemoveFromTarget.put(entry.getKey(), entry.getValue()));
+                    toRemoveFromTarget.keySet().forEach(key -> ephemeralIdCache.remove(key));
+                }
+            }
+        }
     }
 
     public boolean containsEphemeralId(final T ephemeralId) { return ephemeralIdCache.containsKey(ephemeralId); }

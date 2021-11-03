@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.util;
@@ -47,7 +47,6 @@ public class PkgCache<T extends String, U extends Pkg> implements Cache<T, U> {
     }
 
     @Override public U get(final T key) {
-        if (null == key || !cache.containsKey(key)) { return null; }
         return cache.get(key);
     }
 
@@ -55,11 +54,17 @@ public class PkgCache<T extends String, U extends Pkg> implements Cache<T, U> {
         cache.remove(key);
     }
 
-    @Override public void addAll(final Map<T,U> entries) { cache.putAll(entries); }
+    @Override public void addAll(final Map<T,U> entries) {
+        synchronized (cache) {
+            cache.putAll(entries);
+        }
+    }
 
     @Override public void clear() {
-        LOGGER.debug("Package cache cleared");
-        cache.clear();
+        synchronized (cache) {
+            cache.clear();
+            LOGGER.debug("Package cache cleared");
+        }
     }
 
     @Override public long size() {
@@ -69,8 +74,42 @@ public class PkgCache<T extends String, U extends Pkg> implements Cache<T, U> {
     @Override public boolean isEmpty() { return cache.isEmpty(); }
 
     public void setAll(final Map<T,U> entries) {
-        cache.clear();
-        cache.putAll(entries);
+        synchronized (cache) {
+            cache.clear();
+            cache.putAll(entries);
+            LOGGER.debug("Package cache cleared and set with new data");
+        }
+    }
+
+    /**
+     * Updates the cache with the values from the given patch map without updating
+     * existing entries.
+     * @param patch Map that contains existing and new entries
+     */
+    public void synchronize(final Map<T, U> patch) {
+        synchronized (cache) {
+            patch.forEach(cache::putIfAbsent);
+        }
+    }
+
+    /**
+     * Updates the cache with the values from the given patch map including updates
+     * of existing entries in cache. In addition entries that are in the cache but not
+     * in the patch map can be removed if removeIfNotInPatch flag is true
+     * @param patch
+     * @param removeIfNotInPatch
+     */
+    public void update(final Map<T, U> patch, final boolean removeIfNotInPatch) {
+        synchronized (cache) {
+            patch.forEach((key, value) -> cache.merge(key, value, (v1, v2) -> v1.equals(v2) ? v1 : v2));
+            if (removeIfNotInPatch) {
+                if (cache.size() > patch.size()) {
+                    Map<T, U> toRemoveFromTarget = new HashMap<>();
+                    cache.entrySet().stream().filter(entry -> !patch.containsKey(entry.getKey())).forEach(entry -> toRemoveFromTarget.put(entry.getKey(), entry.getValue()));
+                    toRemoveFromTarget.keySet().forEach(key -> cache.remove(key));
+                }
+            }
+        }
     }
 
     public boolean containsKey(final T key) { return cache.containsKey(key); }
