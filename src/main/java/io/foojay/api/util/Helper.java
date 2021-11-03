@@ -29,6 +29,7 @@ import io.foojay.api.distribution.AOJ;
 import io.foojay.api.distribution.AOJ_OPENJ9;
 import io.foojay.api.distribution.BiSheng;
 import io.foojay.api.distribution.Corretto;
+import io.foojay.api.distribution.Debian;
 import io.foojay.api.distribution.Distribution;
 import io.foojay.api.distribution.JetBrains;
 import io.foojay.api.distribution.Kona;
@@ -436,6 +437,10 @@ public class Helper {
                 case KONA:
                     Kona kona = (Kona) distro.get();
                     pkgs.addAll(kona.getAllPkgs());
+                    break;
+                case DEBIAN:
+                    Debian debian = (Debian) distro.get();
+                    pkgs.addAll(debian.getAllPackages());
                     break;
                 default:
                     Distribution distribution = distro.get();
