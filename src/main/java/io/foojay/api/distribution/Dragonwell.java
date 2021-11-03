@@ -132,15 +132,9 @@ public class Dragonwell implements Distribution {
         queryBuilder.append(PACKAGE_URL);
 
         switch(versionNumber.getFeature().getAsInt()) {
-            case 8:
-            case 11:
-            case 17:
-                queryBuilder.append(versionNumber.getFeature().getAsInt()).append("/releases/latest").append("?per_page=100");
-                break;
-            default:
-                return "";
+            case 8,11,17 -> queryBuilder.append(versionNumber.getFeature().getAsInt()).append("/releases").append("?per_page=100");
+            default -> { return ""; }
         }
-
         LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
         return queryBuilder.toString();
     }
@@ -172,11 +166,16 @@ public class Dragonwell implements Distribution {
             vNumber = VersionNumber.fromText(tag);
         }
 
-        boolean prerelease = false;
-        if (jsonObj.has("prerelease")) {
-            prerelease = jsonObj.get("prerelease").getAsBoolean();
+        // TODO: Looks like for 17 Alibaba uses prerelease: true even if the pgks are GA
+        VersionNumber JDK17_0_0_0 = new VersionNumber(17,0, 0, 0);
+        VersionNumber JDK17_0_1_0 = new VersionNumber(17, 0, 1, 0);
+        if (JDK17_0_0_0.isLargerOrEqualThan(versionNumber) && JDK17_0_1_0.isSmallerOrEqualThan(versionNumber)) {
+            boolean prerelease = false;
+            if (jsonObj.has("prerelease")) {
+                prerelease = jsonObj.get("prerelease").getAsBoolean();
+            }
+            if (prerelease) { return pkgs; }
         }
-        if (prerelease) { return pkgs; }
 
         JsonArray assets = jsonObj.getAsJsonArray("assets");
         for (JsonElement element : assets) {
