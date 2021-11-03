@@ -42,16 +42,25 @@ public enum Architecture implements ApiFeature {
     AARCH32("AARCH32", "aarch32", Bitness.BIT_32, false) {
         @Override public List<Architecture> getSynonyms() { return List.of(Architecture.ARM, Architecture.ARM32); }
     },
-    ARM("Arm", "arm", Bitness.BIT_32, true) {
+    ARM("ARM", "arm", Bitness.BIT_32, true) {
         @Override public List<Architecture> getSynonyms() { return List.of(Architecture.ARM32, Architecture.AARCH32); }
         },
-    ARM32("Arm32", "arm32", Bitness.BIT_32, false) {
+    ARM32("ARM32", "arm32", Bitness.BIT_32, false) {
         @Override public List<Architecture> getSynonyms() { return List.of(Architecture.ARM, Architecture.AARCH32); }
     },
-    ARM64("Arm64", "arm64", Bitness.BIT_64, true) {
+    ARMHF("ARMHF", "armhf", Bitness.BIT_32, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    ARMEL("ARMEL", "armel", Bitness.BIT_32, true) {
+      @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    ARM64("ARM64", "arm64", Bitness.BIT_64, true) {
         @Override public List<Architecture> getSynonyms() { return List.of(Architecture.AARCH64); }
     },
-    MIPS("Mips", "mips", Bitness.BIT_32, true) {
+    MIPS("MIPS", "mips", Bitness.BIT_32, true) {
+        @Override public List<Architecture> getSynonyms() { return List.of(); }
+    },
+    MIPSEL("MIPS EL", "mipsel", Bitness.BIT_32, true) {
         @Override public List<Architecture> getSynonyms() { return List.of(); }
     },
     PPC("Power PC", "ppc", Bitness.BIT_32, true) {
@@ -175,12 +184,21 @@ public enum Architecture implements ApiFeature {
             case "arm":
             case "ARM":
                 return ARM;
+            case "armel":
+            case "ARMEL":
+                return ARMEL;
+            case "armhf":
+            case "ARMHF":
+                return ARMHF;
             case "arm64":
             case "ARM64":
                 return ARM64;
             case "mips":
             case "MIPS":
                 return MIPS;
+            case "mipsel":
+            case "MIPSEL":
+                return MIPSEL;
             case "ppc":
             case "PPC":
                 return PPC;
