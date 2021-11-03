@@ -12,6 +12,7 @@ Presentation about the [Disco API](https://de.slideshare.net/han_solo/disco-api-
 * AdoptOpenJDK OpenJ9
 * Bi Sheng
 * Corretto
+* Debian (contains only links to download site)
 * Dragonwell
 * GraalVM CE (8, 11, 16)
 * JetBrains
@@ -27,6 +28,7 @@ Presentation about the [Disco API](https://de.slideshare.net/han_solo/disco-api-
 * Red Hat (contains only links to download site)
 * SAP Machine
 * Semeru
+* Semeru Certified
 * Temurin
 * Trava  
 * Zulu
