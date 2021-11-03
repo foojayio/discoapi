@@ -745,4 +745,17 @@ public class VersionNumber implements Comparable<VersionNumber> {
         }
         return ret;
     }
+
+    public boolean isSmallerThan(final VersionNumber versionNumber) {
+        return compareTo(versionNumber) < 0;
+    }
+    public boolean isSmallerOrEqualThan(final VersionNumber versionNumber) {
+        return compareTo(versionNumber) <= 0;
+    }
+    public boolean isLargerOrEqualThan(final VersionNumber versionNumber) {
+        return compareTo(versionNumber) >= 0;
+    }
+    public boolean isLargerThan(final VersionNumber versionNumber) {
+        return compareTo(versionNumber) > 0;
+    }
 }

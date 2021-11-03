@@ -13,8 +13,8 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.pkg;
@@ -354,7 +354,20 @@ public class SemVer implements Comparable<SemVer> {
         }
 
         return d;
-        }
+    }
+
+    public boolean isSmallerThan(final SemVer semver) {
+        return compareTo(semver) < 0;
+    }
+    public boolean isSmallerOrEqualThan(final SemVer semver) {
+        return compareTo(semver) <= 0;
+    }
+    public boolean isLargerOrEqualThan(final SemVer semver) {
+        return compareTo(semver) >= 0;
+    }
+    public boolean isLargerThan(final SemVer semVer) {
+        return compareTo(semVer) > 0;
+    }
 
     public int compareToIgnoreBuild(final SemVer semVer) {
         int d;
@@ -464,9 +477,9 @@ public class SemVer implements Comparable<SemVer> {
         }
 
         if (null == preBuild || preBuild.isEmpty()) {
-        if (null != metadata && !metadata.isEmpty()) {
-            versionBuilder.append(metadata.startsWith("+") ? metadata : ("+" + metadata));
-        }
+            if (null != metadata && !metadata.isEmpty()) {
+                versionBuilder.append(metadata.startsWith("+") ? metadata : ("+" + metadata));
+            }
         } else {
             if (preBuild.startsWith("+")) {
                 preBuild = preBuild.substring(1);
