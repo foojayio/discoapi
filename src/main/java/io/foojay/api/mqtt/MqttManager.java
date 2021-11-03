@@ -56,15 +56,18 @@ public class MqttManager {
     public MqttManager() {
         this.connected = new BooleanProperty(MqttManager.this, "connected", false);
         this.observers = new CopyOnWriteArrayList<>();
-        asyncClient    = MqttClient.builder()
-                                   .useMqttVersion5()
-                                   .serverHost(Config.INSTANCE.getFoojayMqttBroker())
-                                   .serverPort(Config.INSTANCE.getFoojayMqttPort())
-                                   .sslWithDefaultConfig()
-                                   .automaticReconnectWithDefaultConfig()
-                                   .buildAsync();
-
+        try {
+            asyncClient = MqttClient.builder()
+                                    .useMqttVersion5()
+                                    .serverHost(Config.INSTANCE.getFoojayMqttBroker())
+                                    .serverPort(Config.INSTANCE.getFoojayMqttPort())
+                                    .sslWithDefaultConfig()
+                                    .automaticReconnectWithDefaultConfig()
+                                    .buildAsync();
         init();
+        } catch (NullPointerException e) {
+            LOGGER.error("Error connecting to MQTT broker {} on port {}. {}", Config.INSTANCE.getFoojayMqttBroker(), Config.INSTANCE.getFoojayMqttPort(), e.getMessage());
+        }
     }
 
 
@@ -122,13 +125,17 @@ public class MqttManager {
     public void connect(final boolean cleanStart) {
         if (GHOST) { return; }
         if (null == asyncClient) {
-            asyncClient = MqttClient.builder()
-                                    .useMqttVersion5()
-                                    .serverHost(Config.INSTANCE.getFoojayMqttBroker())
-                                    .serverPort(Config.INSTANCE.getFoojayMqttPort())
-                                    .sslWithDefaultConfig()
-                                    .automaticReconnectWithDefaultConfig()
-                                    .buildAsync();
+            try {
+                asyncClient = MqttClient.builder()
+                                        .useMqttVersion5()
+                                        .serverHost(Config.INSTANCE.getFoojayMqttBroker())
+                                        .serverPort(Config.INSTANCE.getFoojayMqttPort())
+                                        .sslWithDefaultConfig()
+                                        .automaticReconnectWithDefaultConfig()
+                                        .buildAsync();
+            } catch (NullPointerException e) {
+                LOGGER.error("Error connecting to MQTT broker {} on port {}. {}", Config.INSTANCE.getFoojayMqttBroker(), Config.INSTANCE.getFoojayMqttPort(), e.getMessage());
+            }
         }
 
         if (!asyncClient.getState().isConnected() && MqttClientState.CONNECTING != asyncClient.getState()) {
