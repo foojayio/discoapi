@@ -509,7 +509,6 @@ public class Zulu implements Distribution {
 
                 pkg.setTermOfSupport(termOfSupport);
                 pkg.setFileName(filename);
-                pkg.setArchiveType(archiveType);
                 pkg.setDirectDownloadUri(downloadLink);
                 pkg.setJavaFXBundled(filename.contains("-fx"));
 
