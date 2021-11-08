@@ -37,7 +37,7 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
 
     private final ConcurrentHashMap<T, U> ephemeralIdCache = new ConcurrentHashMap<>(16, 0.9f, 1);
 
-    @Override public void add(final T ephemeralId, final U pkgId) {
+    @Override public synchronized void add(final T ephemeralId, final U pkgId) {
         if (null == ephemeralId) { return; }
         if (null == pkgId) {
             LOGGER.debug("EphemeralId cannot be null -> removed key {}", ephemeralId);
@@ -47,12 +47,12 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
         }
     }
 
-    @Override public U get(final T ephemeralId) {
+    @Override public synchronized U get(final T ephemeralId) {
         if (null == ephemeralId || !ephemeralIdCache.containsKey(ephemeralId)) { return null; }
         return ephemeralIdCache.get(ephemeralId);
     }
 
-    @Override public void remove(final T bundleInfoId) {
+    @Override public synchronized void remove(final T bundleInfoId) {
         ephemeralIdCache.remove(bundleInfoId);
     }
 
@@ -69,11 +69,11 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
         }
     }
 
-    @Override public long size() {
+    @Override public synchronized long size() {
         return ephemeralIdCache.size();
     }
 
-    @Override public boolean isEmpty() { return ephemeralIdCache.isEmpty(); }
+    @Override public synchronized boolean isEmpty() { return ephemeralIdCache.isEmpty(); }
 
     public void setAll(final Map<T, U> entries) {
         synchronized (ephemeralIdCache) {
@@ -114,9 +114,9 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
         }
     }
 
-    public boolean containsEphemeralId(final T ephemeralId) { return ephemeralIdCache.containsKey(ephemeralId); }
+    public synchronized boolean containsEphemeralId(final T ephemeralId) { return ephemeralIdCache.containsKey(ephemeralId); }
 
-    public T getEphemeralIdForPkgId(final U pkgId) {
+    public synchronized T getEphemeralIdForPkgId(final U pkgId) {
         Optional<Entry<T, U>> optionalEntry = ephemeralIdCache.entrySet().stream().filter(entry -> entry.getValue().equals(pkgId)).findFirst();
 
         if (optionalEntry.isPresent()) {
@@ -128,9 +128,9 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
         }
     }
 
-    public Set<Entry<T,U>> getEntrySet() { return ephemeralIdCache.entrySet(); }
+    public synchronized Set<Entry<T,U>> getEntrySet() { return ephemeralIdCache.entrySet(); }
 
-    public Collection<T> getEphemeralIds() { return ephemeralIdCache.keySet(); }
+    public synchronized Collection<T> getEphemeralIds() { return ephemeralIdCache.keySet(); }
 
-    public Collection<U> getPkgIds() { return ephemeralIdCache.values(); }
+    public synchronized Collection<U> getPkgIds() { return ephemeralIdCache.values(); }
 }

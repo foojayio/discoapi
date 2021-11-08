@@ -310,6 +310,7 @@ public enum MongoDbManager {
      * @return list of all packages in the packages collection
      */
     public List<Pkg> getPkgs() {
+        final long start = System.currentTimeMillis();
         connect();
         if (!connected) {
             LOGGER.debug("MongoDB not connected, returned empty list of packages");
@@ -331,15 +332,22 @@ public enum MongoDbManager {
 
         final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         final List<Pkg>                 result     = new ArrayList<>();
-        collection.find().forEach(document -> {
-            Pkg pkg = new Pkg(document.toJson());
-            result.add(pkg);
-        });
-        LOGGER.debug("Successfully returned {} packages from mongodb.", result.size());
+        final MongoCursor<Document>     cursor     = collection.find().iterator();
+        try {
+            while(cursor.hasNext()) {
+                Pkg pkg = new Pkg(cursor.next().toJson());
+                result.add(pkg);
+            }
+        } finally {
+            cursor.close();
+        }
+
+        LOGGER.debug("Successfully returned {} packages from mongodb in {} ms.", result.size(), (System.currentTimeMillis() - start));
         return result;
     }
 
     public List<Pkg> getPkgsForDistro(final Distro distro) {
+        final long start = System.currentTimeMillis();
         connect();
         if (!connected) {
             LOGGER.debug("MongoDB not connected, returned empty list of packages");
@@ -361,12 +369,16 @@ public enum MongoDbManager {
 
         final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         final List<Pkg>                 result     = new ArrayList<>();
-        collection.find(eq(FIELD_DISTRIBUTION, distro.getApiString()))
-                  .forEach(document -> {
-            Pkg pkg = new Pkg(document.toJson());
-            result.add(pkg);
-        });
-        LOGGER.debug("Successfully returned {} packages for distribution {} from mongodb.", result.size(), distro.name());
+        final MongoCursor<Document>     cursor     = collection.find(eq(FIELD_DISTRIBUTION, distro.getApiString())).iterator();
+        try {
+            while(cursor.hasNext()) {
+                Pkg pkg = new Pkg(cursor.next().toJson());
+                result.add(pkg);
+            }
+        } finally {
+            cursor.close();
+        }
+        LOGGER.debug("Successfully returned {} packages for distribution {} from mongodb in {} ms.", result.size(), distro.name(), (System.currentTimeMillis() - start));
         return result;
     }
 
@@ -400,14 +412,23 @@ public enum MongoDbManager {
 
         final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         final List<Document>            documents  = new ArrayList<>();
-        for (Pkg pkg : pkgs) {
-            try {
-                long count = collection.countDocuments(new BsonDocument(FIELD_PACKAGE_ID, new BsonString(pkg.getId())));
-                if (count == 0) { documents.add(Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1))); }
-            } catch (JsonParseException e) {
-                LOGGER.error("Error parsing json when adding package {}. {}", pkg.getId(), e.getMessage());
-            }
-        }
+        pkgs.stream()
+            .filter(pkg -> !pkg.getArchitecture().getApiString().isEmpty())
+            .filter(pkg -> !pkg.getArchiveType().getApiString().isEmpty())
+            .filter(pkg -> !pkg.getOperatingSystem().getApiString().isEmpty())
+            .filter(pkg -> !pkg.getLibCType().getApiString().isEmpty())
+            .filter(pkg -> !pkg.getPackageType().getApiString().isEmpty())
+            .filter(pkg -> !pkg.getReleaseStatus().getApiString().isEmpty())
+            .filter(pkg -> !pkg.getFileName().isEmpty())
+            .forEach(pkg -> {
+                try {
+                    long count = collection.countDocuments(new BsonDocument(FIELD_PACKAGE_ID, new BsonString(pkg.getId())));
+                        if (count == 0) { documents.add(Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1))); }
+                } catch (JsonParseException e) {
+                    LOGGER.error("Error parsing json when adding package {}. {}", pkg.getId(), e.getMessage());
+                }
+            });
+
         collection.insertMany(documents);
         LOGGER.debug("Successfully inserted {} packages to mongodb.", pkgs.size());
     }
@@ -443,14 +464,22 @@ public enum MongoDbManager {
 
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         ReplaceOptions replaceOptions = new ReplaceOptions().upsert(true);
-        for (Pkg pkg : pkgs) {
+        pkgs.stream()
+            .filter(pkg -> !pkg.getArchitecture().getApiString().isEmpty())
+            .filter(pkg -> !pkg.getArchiveType().getApiString().isEmpty())
+            .filter(pkg -> !pkg.getOperatingSystem().getApiString().isEmpty())
+            .filter(pkg -> !pkg.getLibCType().getApiString().isEmpty())
+            .filter(pkg -> !pkg.getPackageType().getApiString().isEmpty())
+            .filter(pkg -> !pkg.getReleaseStatus().getApiString().isEmpty())
+            .filter(pkg -> !pkg.getFileName().isEmpty())
+            .forEach(pkg -> {
             try {
                 Document document = Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1));
                 collection.replaceOne(eq(FIELD_PACKAGE_ID, pkg.getId()), document, replaceOptions);
             } catch (JsonParseException e) {
                 LOGGER.error("Error parsing json when adding package {}. {}", pkg.getId(), e.getMessage());
             }
-        }
+        });
         LOGGER.debug("Successfully added {} new packages to mongodb.", pkgs.size());
         return true;
     }

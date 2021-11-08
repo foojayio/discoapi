@@ -185,12 +185,21 @@ public class Pkg {
             features = new ArrayList<>();
             JsonArray featureArray = json.getAsJsonArray(FIELD_FEATURE);
             for (int i = 0 ; i < featureArray.size() ; i++) {
-                String  featureString = featureArray.get(i).getAsString();
-                Feature feat          = Feature.fromText(featureString);
-                if (Feature.NOT_FOUND == feat || Feature.NONE == feat) {
-                    continue;
+                if (featureArray.get(i).isJsonObject()) {
+                    JsonObject featureObj = featureArray.get(i).getAsJsonObject();
+                    Feature feat = Feature.fromText(featureObj.get("name").getAsString());
+                    if (Feature.NOT_FOUND == feat || Feature.NONE == feat) {
+                        continue;
+                    }
+                    features.add(feat);
+                } else {
+                    String  featureString = featureArray.get(i).getAsString();
+                    Feature feat          = Feature.fromText(featureString);
+                    if (Feature.NOT_FOUND == feat || Feature.NONE == feat) {
+                        continue;
+                    }
+                    features.add(feat);
                 }
-                features.add(feat);
             }
         } else {
             features = new ArrayList<>();
@@ -204,6 +213,34 @@ public class Pkg {
                                                                                                                          .findFirst()
                                                                                                                          .map(Entry::getValue)
                                                                                                                          .orElse(OperatingSystem.NONE); }
+    }
+    public Pkg(final Pkg pkg) {
+        this.distribution         = pkg.getDistribution();
+        this.versionNumber        = VersionNumber.fromText(pkg.getVersionNumber().toString(OutputFormat.FULL_COMPRESSED, true, true));
+        this.javaVersion          = versionNumber;
+        this.distributionVersion  = VersionNumber.fromText(pkg.getDistributionVersion().toString(OutputFormat.FULL_COMPRESSED, true, true));
+        this.latestBuildAvailable = pkg.isLatestBuildAvailable();
+        this.architecture         = Architecture.fromText(pkg.getArchitecture().getApiString());
+        this.bitness              = architecture.getBitness();
+        this.fpu                  = FPU.fromText(pkg.getFPU().getApiString());
+        this.operatingSystem      = OperatingSystem.fromText(pkg.getOperatingSystem().getApiString());
+        this.libCType             = operatingSystem.getLibCType();
+        this.packageType          = PackageType.fromText(pkg.getPackageType().getApiString());
+        this.releaseStatus        = ReleaseStatus.fromText(pkg.getReleaseStatus().getApiString());
+        this.archiveType          = ArchiveType.fromText(pkg.getArchiveType().getApiString());
+        this.termOfSupport        = TermOfSupport.fromText(pkg.getTermOfSupport().getApiString());
+        this.javafxBundled        = pkg.isJavaFXBundled();
+        this.directlyDownloadable = pkg.isDirectlyDownloadable();
+        this.headless             = pkg.isHeadless();
+        this.filename             = pkg.getFileName();
+        this.directDownloadUri    = pkg.getDirectDownloadUri();
+        this.downloadSiteUri      = pkg.getDownloadSiteUri();
+        this.signatureUri         = pkg.getSignatureUri();
+        this.freeUseInProduction  = pkg.getFreeUseInProduction();
+        this.tckTested            = pkg.isTckTested();
+        this.aqavitCertified      = pkg.isAqavitCertified();
+        pkg.getFeatures().forEach(feature -> this.features.add(Feature.fromText(feature.getApiString())));
+        this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
     }
 
 

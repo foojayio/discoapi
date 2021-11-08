@@ -100,7 +100,10 @@ public class Constants {
     public static final long              UPLOAD_TIMEOUT_IN_MINUTES              = 10;
     public static final long              SYNCHRONIZING_TIMEOUT_IN_MINUTES       = 15;
 
-    public static final long              ONE_HOUR_IN_SECONDS                    = 3600;
+    public static final long              ONE_HOUR_IN_SECONDS                    = 3_600;
+    public static final long              ONE_DAY_IN_SECONDS                     = 86_400;
+    public static final long              ONE_WEEK_IN_SECONDS                    = 604_800;
+    public static final long              ONE_MONTH_IN_SECONDS                   = 2_419_200;
 
     public static final Pattern           POSITIVE_INTEGER_PATTERN               = Pattern.compile("\\d+");
 
@@ -127,6 +130,7 @@ public class Constants {
     public static final String            FILE_ENDING_MD5                        = "md5";
     public static final String            FILE_ENDING_SYMBOLS_TAR_GZ             = "symbols.tar.gz";
     public static final String            FILE_ENDING_SIG                        = "sig";
+    public static final String            FILE_ENDING_SOURCE_TAR_GZ              = "source.tar.gz";
 
     public static final String            RESULT                                 = "result";
     public static final String            MESSAGE                                = "message";

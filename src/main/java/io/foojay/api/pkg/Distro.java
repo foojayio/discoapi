@@ -48,31 +48,31 @@ import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 public enum Distro implements ApiFeature {
-    AOJ("AOJ", "aoj", new AOJ(), 2880, false),
-    AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 2880, false),
-    BISHENG("Bi Sheng", "bisheng", new BiSheng(), 1440, true),
-    CORRETTO("Corretto", "corretto", new Corretto(), 720, true),
-    DEBIAN("Debian", "debian", new Debian(), 1440, true),
-    DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 1440, true),
-    GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 1380, true),
-    GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 1380, true),
-    GRAALVM_CE16("Graal VM CE 16", "graalvm_ce16", new GraalVMCE16(), 1380, true),
-    GRAALVM_CE17("Graal VM CE 17", "graalvm_ce17", new GraalVMCE17(), 1380, true),
-    JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 720, true),
-    KONA("Kona", "kona", new Kona(), 730, true),
-    LIBERICA("Liberica", "liberica", new Liberica(), 60, true),
-    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 1380, true),
-    MANDREL("Mandrel", "mandrel", new Mandrel(), 1440, true),
-    MICROSOFT("Microsoft", "microsoft", new Microsoft(), 720, true),
-    OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 1440, true),
-    OPEN_LOGIC("OpenLogic", "openlogic", new OpenLogic(), 1440, true),
-    ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 120, true),
-    ORACLE("Oracle", "oracle", new Oracle(), 720, true),
-    RED_HAT("Red Hat", "redhat", new RedHat(), 720, true),
-    SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 720, true),
-    SEMERU("Semeru", "semeru", new Semeru(), 720, true),
-    SEMERU_CERTIFIED("Semeru certified", "semeru_certified", new SemeruCertified(), 720, true),
-    TEMURIN("Temurin", "temurin", new Temurin(), 60, true),
+    AOJ("AOJ", "aoj", new AOJ(), 4320, false),
+    AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 4320, false),
+    BISHENG("Bi Sheng", "bisheng", new BiSheng(), 2880, true),
+    CORRETTO("Corretto", "corretto", new Corretto(), 720 + 4, true),
+    DEBIAN("Debian", "debian", new Debian(), 2880, true),
+    DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 1440 + 4, true),
+    GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 2880, true),
+    GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 1440 - 4, true),
+    GRAALVM_CE16("Graal VM CE 16", "graalvm_ce16", new GraalVMCE16(), 2880, true),
+    GRAALVM_CE17("Graal VM CE 17", "graalvm_ce17", new GraalVMCE17(), 1440 + 8, true),
+    JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 720 - 4, true),
+    KONA("Kona", "kona", new Kona(), 1440 - 8, true),
+    LIBERICA("Liberica", "liberica", new Liberica(), 30, true),
+    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 360 - 4, true),
+    MANDREL("Mandrel", "mandrel", new Mandrel(), 1440 + 12, true),
+    MICROSOFT("Microsoft", "microsoft", new Microsoft(), 720 + 8, true),
+    OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 1440 - 12, true),
+    OPEN_LOGIC("OpenLogic", "openlogic", new OpenLogic(), 4320, true),
+    ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 60, true),
+    ORACLE("Oracle", "oracle", new Oracle(), 120, true),
+    RED_HAT("Red Hat", "redhat", new RedHat(), 120, true),
+    SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 360 + 8, true),
+    SEMERU("Semeru", "semeru", new Semeru(), 720 - 8, true),
+    SEMERU_CERTIFIED("Semeru certified", "semeru_certified", new SemeruCertified(), 360 - 8, true),
+    TEMURIN("Temurin", "temurin", new Temurin(), 30, true),
     TRAVA("Trava", "trava", new Trava(), 1440, true),
     ZULU("Zulu", "zulu", new Zulu(), 15, true),
     ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), 1440, true),
@@ -96,6 +96,7 @@ public enum Distro implements ApiFeature {
     private        final int                       updateIntervalInMinutes;
     private        final boolean                   maintained;
     public         final AtomicReference<Instant>  lastUpdate;
+    public         final AtomicReference<Instant>  lastValidationCheck;
 
 
     Distro(final String uiString, final String apiString, final Distribution distribution, final int updateIntervalInMinutes, final boolean maintained) {
@@ -105,6 +106,7 @@ public enum Distro implements ApiFeature {
         this.updateIntervalInMinutes = updateIntervalInMinutes;
         this.maintained              = maintained;
         this.lastUpdate              = new AtomicReference<>();
+        this.lastValidationCheck     = new AtomicReference<>(Instant.MIN);
     }
 
 

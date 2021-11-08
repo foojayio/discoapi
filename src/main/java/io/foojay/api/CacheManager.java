@@ -78,32 +78,33 @@ public enum CacheManager {
         put(17, true);
         put(18, true);
     }};
-    public  final        AtomicBoolean                    syncWithDatabaseInProgress                = new AtomicBoolean(false);
-    public  final        AtomicReference<String>          publicPkgs                                = new AtomicReference<>();
-    public  final        AtomicReference<String>          publicPkgsIncldugingEa                    = new AtomicReference<>();
-    public  final        AtomicReference<String>          publicPkgsDownloadable                    = new AtomicReference<>();
-    public  final        AtomicReference<String>          publicPkgsIncldugingEaDownloadable        = new AtomicReference<>();
+    public final         AtomicBoolean                syncWithDatabaseInProgress                        = new AtomicBoolean(false);
 
-    public  final        AtomicReference<String>          publicPkgsOpenJDKMinimized                         = new AtomicReference<>();
-    public  final        AtomicReference<String>          publicPkgsOpenJDKIncldugingEaMinimized             = new AtomicReference<>();
-    public  final        AtomicReference<String>          publicPkgsOpenJDKDownloadableMinimized             = new AtomicReference<>();
-    public  final        AtomicReference<String>          publicPkgsOpenJDKIncldugingEaDownloadableMinimized = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgs                                        = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsIncludingEa                             = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsDownloadable                            = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsIncludingEaDownloadable                 = new AtomicReference<>();
 
-    public  final        AtomicReference<String>          publicPkgsOpenJDK                         = new AtomicReference<>();
-    public  final        AtomicReference<String>          publicPkgsOpenJDKIncldugingEa             = new AtomicReference<>();
-    public  final        AtomicReference<String>          publicPkgsOpenJDKDownloadable             = new AtomicReference<>();
-    public  final        AtomicReference<String>          publicPkgsOpenJDKIncldugingEaDownloadable = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsOpenJDK                                 = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsOpenJDKIncldugingEa                     = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsOpenJDKDownloadable                     = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsOpenJDKIncludingEaDownloadable          = new AtomicReference<>();
 
-    public  final        AtomicReference<String>          publicPkgsGraalVM                         = new AtomicReference<>();
-    public  final        AtomicReference<String>          publicPkgsGraalVMIncldugingEa             = new AtomicReference<>();
-    public  final        AtomicReference<String>          publicPkgsGraalVMDownloadable             = new AtomicReference<>();
-    public  final        AtomicReference<String>          publicPkgsGraalVMIncldugingEaDownloadable = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsOpenJDKMinimized                        = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsOpenJDKIncldugingEaMinimized            = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsOpenJDKDownloadableMinimized            = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsOpenJDKIncludingEaDownloadableMinimized = new AtomicReference<>();
 
-    public  final        AtomicLong                       msToFillCacheWithPkgsFromDB               = new AtomicLong(-1);
-    public  final        AtomicLong                       numberOfPackages                          = new AtomicLong(-1);
-    public final         AtomicReference<Instant>         lastSync                                  = new AtomicReference<>(Instant.MIN);
-    public  final        AtomicReference<UpdateState>     updateState                               = new AtomicReference<>(UpdateState.NOMINAL);
-    private final        List<MajorVersion>               majorVersions                             = new LinkedList<>();
+    public final         AtomicReference<String>      publicPkgsGraalVM                                 = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsGraalVMIncludingEa                      = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsGraalVMDownloadable                     = new AtomicReference<>();
+    public final         AtomicReference<String>      publicPkgsGraalVMIncludingEaDownloadable          = new AtomicReference<>();
+
+    public final         AtomicLong                   msToFillCacheWithPkgsFromDB                       = new AtomicLong(-1);
+    public final         AtomicLong                   numberOfPackages                                  = new AtomicLong(-1);
+    public final         AtomicReference<Instant>     lastSync                                          = new AtomicReference<>(Instant.MIN);
+    public final         AtomicReference<UpdateState> updateState                                       = new AtomicReference<>(UpdateState.NOMINAL);
+    private final        List<MajorVersion>           majorVersions                                     = new LinkedList<>();
 
 
     CacheManager() {
@@ -129,24 +130,24 @@ public enum CacheManager {
 
     public void updateAllPkgsMsgs() {
         publicPkgs.set(Helper.getAllPackagesV2Msg(false, false, null));
-        publicPkgsIncldugingEa.set(Helper.getAllPackagesV2Msg(false, true, null));
+        publicPkgsIncludingEa.set(Helper.getAllPackagesV2Msg(false, true, null));
         publicPkgsDownloadable.set(Helper.getAllPackagesV2Msg(true, false, null));
-        publicPkgsIncldugingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, null));
-
-        publicPkgsOpenJDKMinimized.set(Helper.getAllPackagesV2Msg(false, false, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
-        publicPkgsOpenJDKIncldugingEaMinimized.set(Helper.getAllPackagesV2Msg(false, true, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
-        publicPkgsOpenJDKDownloadableMinimized.set(Helper.getAllPackagesV2Msg(true, false, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
-        publicPkgsOpenJDKIncldugingEaDownloadableMinimized.set(Helper.getAllPackagesV2Msg(true, true, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
+        publicPkgsIncludingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, null));
 
         publicPkgsOpenJDK.set(Helper.getAllPackagesV2Msg(false, false, BuildScope.BUILD_OF_OPEN_JDK));
         publicPkgsOpenJDKIncldugingEa.set(Helper.getAllPackagesV2Msg(false, true, BuildScope.BUILD_OF_OPEN_JDK));
         publicPkgsOpenJDKDownloadable.set(Helper.getAllPackagesV2Msg(true, false, BuildScope.BUILD_OF_OPEN_JDK));
-        publicPkgsOpenJDKIncldugingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, BuildScope.BUILD_OF_OPEN_JDK));
+        publicPkgsOpenJDKIncludingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, BuildScope.BUILD_OF_OPEN_JDK));
+
+        publicPkgsOpenJDKMinimized.set(Helper.getAllPackagesV2Msg(false, false, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
+        publicPkgsOpenJDKIncldugingEaMinimized.set(Helper.getAllPackagesV2Msg(false, true, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
+        publicPkgsOpenJDKDownloadableMinimized.set(Helper.getAllPackagesV2Msg(true, false, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
+        publicPkgsOpenJDKIncludingEaDownloadableMinimized.set(Helper.getAllPackagesV2Msg(true, true, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
 
         publicPkgsGraalVM.set(Helper.getAllPackagesV2Msg(false, false, BuildScope.BUILD_OF_GRAALVM));
-        publicPkgsGraalVMIncldugingEa.set(Helper.getAllPackagesV2Msg(false, true, BuildScope.BUILD_OF_GRAALVM));
+        publicPkgsGraalVMIncludingEa.set(Helper.getAllPackagesV2Msg(false, true, BuildScope.BUILD_OF_GRAALVM));
         publicPkgsGraalVMDownloadable.set(Helper.getAllPackagesV2Msg(true, false, BuildScope.BUILD_OF_GRAALVM));
-        publicPkgsGraalVMIncldugingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, BuildScope.BUILD_OF_GRAALVM));
+        publicPkgsGraalVMIncludingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, BuildScope.BUILD_OF_GRAALVM));
     }
 
     public String getEphemeralIdForPkg(final String pkgId) {
@@ -173,10 +174,12 @@ public enum CacheManager {
         });
 
         LOGGER.debug("Fill cache with packages from mongodb");
+        final long startRetrievingPkgFromMongodb = System.currentTimeMillis();
         List<Pkg> pkgsFromMongoDb = MongoDbManager.INSTANCE.getPkgs();
+        LOGGER.debug("Got all pkgs from mongodb in {} ms", (System.currentTimeMillis() - startRetrievingPkgFromMongodb));
 
         Map<String, Pkg> patch = pkgsFromMongoDb.stream().collect(Collectors.toMap(Pkg::getId, pkg -> pkg));
-        pkgCache.update(patch, true);
+        pkgCache.setAll(patch);
 
         numberOfPackages.set(pkgCache.size());
         msToFillCacheWithPkgsFromDB.set(System.currentTimeMillis() - startSyncronizingCache);

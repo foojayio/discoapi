@@ -20,9 +20,11 @@
 package io.foojay.api.util;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.stream.JsonReader;
 import io.foojay.api.CacheManager;
 import io.foojay.api.MongoDbManager;
 import io.foojay.api.distribution.AOJ;
@@ -91,6 +93,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -339,27 +342,6 @@ public class Helper {
                         pkgs.addAll(getPkgs(temurin, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
                                             ReleaseStatus.EA, TermOfSupport.NONE));
                     });
-                    /*
-                        List<Pkg> temurinPkgs = temurin.getAllPkgs();
-                        List<MajorVersion> earlyAccessOnly = CacheManager.INSTANCE.getMajorVersions().stream()
-                                                                                  .filter(majorVersion -> majorVersion.isEarlyAccessOnly())
-                                                                                  .collect(Collectors.toList());
-                        earlyAccessOnly.forEach(majorVersion -> {
-                            Optional<Pkg> optionalPkg = temurinPkgs.stream()
-                                                                   .filter(pkg -> majorVersion.getAsInt() == pkg.getMajorVersion().getAsInt())
-                                                                   .findFirst();
-                            if (optionalPkg.isPresent()) {
-                                VersionNumber javaVersion         = optionalPkg.get().getJavaVersion();
-                                List<Pkg>     temurinPkgsToRemove = CacheManager.INSTANCE.pkgCache.getPkgs()
-                                                                                                  .stream()
-                                                                                                  .filter(pkg -> pkg.getDistribution().getDistro() == Distro.TEMURIN)
-                                                                                                  .filter(pkg -> pkg.getJavaVersion().equals(javaVersion))
-                                                                                                  .collect(Collectors.toList());
-                            temurinPkgsToRemove.forEach(pkg -> CacheManager.INSTANCE.pkgCache.remove(pkg.getId()));
-                        }
-                    });
-                    pkgs.addAll(temurinPkgs);
-                    */
                     break;
                 case MICROSOFT:
                     Microsoft microsoft = (Microsoft) distro.get();
@@ -1239,7 +1221,7 @@ public class Helper {
         final HttpRequest request = HttpRequest.newBuilder()
                                                .method("HEAD", HttpRequest.BodyPublishers.noBody())
                                                .uri(URI.create(uri))
-                                               .timeout(Duration.ofSeconds(60))
+                                               .timeout(Duration.ofSeconds(30))
                                                .build();
         try {
             HttpResponse<Void> responseFuture = httpClient.send(request, BodyHandlers.discarding());

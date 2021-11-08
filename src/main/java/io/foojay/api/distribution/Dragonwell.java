@@ -181,7 +181,7 @@ public class Dragonwell implements Distribution {
         for (JsonElement element : assets) {
             JsonObject assetJsonObj = element.getAsJsonObject();
             String     fileName     = assetJsonObj.get("name").getAsString();
-            if (fileName.endsWith(Constants.FILE_ENDING_TXT) || fileName.endsWith(Constants.FILE_ENDING_JAR)) { continue; }
+            if (fileName.endsWith(Constants.FILE_ENDING_TXT) || fileName.endsWith(Constants.FILE_ENDING_JAR) || fileName.endsWith(Constants.FILE_ENDING_SOURCE_TAR_GZ)) { continue; }
 
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 

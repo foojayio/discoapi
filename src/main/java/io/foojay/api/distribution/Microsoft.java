@@ -58,6 +58,7 @@ public class Microsoft implements Distribution {
     private static final Pattern       FILENAME_PREFIX_PATTERN = Pattern.compile("microsoft-");
     private static final Matcher       FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
     private static final String        PACKAGE_URL             = "https://docs.microsoft.com/java/openjdk/download";
+    private static final String        OLDER_PACKAGES_URL      = "https://docs.microsoft.com/en-us/java/openjdk/older-releases";
     public  static final String        PKGS_PROPERTIES         = "https://github.com/foojayio/openjdk_releases/raw/main/microsoft.properties";
 
     // URL parameters
@@ -144,8 +145,11 @@ public class Microsoft implements Distribution {
     public List<Pkg> getAllPkgs() {
         List<Pkg> pkgs = new ArrayList<>();
         try {
-            String html = Helper.getTextFromUrl(PACKAGE_URL);
-            pkgs.addAll(getAllPkgsFromHtml(html));
+            String htmlCurrentPkgs = Helper.getTextFromUrl(PACKAGE_URL);
+            pkgs.addAll(getAllPkgsFromHtml(htmlCurrentPkgs));
+
+            String htmlOlderPkgs = Helper.getTextFromUrl(OLDER_PACKAGES_URL);
+            pkgs.addAll(getAllPkgsFromHtml(htmlOlderPkgs));
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Microsoft. {}", e);
         }
