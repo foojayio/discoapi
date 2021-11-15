@@ -46,16 +46,16 @@ import java.util.regex.Pattern;
 
 
 public class Constants {
-    public static final String        PACKAGES_COLLECTION                        = "packages";
-    public static final String        DOWNLOADS_COLLECTION                       = "downloads";
-    public static final String        DOWNLOADS_USER_AGENT_COLLECTION            = "downloadsUserAgent";
-    public static final String        DOWNLOADS_PER_DAY_COLLECTION               = "downloadsPerDay";
-    public static final String        DISTRO_UPDATES_COLLECTION                  = "distroupdates";
-    public static final String        EPHEMERAL_IDS_COLLECTION                   = "ephemeralIds";
-    public static final String        SHEDLOCK_COLLECTION                        = "shedLock";
-    public static final String        STATE_COLLECTION                           = "state";
-    public static final String        SENTINEL_COLLECTION                        = "sentinel";
-    public static final String        MAJOR_VERSIONS_COLLECTION                  = "majorVersions";
+    public static final String            PACKAGES_COLLECTION                    = "packages";
+    public static final String            DOWNLOADS_COLLECTION                   = "downloads";
+    public static final String            DOWNLOADS_USER_AGENT_COLLECTION        = "downloadsUserAgent";
+    public static final String            DOWNLOADS_PER_DAY_COLLECTION           = "downloadsPerDay";
+    public static final String            DISTRO_UPDATES_COLLECTION              = "distroupdates";
+    public static final String            EPHEMERAL_IDS_COLLECTION               = "ephemeralIds";
+    public static final String            SHEDLOCK_COLLECTION                    = "shedLock";
+    public static final String            STATE_COLLECTION                       = "state";
+    public static final String            SENTINEL_COLLECTION                    = "sentinel";
+    public static final String            MAJOR_VERSIONS_COLLECTION              = "majorVersions";
 
     public static final String            ENDPOINT_PACKAGES                      = "packages";
     public static final String            ENDPOINT_EPHEMERAL_IDS                 = "ephemeral_ids";

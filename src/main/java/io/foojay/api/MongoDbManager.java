@@ -896,6 +896,33 @@ public enum MongoDbManager {
         LOGGER.debug("Successfully updated latest build available for {} packages", pkgs.size());
     }
 
+    public Map<Distro, Instant> getLastUpdatesForDistros() {
+        connect();
+        final Map<Distro, Instant> updateMap = new HashMap<>();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, returned empty list of packages");
+            return updateMap;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Cannot return packages because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return updateMap;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.DISTRO_UPDATES_COLLECTION) {
+            LOGGER.error("Constants.DISTRO_UPDATES_COLLECTION not set.");
+            return updateMap;
+        };
+        if (!collectionExists(database, Constants.DISTRO_UPDATES_COLLECTION)) { database.createCollection(Constants.DISTRO_UPDATES_COLLECTION); }
+
+        final MongoCollection<Document> collection = database.getCollection(Constants.DISTRO_UPDATES_COLLECTION);
+
+        collection.find().forEach(document -> updateMap.put(Distro.fromText(document.getString(FIELD_DISTRO)), Instant.ofEpochSecond(document.getLong(FIELD_TIMESTAMP))));
+        return updateMap;
+    }
+
     public Instant getLastUpdateForDistro(final Distro distro) {
         connect();
         if (!connected) {

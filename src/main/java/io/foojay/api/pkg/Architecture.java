@@ -44,7 +44,7 @@ public enum Architecture implements ApiFeature {
     },
     ARM("ARM", "arm", Bitness.BIT_32, true) {
         @Override public List<Architecture> getSynonyms() { return List.of(Architecture.ARM32, Architecture.AARCH32); }
-        },
+    },
     ARM32("ARM32", "arm32", Bitness.BIT_32, false) {
         @Override public List<Architecture> getSynonyms() { return List.of(Architecture.ARM, Architecture.AARCH32); }
     },
@@ -153,7 +153,7 @@ public enum Architecture implements ApiFeature {
                           .append(INDENTED_QUOTES).append("bitness").append(QUOTES).append(COLON).append(QUOTES).append(bitness.getApiString()).append(QUOTES).append(NEW_LINE)
                           .append(CURLY_BRACKET_CLOSE);
             }
-            case FULL_COMPRESSED, REDUCED_COMPRESSED, REDUCED_ENRICHED_COMPRESSED, REDUCED_MINIMIZED -> {
+            case FULL_COMPRESSED, REDUCED_COMPRESSED, REDUCED_ENRICHED_COMPRESSED -> {
                 msgBuilder.append(CURLY_BRACKET_OPEN)
                           .append(QUOTES).append("name").append(QUOTES).append(COLON).append(QUOTES).append(name()).append(QUOTES).append(COMMA)
                           .append(QUOTES).append("ui_string").append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)

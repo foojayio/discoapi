@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -37,7 +38,7 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
 
     private final ConcurrentHashMap<T, U> ephemeralIdCache = new ConcurrentHashMap<>(16, 0.9f, 1);
 
-    @Override public synchronized void add(final T ephemeralId, final U pkgId) {
+    @Override public void add(final T ephemeralId, final U pkgId) {
         if (null == ephemeralId) { return; }
         if (null == pkgId) {
             LOGGER.debug("EphemeralId cannot be null -> removed key {}", ephemeralId);
@@ -47,14 +48,15 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
         }
     }
 
-    @Override public synchronized U get(final T ephemeralId) {
+    @Override public U get(final T ephemeralId) {
         if (null == ephemeralId || !ephemeralIdCache.containsKey(ephemeralId)) { return null; }
         return ephemeralIdCache.get(ephemeralId);
     }
 
-    @Override public synchronized void remove(final T bundleInfoId) {
+    @Override public void remove(final T bundleInfoId) {
         ephemeralIdCache.remove(bundleInfoId);
     }
+    @Override public void remove(final List<T> keysToRemove) { keysToRemove.forEach(key -> ephemeralIdCache.remove(key)); }
 
     @Override public void addAll(final Map<T,U> entries) {
         synchronized (ephemeralIdCache) {
@@ -88,11 +90,7 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
      * existing entries.
      * @param patch Map that contains existing and new entries
      */
-    public void synchronize(final Map<T, U> patch) {
-        synchronized (ephemeralIdCache) {
-            patch.forEach(ephemeralIdCache::putIfAbsent);
-        }
-    }
+    public void synchronize(final Map<T, U> patch) { patch.forEach(ephemeralIdCache::putIfAbsent); }
 
     /**
      * Updates the cache with the values from the given patch map including updates
@@ -102,7 +100,6 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
      * @param removeIfNotInPatch
      */
     public void update(final Map<T, U> patch, final boolean removeIfNotInPatch) {
-        synchronized (ephemeralIdCache) {
             patch.forEach((key, value) -> ephemeralIdCache.merge(key, value, (v1, v2) -> v1.equals(v2) ? v1 : v2));
             if (removeIfNotInPatch) {
                 if (ephemeralIdCache.size() > patch.size()) {
@@ -112,11 +109,10 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
                 }
             }
         }
-    }
 
-    public synchronized boolean containsEphemeralId(final T ephemeralId) { return ephemeralIdCache.containsKey(ephemeralId); }
+    public boolean containsEphemeralId(final T ephemeralId) { return ephemeralIdCache.containsKey(ephemeralId); }
 
-    public synchronized T getEphemeralIdForPkgId(final U pkgId) {
+    public T getEphemeralIdForPkgId(final U pkgId) {
         Optional<Entry<T, U>> optionalEntry = ephemeralIdCache.entrySet().stream().filter(entry -> entry.getValue().equals(pkgId)).findFirst();
 
         if (optionalEntry.isPresent()) {
@@ -128,9 +124,9 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
         }
     }
 
-    public synchronized Set<Entry<T,U>> getEntrySet() { return ephemeralIdCache.entrySet(); }
+    public Set<Entry<T,U>> getEntrySet() { return ephemeralIdCache.entrySet(); }
 
-    public synchronized Collection<T> getEphemeralIds() { return ephemeralIdCache.keySet(); }
+    public Collection<T> getEphemeralIds() { return ephemeralIdCache.keySet(); }
 
-    public synchronized Collection<U> getPkgIds() { return ephemeralIdCache.values(); }
+    public Collection<U> getPkgIds() { return ephemeralIdCache.values(); }
 }

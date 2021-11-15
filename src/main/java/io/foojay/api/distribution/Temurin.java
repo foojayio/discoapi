@@ -99,6 +99,7 @@ public class Temurin implements Distribution {
     private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP   = Map.of(LINUX, "linux", MACOS, "mac", WINDOWS, "windows", SOLARIS, "solaris", AIX, "aix");
     private static final Map<PackageType, String>     PACKAGE_TYPE_MAP       = Map.of(JDK, "jdk", JRE, "jre");
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP     = Map.of(EA, "ea", GA, "ga");
+    public  static final List<Integer>                NOT_SUPPORTED_VERSIONS = List.of(6, 7, 9, 10, 12, 13, 14, 15);
 
     // JSON fields
     private static final String        FIELD_BINARIES         = "binaries";

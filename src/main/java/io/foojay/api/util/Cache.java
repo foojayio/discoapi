@@ -19,6 +19,7 @@
 
 package io.foojay.api.util;
 
+import java.util.List;
 import java.util.Map;
 
 
@@ -28,6 +29,7 @@ public interface Cache<T extends Object, U extends Object> {
     U get(T key);
 
     void remove(T key);
+    void remove(final List<T> keysToRemove);
 
     void addAll(Map<T,U> entries);
 

@@ -146,13 +146,13 @@ public enum DiscoService {
                     final VersionNumber maxNumber;
                     if (null == versionNumber || versionNumber.getFeature().isEmpty()) {
                         Optional<Pkg> pkgWithMaxVersionNumber = pkgSelection.parallelStream()
-                                                                            .filter(pkg -> distributions.isEmpty()                    ? (pkg.getDistribution() != null &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8 &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11 &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE16 &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE17 &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.MANDREL) : distributions.contains(pkg.getDistribution()))
+                                                                            .filter(pkg -> distributions.isEmpty() ? (pkg.getDistribution() != null &&
+                                                                                                                      pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8 &&
+                                                                                                                      pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11 &&
+                                                                                                                      pkg.getDistribution().getDistro() != Distro.GRAALVM_CE16 &&
+                                                                                                                      pkg.getDistribution().getDistro() != Distro.GRAALVM_CE17 &&
+                                                                                                                      pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE &&
+                                                                                                                      pkg.getDistribution().getDistro() != Distro.MANDREL) : distributions.contains(pkg.getDistribution()))
                                                                             .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(distroScopes.stream().collect(toSet())::contains))
                                                                             .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
                                                                             .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
@@ -266,16 +266,16 @@ public enum DiscoService {
                     distributionsToCheck.forEach(distro -> {
                         Optional<Pkg> pkgFound = pkgSelection.parallelStream()
                                                              .filter(pkg -> pkg.getDistribution().equals(distro))
-                                                             .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
-                                                             .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
-                                                             .filter(pkg -> operatingSystems.isEmpty()                 ? pkg.getOperatingSystem()     != null          : operatingSystems.contains(pkg.getOperatingSystem()))
-                                                             .filter(pkg -> libCTypes.isEmpty()                        ? pkg.getLibCType()            != null          : libCTypes.contains(pkg.getLibCType()))
-                                                             .filter(pkg -> termsOfSupport.isEmpty()                   ? pkg.getTermOfSupport()       != null          : termsOfSupport.contains(pkg.getTermOfSupport()))
-                                                             .filter(pkg -> PackageType.NONE   == packageType          ? pkg.getPackageType()         != packageType   : pkg.getPackageType()         == packageType)
-                                                             .filter(pkg -> releaseStatus.isEmpty()                    ? pkg.getReleaseStatus()       != null          : releaseStatus.contains(pkg.getReleaseStatus()))
-                                                             .filter(pkg -> Bitness.NONE       == bitness              ? pkg.getBitness()             != bitness       : pkg.getBitness()             == bitness)
-                                                             .filter(pkg -> null               == javafxBundled        ? pkg.isJavaFXBundled()        != null          : pkg.isJavaFXBundled()        == javafxBundled)
-                                                             .filter(pkg -> null               == directlyDownloadable ? pkg.isDirectlyDownloadable() != null          : pkg.isDirectlyDownloadable() == directlyDownloadable)
+                                                             .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null        : architectures.contains(pkg.getArchitecture()))
+                                                             .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null        : archiveTypes.contains(pkg.getArchiveType()))
+                                                             .filter(pkg -> operatingSystems.isEmpty()                 ? pkg.getOperatingSystem()     != null        : operatingSystems.contains(pkg.getOperatingSystem()))
+                                                             .filter(pkg -> libCTypes.isEmpty()                        ? pkg.getLibCType()            != null        : libCTypes.contains(pkg.getLibCType()))
+                                                             .filter(pkg -> termsOfSupport.isEmpty()                   ? pkg.getTermOfSupport()       != null        : termsOfSupport.contains(pkg.getTermOfSupport()))
+                                                             .filter(pkg -> PackageType.NONE   == packageType          ? pkg.getPackageType()         != packageType : pkg.getPackageType()         == packageType)
+                                                             .filter(pkg -> releaseStatus.isEmpty()                    ? pkg.getReleaseStatus()       != null        : releaseStatus.contains(pkg.getReleaseStatus()))
+                                                             .filter(pkg -> Bitness.NONE       == bitness              ? pkg.getBitness()             != bitness     : pkg.getBitness()             == bitness)
+                                                             .filter(pkg -> null               == javafxBundled        ? pkg.isJavaFXBundled()        != null        : pkg.isJavaFXBundled()        == javafxBundled)
+                                                             .filter(pkg -> null               == directlyDownloadable ? pkg.isDirectlyDownloadable() != null        : pkg.isDirectlyDownloadable() == directlyDownloadable)
                                                              .max(Comparator.comparing(Pkg::getSemver));
                         if (pkgFound.isPresent()) { maxVersionPerDistribution.put(distro, pkgFound.get().getVersionNumber()); }
                     });

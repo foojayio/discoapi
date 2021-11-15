@@ -121,10 +121,10 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -163,16 +163,18 @@ public class Helper {
     public  static final Pattern    HREF_SIG_FILE_PATTERN                  = Pattern.compile("href=\"([^\"]*(\\.sig))\"");
     public  static final Pattern    HREF_DOWNLOAD_PATTERN                  = Pattern.compile("(\\>)(\\s|\\h?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(\\<)");
     private static final Pattern    JBANG_HEADER_PATTERN                   = Pattern.compile("(JBang)\\/([0-9]+\\.[0-9]+\\.[0-9]+(\\.[0-9]+)?)\\s+\\(([0-9A-Za-z\\s]+)\\/([a-zA-Z0-9_\\.\\-]+)\\/([a-z0-9A-Z_\\s]+)\\)\\s(Java\\/([0-9]+(\\.[0-9]+)?(\\.[0-9]+)?([_0-9]+)?))\\/(.*)");
+    private static final Pattern    CPU_MEM_PATTERN                        = Pattern.compile("([0-9]+\\.[0-9]+)\\s+([0-9]+\\.[0-9]+)");
+    private static final Matcher    CPU_MEM_MATCHER                        = CPU_MEM_PATTERN.matcher("");
     private static final Matcher    JBANG_HEADER_MATCHER                   = JBANG_HEADER_PATTERN.matcher("");
-    public  static final Matcher    FILE_URL_MATCHER                       = FILE_URL_PATTERN.matcher("");
-    public  static final Matcher    FILE_URL_MD5_MATCHER                   = FILE_URL_MD5_PATTERN.matcher("");
-    public  static final Matcher    CORRETTO_SIG_URI_MATCHER               = CORRETTO_SIG_URI_PATTERN.matcher("");
-    public  static final Matcher    DRAGONWELL_11_FILE_NAME_SHA256_MATCHER = DRAGONWELL_11_FILE_NAME_SHA256_PATTERN.matcher("");
-    public  static final Matcher    DRAGONWELL_8_FILE_NAME_SHA256_MATCHER  = DRAGONWELL_8_FILE_NAME_SHA256_PATTERN.matcher("");
-    public  static final Matcher    HREF_FILE_MATCHER                      = HREF_FILE_PATTERN.matcher("");
-    public  static final Matcher    DOWNLOAD_LINK_MATCHER                  = DOWNLOAD_LINK_PATTERN.matcher("");
-    public  static final Matcher    HREF_SIG_FILE_MATCHER                  = HREF_SIG_FILE_PATTERN.matcher("");
-    public  static final Matcher    HREF_DOWNLOAD_MATCHER                  = HREF_DOWNLOAD_PATTERN.matcher("");
+    private static final Matcher    FILE_URL_MATCHER                       = FILE_URL_PATTERN.matcher("");
+    private static final Matcher    FILE_URL_MD5_MATCHER                   = FILE_URL_MD5_PATTERN.matcher("");
+    private static final Matcher    CORRETTO_SIG_URI_MATCHER               = CORRETTO_SIG_URI_PATTERN.matcher("");
+    private static final Matcher    DRAGONWELL_11_FILE_NAME_SHA256_MATCHER = DRAGONWELL_11_FILE_NAME_SHA256_PATTERN.matcher("");
+    private static final Matcher    DRAGONWELL_8_FILE_NAME_SHA256_MATCHER  = DRAGONWELL_8_FILE_NAME_SHA256_PATTERN.matcher("");
+    private static final Matcher    HREF_FILE_MATCHER                      = HREF_FILE_PATTERN.matcher("");
+    private static final Matcher    DOWNLOAD_LINK_MATCHER                  = DOWNLOAD_LINK_PATTERN.matcher("");
+    private static final Matcher    HREF_SIG_FILE_MATCHER                  = HREF_SIG_FILE_PATTERN.matcher("");
+    private static final Matcher    HREF_DOWNLOAD_MATCHER                  = HREF_DOWNLOAD_PATTERN.matcher("");
     private static       HttpClient httpClient;
     private static       HttpClient httpClientAsync;
 
@@ -333,7 +335,7 @@ public class Helper {
                     break;
                 case TEMURIN:
                     Temurin temurin = (Temurin) distro.get();
-                    CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> majorVersion.getAsInt() >= 8).forEach(majorVersion -> {
+                    CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> !Temurin.NOT_SUPPORTED_VERSIONS.contains(majorVersion.getAsInt())).forEach(majorVersion -> {
                         VersionNumber versionNumber = majorVersion.getVersionNumber();
 
                         pkgs.addAll(getPkgs(temurin, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
@@ -1232,25 +1234,24 @@ public class Helper {
     }
 
 
-    public static final String getAllPackagesV2Msg(final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
-        return getAllPackagesV2Msg(downloadable, include_ea, scope, OutputFormat.REDUCED_COMPRESSED);
+    public static final String getAllPackagesMsgV2(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
+        return getAllPackagesMsgV2(allPkgs, downloadable, include_ea, scope, OutputFormat.REDUCED_COMPRESSED);
     }
-    public static final String getAllPackagesV2Msg(final Boolean downloadable, final Boolean include_ea, final BuildScope scope, final OutputFormat outputFormat) {
+    public static final String getAllPackagesMsgV2(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope, final OutputFormat outputFormat) {
         final List<Distro> publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
-        final boolean gaOnly = null == include_ea || !include_ea;
-        final StringBuilder msgBuilder = new StringBuilder();
+        final boolean       gaOnly       = null == include_ea || !include_ea;
+        final StringBuilder msgBuilder   = new StringBuilder();
         final Scope         scopeToCheck = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
 
         msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                   .append(INDENTED_QUOTES).append(RESULT).append(QUOTES).append(COLON).append(NEW_LINE)
-                  .append(INDENT).append(CacheManager.INSTANCE.pkgCache.getPkgs()
-                                                                       .parallelStream()
-                                                                       .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
-                                                                       .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
-                                                                       .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
-                                                                       .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
-                                                                       .map(pkg -> pkg.toString(outputFormat, API_VERSION_V2))
-                                                                       .collect(Collectors.joining(COMMA_NEW_LINE, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(COMMA_NEW_LINE)
+                  .append(INDENT).append(allPkgs.parallelStream()
+                                                .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
+                                                .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
+                                                .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
+                                                .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
+                                                .map(pkg -> CacheManager.INSTANCE.jsonCacheV2.get(pkg.getId()))
+                                                .collect(Collectors.joining(COMMA_NEW_LINE, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(COMMA_NEW_LINE)
                   .append(INDENTED_QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES).append(NEW_LINE)
                   .append(CURLY_BRACKET_CLOSE);
         return msgBuilder.toString();
@@ -1491,19 +1492,57 @@ public class Helper {
     }
 
     public static final String getSystemInfo() {
+        final long    pid            = ProcessHandle.current().pid();
         final Runtime runtime        = Runtime.getRuntime();
         final int     availableCores = runtime.availableProcessors();
         final long    totalMemory    = runtime.totalMemory();
         final long    maxMemory      = runtime.maxMemory();
         final long    freeMemory     = runtime.freeMemory();
+        double        cpuUtilization = -1;
+        double        memUtilization = -1;
+
+        try {
+            final String[] processInfo = { "/bin/sh", "-c", "ps -p " + pid + " -o %cpu,%mem,cmd" };
+            Process p      = Runtime.getRuntime().exec(processInfo);
+            String  result = new BufferedReader(new InputStreamReader(p.getInputStream())).lines().collect(Collectors.joining("\n"));
+            CPU_MEM_MATCHER.reset(result);
+            if (CPU_MEM_MATCHER.find()) {
+                cpuUtilization = Double.parseDouble(CPU_MEM_MATCHER.group(1));
+                memUtilization = Double.parseDouble(CPU_MEM_MATCHER.group(2));
+            }
+        } catch (IOException e) {
+            LOGGER.error("Error retrieving process info. {}", e);
+        }
+
         StringBuilder msgBuilder     = new StringBuilder();
         msgBuilder.append(QUOTES).append("system_info").append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                   .append(INDENTED_QUOTES).append("no_of_cpus").append(QUOTES).append(COLON).append(availableCores).append(COMMA_NEW_LINE)
                   .append(INDENTED_QUOTES).append("total_mem").append(QUOTES).append(COLON).append(QUOTES).append(formatBytes(totalMemory)).append(QUOTES).append(COMMA_NEW_LINE)
                   .append(INDENTED_QUOTES).append("max_mem").append(QUOTES).append(COLON).append(QUOTES).append(formatBytes(maxMemory)).append(QUOTES).append(COMMA_NEW_LINE)
-                  .append(INDENTED_QUOTES).append("free_mem").append(QUOTES).append(COLON).append(QUOTES).append(formatBytes(freeMemory)).append(QUOTES).append(NEW_LINE)
+                  .append(INDENTED_QUOTES).append("free_mem").append(QUOTES).append(COLON).append(QUOTES).append(formatBytes(freeMemory)).append(QUOTES).append(COMMA_NEW_LINE)
+                  .append(INDENTED_QUOTES).append("cpu_utilization").append(QUOTES).append(COLON).append(cpuUtilization).append(COMMA_NEW_LINE)
+                  .append(INDENTED_QUOTES).append("mem_utilization").append(QUOTES).append(COLON).append(memUtilization).append(COMMA_NEW_LINE)
                   .append(CURLY_BRACKET_CLOSE);
         return msgBuilder.toString();
+    }
+
+    public static double[] getCpuAndMemUtilization() {
+        final long pid            = ProcessHandle.current().pid();
+        double     cpuUtilization = -1;
+        double     memUtilization = -1;
+        try {
+            final String[] processInfo = { "/bin/sh", "-c", "ps -p " + pid + " -o %cpu,%mem,cmd" };
+            Process p      = Runtime.getRuntime().exec(processInfo);
+            String  result = new BufferedReader(new InputStreamReader(p.getInputStream())).lines().collect(Collectors.joining("\n"));
+            CPU_MEM_MATCHER.reset(result);
+            if (CPU_MEM_MATCHER.find()) {
+                cpuUtilization = Double.parseDouble(CPU_MEM_MATCHER.group(1));
+                memUtilization = Double.parseDouble(CPU_MEM_MATCHER.group(2));
+            }
+        } catch (IOException e) {
+            LOGGER.error("Error retrieving process info. {}", e);
+        }
+        return new double[] { cpuUtilization, memUtilization };
     }
 
     public static String formatBytes(long bytes) {
@@ -1551,7 +1590,7 @@ public class Helper {
                                          .GET()
                                          .uri(URI.create(uri))
                                          .headers(requestHeaders.toArray(new String[0]))
-                                         .timeout(Duration.ofSeconds(60))
+                                         .timeout(Duration.ofSeconds(10))
                                          .build();
 
         try {
@@ -1592,7 +1631,7 @@ public class Helper {
                                                .GET()
                                                .uri(URI.create(uri))
                                                .headers(requestHeaders.toArray(new String[0]))
-                                               .timeout(Duration.ofSeconds(60))
+                                               .timeout(Duration.ofSeconds(10))
                                                .build();
 
         return httpClientAsync.sendAsync(request, BodyHandlers.ofString());

@@ -26,9 +26,9 @@ import io.foojay.api.mqtt.MqttManager;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
+import io.foojay.api.util.JsonCache;
 import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.PkgCache;
 import io.foojay.api.util.State;
@@ -39,7 +39,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -50,15 +49,17 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 
+
 @Requires(notEnv = Environment.TEST) // Don't run in tests
 public enum CacheManager {
     INSTANCE;
 
-    private static final Logger                           LOGGER                                    = LoggerFactory.getLogger(CacheManager.class);
-    public  final        MqttManager                      mqttManager                               = new MqttManager();
-    public  final        MqttEvtObserver                  mqttEvtObserver                           = evt -> handleMqttEvt(evt);
-    public  final        PkgCache<String, Pkg>            pkgCache                                  = new PkgCache<>();
-    public  final        Map<Integer, Boolean>            maintainedMajorVersions                   = new ConcurrentHashMap<>() {{
+    private static final Logger                       LOGGER                      = LoggerFactory.getLogger(CacheManager.class);
+    public final         MqttManager                  mqttManager                 = new MqttManager();
+    public final         MqttEvtObserver              mqttEvtObserver             = evt -> handleMqttEvt(evt);
+    public final         PkgCache<String, Pkg>        pkgCache                    = new PkgCache<>();
+    public final         JsonCache<String, String>    jsonCacheV2                 = new JsonCache<>();
+    public final         Map<Integer, Boolean>        maintainedMajorVersions     = new ConcurrentHashMap<>() {{
         put(1, false);
         put(2, false);
         put(3, false);
@@ -78,33 +79,12 @@ public enum CacheManager {
         put(17, true);
         put(18, true);
     }};
-    public final         AtomicBoolean                syncWithDatabaseInProgress                        = new AtomicBoolean(false);
-
-    public final         AtomicReference<String>      publicPkgs                                        = new AtomicReference<>();
-    public final         AtomicReference<String>      publicPkgsIncludingEa                             = new AtomicReference<>();
-    public final         AtomicReference<String>      publicPkgsDownloadable                            = new AtomicReference<>();
-    public final         AtomicReference<String>      publicPkgsIncludingEaDownloadable                 = new AtomicReference<>();
-
-    public final         AtomicReference<String>      publicPkgsOpenJDK                                 = new AtomicReference<>();
-    public final         AtomicReference<String>      publicPkgsOpenJDKIncldugingEa                     = new AtomicReference<>();
-    public final         AtomicReference<String>      publicPkgsOpenJDKDownloadable                     = new AtomicReference<>();
-    public final         AtomicReference<String>      publicPkgsOpenJDKIncludingEaDownloadable          = new AtomicReference<>();
-
-    public final         AtomicReference<String>      publicPkgsOpenJDKMinimized                        = new AtomicReference<>();
-    public final         AtomicReference<String>      publicPkgsOpenJDKIncldugingEaMinimized            = new AtomicReference<>();
-    public final         AtomicReference<String>      publicPkgsOpenJDKDownloadableMinimized            = new AtomicReference<>();
-    public final         AtomicReference<String>      publicPkgsOpenJDKIncludingEaDownloadableMinimized = new AtomicReference<>();
-
-    public final         AtomicReference<String>      publicPkgsGraalVM                                 = new AtomicReference<>();
-    public final         AtomicReference<String>      publicPkgsGraalVMIncludingEa                      = new AtomicReference<>();
-    public final         AtomicReference<String>      publicPkgsGraalVMDownloadable                     = new AtomicReference<>();
-    public final         AtomicReference<String>      publicPkgsGraalVMIncludingEaDownloadable          = new AtomicReference<>();
-
-    public final         AtomicLong                   msToFillCacheWithPkgsFromDB                       = new AtomicLong(-1);
-    public final         AtomicLong                   numberOfPackages                                  = new AtomicLong(-1);
-    public final         AtomicReference<Instant>     lastSync                                          = new AtomicReference<>(Instant.MIN);
-    public final         AtomicReference<UpdateState> updateState                                       = new AtomicReference<>(UpdateState.NOMINAL);
-    private final        List<MajorVersion>           majorVersions                                     = new LinkedList<>();
+    public final         AtomicBoolean                syncWithDatabaseInProgress  = new AtomicBoolean(false);
+    public final         AtomicLong                   msToFillCacheWithPkgsFromDB = new AtomicLong(-1);
+    public final         AtomicLong                   numberOfPackages            = new AtomicLong(-1);
+    public final         AtomicReference<Instant>     lastSync                    = new AtomicReference<>(Instant.MIN);
+    public final         AtomicReference<UpdateState> updateState                 = new AtomicReference<>(UpdateState.NOMINAL);
+    private final        List<MajorVersion>           majorVersions               = new LinkedList<>();
 
 
     CacheManager() {
@@ -116,6 +96,7 @@ public enum CacheManager {
 
 
     public void updateMajorVersions() {
+        StateManager.INSTANCE.setState(State.UPDATING, "Updating major versions");
         List<MajorVersion> majorVersionsFromDb = MongoDbManager.INSTANCE.getMajorVersions();
         if (null == majorVersionsFromDb || majorVersionsFromDb.isEmpty()) {
             LOGGER.error("Error updating major versions from mongodb");
@@ -123,41 +104,19 @@ public enum CacheManager {
         majorVersions.clear();
             majorVersions.addAll(majorVersionsFromDb);
             majorVersions.forEach(majorVersion -> maintainedMajorVersions.put(majorVersion.getAsInt(), majorVersion.isMaintained()));
+            LOGGER.debug("Successfully updated major versions");
         }
-
-        LOGGER.debug("Successfully updated major versions");
     }
 
-    public void updateAllPkgsMsgs() {
-        publicPkgs.set(Helper.getAllPackagesV2Msg(false, false, null));
-        publicPkgsIncludingEa.set(Helper.getAllPackagesV2Msg(false, true, null));
-        publicPkgsDownloadable.set(Helper.getAllPackagesV2Msg(true, false, null));
-        publicPkgsIncludingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, null));
-
-        publicPkgsOpenJDK.set(Helper.getAllPackagesV2Msg(false, false, BuildScope.BUILD_OF_OPEN_JDK));
-        publicPkgsOpenJDKIncldugingEa.set(Helper.getAllPackagesV2Msg(false, true, BuildScope.BUILD_OF_OPEN_JDK));
-        publicPkgsOpenJDKDownloadable.set(Helper.getAllPackagesV2Msg(true, false, BuildScope.BUILD_OF_OPEN_JDK));
-        publicPkgsOpenJDKIncludingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, BuildScope.BUILD_OF_OPEN_JDK));
-
-        publicPkgsOpenJDKMinimized.set(Helper.getAllPackagesV2Msg(false, false, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
-        publicPkgsOpenJDKIncldugingEaMinimized.set(Helper.getAllPackagesV2Msg(false, true, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
-        publicPkgsOpenJDKDownloadableMinimized.set(Helper.getAllPackagesV2Msg(true, false, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
-        publicPkgsOpenJDKIncludingEaDownloadableMinimized.set(Helper.getAllPackagesV2Msg(true, true, BuildScope.BUILD_OF_OPEN_JDK, OutputFormat.REDUCED_MINIMIZED));
-
-        publicPkgsGraalVM.set(Helper.getAllPackagesV2Msg(false, false, BuildScope.BUILD_OF_GRAALVM));
-        publicPkgsGraalVMIncludingEa.set(Helper.getAllPackagesV2Msg(false, true, BuildScope.BUILD_OF_GRAALVM));
-        publicPkgsGraalVMDownloadable.set(Helper.getAllPackagesV2Msg(true, false, BuildScope.BUILD_OF_GRAALVM));
-        publicPkgsGraalVMIncludingEaDownloadable.set(Helper.getAllPackagesV2Msg(true, true, BuildScope.BUILD_OF_GRAALVM));
-    }
-
-    public String getEphemeralIdForPkg(final String pkgId) {
-        return MongoDbManager.INSTANCE.ephemeralIdCache.getEphemeralIdForPkgId(pkgId);
+    public void updateJsonCacheV2() {
+        StateManager.INSTANCE.setState(State.UPDATING, "Updating Json Cache V2");
+        pkgCache.getEntrySet().stream().forEach(entry -> jsonCacheV2.put(entry.getKey(), entry.getValue().toString(OutputFormat.REDUCED_COMPRESSED, Constants.API_VERSION_V2)));
+        final List<String> keysToRemove = jsonCacheV2.getEntrySet().parallelStream().filter(entry -> !pkgCache.containsKey(entry.getKey())).map(entry -> entry.getKey()).collect(Collectors.toList());
+        jsonCacheV2.remove(keysToRemove);
     }
 
     public List<MajorVersion> getMajorVersions() {
-        if (majorVersions.isEmpty()) {
-            updateMajorVersions();
-        }
+        if (majorVersions.isEmpty()) { updateMajorVersions(); }
         return majorVersions;
     }
 
@@ -165,20 +124,19 @@ public enum CacheManager {
         if (syncWithDatabaseInProgress.get()) { return; }
 
         syncWithDatabaseInProgress.set(true);
+        StateManager.INSTANCE.setState(State.SYNCRONIZING, "Synchronizing cache with db");
 
         final long startSyncronizingCache = System.currentTimeMillis();
         LOGGER.debug("Get last updates per distro from mongodb");
-        Distro.getAsListWithoutNoneAndNotFound().forEach(distro -> {
-            final Instant lastUpdateForDistro = MongoDbManager.INSTANCE.getLastUpdateForDistro(distro);
-            distro.lastUpdate.set(lastUpdateForDistro);
-        });
+        Map<Distro, Instant> lastUpdates = MongoDbManager.INSTANCE.getLastUpdatesForDistros();
+        Distro.getAsListWithoutNoneAndNotFound().forEach(distro -> distro.lastUpdate.set(lastUpdates.get(distro)));
 
         LOGGER.debug("Fill cache with packages from mongodb");
-        final long startRetrievingPkgFromMongodb = System.currentTimeMillis();
-        List<Pkg> pkgsFromMongoDb = MongoDbManager.INSTANCE.getPkgs();
+        final long      startRetrievingPkgFromMongodb = System.currentTimeMillis();
+        final List<Pkg> pkgsFromMongoDb               = MongoDbManager.INSTANCE.getPkgs();
         LOGGER.debug("Got all pkgs from mongodb in {} ms", (System.currentTimeMillis() - startRetrievingPkgFromMongodb));
 
-        Map<String, Pkg> patch = pkgsFromMongoDb.stream().collect(Collectors.toMap(Pkg::getId, pkg -> pkg));
+        Map<String, Pkg> patch = pkgsFromMongoDb.parallelStream().collect(Collectors.toMap(Pkg::getId, pkg -> pkg));
         pkgCache.setAll(patch);
 
         numberOfPackages.set(pkgCache.size());
@@ -188,7 +146,6 @@ public enum CacheManager {
         updateMajorVersions();
 
         lastSync.set(Instant.now());
-
         syncWithDatabaseInProgress.set(false);
         }
 
@@ -209,8 +166,8 @@ public enum CacheManager {
                             // Update cache with pkgs from mongodb
                             syncCacheWithDatabase();
 
-                            // Update msgs that contain all pkgs
-                            updateAllPkgsMsgs();
+                            // Update json cache
+                            updateJsonCacheV2();
                         } catch (Exception e) {
                             syncWithDatabaseInProgress.set(false);
                         }
@@ -223,8 +180,8 @@ public enum CacheManager {
                         // Update cache with pkgs from mongodb
                         syncCacheWithDatabase();
 
-                        // Update msgs that contain all pkgs
-                        updateAllPkgsMsgs();
+                        // Update json cache
+                        updateJsonCacheV2();
                     } catch (Exception e) {
                         syncWithDatabaseInProgress.set(false);
                     }
@@ -237,20 +194,13 @@ public enum CacheManager {
                         // Update cache with pkgs from mongodb
                         syncCacheWithDatabase();
 
-                        // Update msgs that contain all pkgs
-                        updateAllPkgsMsgs();
+                        // Update json cache
+                        updateJsonCacheV2();
                     } catch (Exception e) {
                         syncWithDatabaseInProgress.set(false);
                     }
                 }
             }
-        } /*else if (topic.equals(Constants.MQTT_EPHEMERAL_ID_UPDATE_TOPIC)) {
-
-            switch(msg) {
-                case Constants.MQTT_EPEHMERAL_ID_UPDATE_FINISHED_MSG -> {
-                }
-            }
         }
-        */
     }
 }
