@@ -84,6 +84,7 @@ public class Corretto implements Distribution {
     private static final HashAlgorithm                SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI           = "";//https://corretto.aws/downloads/resources/11.0.6.10.1/B04F24E3.pub";
     private static final String                       OFFICIAL_URI            = "https://aws.amazon.com/de/corretto/";
+    public  static final List<Integer>                NOT_SUPPORTED_VERSIONS  = List.of(6, 7, 9, 10, 12, 13, 14);
 
 
     @Override public Distro getDistro() { return Distro.CORRETTO; }
@@ -307,21 +308,23 @@ public class Corretto implements Distribution {
     public List<Pkg> getAllPkgs() {
         final String gaPackageUrl = "https://docs.aws.amazon.com/corretto/latest/corretto-";
         List<Pkg> pkgs = new ArrayList<>();
-        for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-            if (majorVersion.getAsInt() < 8) { continue; }
-            StringBuilder queryBuilder = new StringBuilder().append(gaPackageUrl).append(majorVersion.getAsInt()).append("-ug/downloads-list.html");
-            String query = queryBuilder.toString();
-            try {
-                final HttpResponse<String> response = Helper.get(query);
-                if (null == response) { continue; }
-                final String htmlAllJDKs  = response.body();
-                if (!htmlAllJDKs.isEmpty()) {
-                    pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs));
-                }
-            } catch (Exception e) {
-                LOGGER.error("Error fetching all packages from {}. {}", getName(), e);
-            }
-        }
+        CacheManager.INSTANCE.getMajorVersions()
+                             .stream()
+                             .filter(majorVersion -> !NOT_SUPPORTED_VERSIONS.contains(majorVersion.getAsInt()))
+                             .forEach(majorVersion -> {
+                                 StringBuilder queryBuilder = new StringBuilder().append(gaPackageUrl).append(majorVersion.getAsInt()).append("-ug/downloads-list.html");
+                                 String query = queryBuilder.toString();
+                                 try {
+                                     final HttpResponse<String> response = Helper.get(query);
+                                     if (null == response) { return; }
+                                     final String htmlAllJDKs  = response.body();
+                                     if (!htmlAllJDKs.isEmpty()) {
+                                         pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs));
+                                     }
+                                 } catch (Exception e) {
+                                     LOGGER.error("Error fetching all packages from {}. {}", getName(), e);
+                                 }
+                             });
         return pkgs;
     }
 
@@ -329,7 +332,6 @@ public class Corretto implements Distribution {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
-
         for (String fileHref : fileHrefs) {
             if (fileHref.contains("latest_checksum")) { continue; }
 
@@ -402,6 +404,11 @@ public class Corretto implements Distribution {
             String signatureUri = pkg.getDirectDownloadUri() + ".sig";
             if (html.contains(signatureUri)) {
                 pkg.setSignatureUri(signatureUri);
+            }
+            String checksumUri = pkg.getDirectDownloadUri().replace("latest", "latest_checksum");
+            if (html.contains(checksumUri)) {
+                pkg.setChecksumUri(checksumUri);
+                pkg.setChecksumType(HashAlgorithm.MD5);
             }
         });
 

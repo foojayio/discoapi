@@ -97,6 +97,7 @@ public enum Distro implements ApiFeature {
     private        final boolean                   maintained;
     public         final AtomicReference<Instant>  lastUpdate;
     public         final AtomicReference<Instant>  lastValidationCheck;
+    public         final AtomicReference<Instant>  lastRefresh;
 
 
     Distro(final String uiString, final String apiString, final Distribution distribution, final int updateIntervalInMinutes, final boolean maintained) {
@@ -107,6 +108,7 @@ public enum Distro implements ApiFeature {
         this.maintained              = maintained;
         this.lastUpdate              = new AtomicReference<>();
         this.lastValidationCheck     = new AtomicReference<>(Instant.MIN);
+        this.lastRefresh             = new AtomicReference<>(Instant.MIN);
     }
 
 

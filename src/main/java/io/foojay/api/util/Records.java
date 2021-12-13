@@ -19,6 +19,21 @@
 
 package io.foojay.api.util;
 
-public enum State {
-    IDLE, PRELOADING, UPDATING, UPLOADING, SYNCHRONIZING, ERROR, ONLINE, OFFLINE
+import java.time.Instant;
+import java.util.Objects;
+
+
+public class Records {
+
+    public record DownloadInfo(String pkgId, String userAgent, String countryCode, Instant timestamp) {}
+
+    public record Cmd(String name, Runnable cmd) {
+        @Override public boolean equals(final Object o) {
+            if (this == o) { return true; }
+            if (o == null || getClass() != o.getClass()) { return false; }
+            Cmd cmd = (Cmd) o;
+            return name.equals(cmd.name);
+        }
+        @Override public int hashCode() { return Objects.hash(name); }
+    }
 }

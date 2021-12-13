@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -166,15 +167,8 @@ public class Dragonwell implements Distribution {
             vNumber = VersionNumber.fromText(tag);
         }
 
-        // TODO: Looks like for 17 Alibaba uses prerelease: true even if the pgks are GA
-        VersionNumber JDK17_0_0_0 = new VersionNumber(17,0, 0, 0);
-        VersionNumber JDK17_0_1_0 = new VersionNumber(17, 0, 1, 0);
-        if (JDK17_0_0_0.isLargerOrEqualThan(versionNumber) && JDK17_0_1_0.isSmallerOrEqualThan(versionNumber)) {
-            boolean prerelease = false;
             if (jsonObj.has("prerelease")) {
-                prerelease = jsonObj.get("prerelease").getAsBoolean();
-            }
-            if (prerelease) { return pkgs; }
+            if (jsonObj.get("prerelease").getAsBoolean()) { return pkgs; }
         }
 
         JsonArray assets = jsonObj.getAsJsonArray("assets");
@@ -253,6 +247,30 @@ public class Dragonwell implements Distribution {
             pkg.setFreeUseInProduction(Boolean.TRUE);
 
             pkgs.add(pkg);
+        }
+
+        // Fetch checksums
+        for (JsonElement element : assets) {
+            JsonObject assetJsonObj = element.getAsJsonObject();
+            String     filename     = assetJsonObj.get("name").getAsString();
+
+            if (null == filename || filename.isEmpty() || (!filename.endsWith(Constants.FILE_ENDING_SHA256_TXT) && !filename.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT))) { continue; }
+            String nameToMatch;
+            if (filename.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT)) {
+                nameToMatch = filename.replaceAll(Constants.FILE_ENDING_SHA256_DMG_TXT, "");
+            } else if (filename.endsWith(Constants.FILE_ENDING_SHA256_TXT)) {
+                nameToMatch = filename.replaceAll(Constants.FILE_ENDING_SHA256_TXT, "");
+            } else {
+                continue;
+            }
+
+            final String  downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+            Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFileName().contains(nameToMatch)).findFirst();
+            if (optPkg.isPresent()) {
+                Pkg pkg = optPkg.get();
+                pkg.setChecksumUri(downloadLink);
+                pkg.setChecksumType(HashAlgorithm.SHA256);
+            }
         }
 
         return pkgs;

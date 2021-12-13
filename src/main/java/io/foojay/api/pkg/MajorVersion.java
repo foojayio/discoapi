@@ -22,6 +22,7 @@ package io.foojay.api.pkg;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
+import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.scopes.Scope;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
@@ -56,10 +57,12 @@ public class MajorVersion {
     public  static final String        FIELD_MAINTAINED        = "maintained";
     public  static final String        FIELD_EARLY_ACCESS_ONLY = "early_access_only";
     public  static final String        FIELD_RELEASE_STATUS    = "release_status";
+    public  static final String        FIELD_SCOPE             = "scope";
     public  static final String        FIELD_VERSIONS          = "versions";
     private        final int           majorVersion;
     private        final TermOfSupport termOfSupport;
     private        final boolean       maintained;
+    private              BuildScope    scope;
 
 
     public MajorVersion(final int majorVersion) {
@@ -74,12 +77,17 @@ public class MajorVersion {
         } else {
             this.maintained = false;
         }
+        this.scope = BuildScope.BUILD_OF_OPEN_JDK;
     }
     public MajorVersion(final int majorVersion, final TermOfSupport termOfSupport, final boolean maintained) {
+        this(majorVersion, termOfSupport, maintained, BuildScope.BUILD_OF_OPEN_JDK);
+    }
+    public MajorVersion(final int majorVersion, final TermOfSupport termOfSupport, final boolean maintained, final BuildScope scope) {
         if (majorVersion <= 0) { throw new IllegalArgumentException("Major version cannot be <= 0"); }
         this.majorVersion  = majorVersion;
         this.termOfSupport = termOfSupport;
         this.maintained    = maintained;
+        this.scope         = scope;
     }
     public MajorVersion(final String jsonText) {
         if (null == jsonText || jsonText.isEmpty()) { throw new IllegalArgumentException("Json text cannot be null or empty"); }
@@ -89,6 +97,7 @@ public class MajorVersion {
         this.majorVersion  = json.get(FIELD_MAJOR_VERSION).getAsInt();
         this.termOfSupport = TermOfSupport.fromText(json.get(FIELD_TERM_OF_SUPPORT).getAsString());
         this.maintained    = json.get(FIELD_MAINTAINED).getAsBoolean();
+        this.scope         = json.has(FIELD_SCOPE) ? (BuildScope) BuildScope.fromText(json.get(FIELD_SCOPE).getAsString()) : BuildScope.BUILD_OF_OPEN_JDK;
     }
 
 
@@ -106,9 +115,9 @@ public class MajorVersion {
     }
     public static MajorVersion getLatest(final boolean includingEa) {
         if (includingEa) {
-            return CacheManager.INSTANCE.getMajorVersions().get(0);
+            return CacheManager.INSTANCE.getMajorVersions().stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).findFirst().get();
         } else {
-            return CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> !majorVersion.getVersions().isEmpty()).findFirst().get();
+            return CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> !majorVersion.getVersions().isEmpty()).sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).findFirst().get();
         }
     }
 
@@ -144,8 +153,12 @@ public class MajorVersion {
 
     // Get maintained versions
     public static List<MajorVersion> getMaintainedMajorVersions() {
+        return getMaintainedMajorVersions(BuildScope.BUILD_OF_OPEN_JDK);
+    }
+    public static List<MajorVersion> getMaintainedMajorVersions(final BuildScope scope) {
         return CacheManager.INSTANCE.getMajorVersions()
                                     .stream()
+                                    .filter(majorVersion -> majorVersion.scope == scope)
                                     .filter(majorVersion -> majorVersion.isMaintained())
                                     .sorted(Comparator.comparing(MajorVersion::getVersionNumber).reversed())
                                     .collect(Collectors.toList());
@@ -156,23 +169,34 @@ public class MajorVersion {
     }
 
     public static List<MajorVersion> getGeneralAvailabilityOnlyMajorVersions() {
+        return getGeneralAvailabilityOnlyMajorVersions(BuildScope.BUILD_OF_OPEN_JDK);
+    }
+    public static List<MajorVersion> getGeneralAvailabilityOnlyMajorVersions(final BuildScope scope) {
         return CacheManager.INSTANCE.getMajorVersions()
                                     .stream()
+                                    .filter(majorVersion -> majorVersion.scope == scope)
                                     .filter(majorVersion -> !majorVersion.getVersions().isEmpty())
                                     .collect(Collectors.toList());
     }
 
     public static List<MajorVersion> getEarlyAccessOnlyMajorVersions() {
+        return getEarlyAccessOnlyMajorVersions(BuildScope.BUILD_OF_OPEN_JDK);
+    }
+    public static List<MajorVersion> getEarlyAccessOnlyMajorVersions(final BuildScope scope) {
         return CacheManager.INSTANCE.getMajorVersions()
                                     .stream()
+                                    .filter(majorVersion -> majorVersion.scope == scope)
                                     .filter(majorVersion -> majorVersion.getVersionsIncludingEarlyAccess().size() == 1)
                                     .filter(majorVersion -> majorVersion.getVersionsOnlyEarlyAccess().size() == 1)
                                     .collect(Collectors.toList());
     }
 
     public static List<MajorVersion> getUsefulMajorVersions() {
+        return getUsefulMajorVersions(BuildScope.BUILD_OF_OPEN_JDK);
+    }
+    public static List<MajorVersion> getUsefulMajorVersions(final BuildScope scope) {
         List<MajorVersion> usefulVersions  = new ArrayList<>();
-        List<MajorVersion> majorGAVersions = getGeneralAvailabilityOnlyMajorVersions();
+        List<MajorVersion> majorGAVersions = getGeneralAvailabilityOnlyMajorVersions(scope);
 
         // Add version 8
         MajorVersion version8 = majorGAVersions.stream().filter(majorVersion -> majorVersion.getAsInt() == 8).findFirst().get();
@@ -209,6 +233,13 @@ public class MajorVersion {
         return usefulVersions;
     }
 
+    public static boolean isMaintainedMajorVersion(final MajorVersion majorVersion) {
+        return getMaintainedMajorVersions().stream().filter(mv -> mv.getAsInt() == majorVersion.getAsInt()).count() > 0;
+    }
+    public static boolean isMaintainedMajorVersion(final int majorVersion) {
+        return getMaintainedMajorVersions().stream().filter(mv -> mv.getAsInt() == majorVersion).count() > 0;
+    }
+
     // VersionNumber
     public VersionNumber getVersionNumber() { return new VersionNumber(majorVersion); }
 
@@ -217,6 +248,9 @@ public class MajorVersion {
 
     // Release Status
     public ReleaseStatus getReleaseStatus() { return isEarlyAccessOnly() ? ReleaseStatus.EA : ReleaseStatus.GA; }
+
+    public BuildScope getScope() { return scope; }
+    public void setScope(final BuildScope scope) { this.scope = scope; }
 
     // Early Access only
     public Boolean isEarlyAccessOnly() {
@@ -235,8 +269,12 @@ public class MajorVersion {
                                              .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
     }
     public List<SemVer> getVersions() {
+        return getVersions(BuildScope.BUILD_OF_OPEN_JDK);
+    }
+    public List<SemVer> getVersions(final BuildScope scope) {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
+                                             .filter(pkg -> scope == BuildScope.BUILD_OF_OPEN_JDK ? Distro.getDistributionsBasedOnOpenJDK().contains(pkg.getDistribution().getDistro()) : Distro.getDistributionsBasedOnGraalVm().contains(pkg.getDistribution().getDistro()))
                                              .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
                                              .filter(pkg -> ReleaseStatus.GA == pkg.getReleaseStatus())
                                              .map(pkg -> pkg.getSemver())
@@ -256,8 +294,12 @@ public class MajorVersion {
                                              .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
     }
     public List<SemVer> getVersionsOnlyEarlyAccess() {
+        return getVersionsOnlyEarlyAccess(BuildScope.BUILD_OF_OPEN_JDK);
+    }
+    public List<SemVer> getVersionsOnlyEarlyAccess(final BuildScope scope) {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
+                                             .filter(pkg -> scope == BuildScope.BUILD_OF_OPEN_JDK ? Distro.getDistributionsBasedOnOpenJDK().contains(pkg.getDistribution().getDistro()) : Distro.getDistributionsBasedOnGraalVm().contains(pkg.getDistribution().getDistro()))
                                              .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
                                              .filter(pkg -> ReleaseStatus.EA == pkg.getReleaseStatus())
                                              .map(pkg -> pkg.getSemver())
@@ -274,21 +316,26 @@ public class MajorVersion {
                                              .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
     }
     public List<SemVer> getVersionsIncludingEarlyAccess() {
+        return getVersionsIncludingEarlyAccess(BuildScope.BUILD_OF_OPEN_JDK);
+    }
+    public List<SemVer> getVersionsIncludingEarlyAccess(final BuildScope scope) {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
+                                             .filter(pkg -> scope == BuildScope.BUILD_OF_OPEN_JDK ? Distro.getDistributionsBasedOnOpenJDK().contains(pkg.getDistribution().getDistro()) : Distro.getDistributionsBasedOnGraalVm().contains(pkg.getDistribution().getDistro()))
                                              .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
                                              .map(pkg -> pkg.getSemver())
                                              .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
-    public String toString(final boolean includingEarlyAccess) {
-        final List<SemVer> versions = includingEarlyAccess ? getVersionsIncludingEarlyAccess() : getVersions();
+    public String toString(final boolean includingEarlyAccess, final BuildScope scope) {
+        final List<SemVer> versions = includingEarlyAccess ? getVersionsIncludingEarlyAccess(scope) : getVersions(scope);
         final StringBuilder majorVersionMsgBuilder = new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(majorVersion).append(COMMA_NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.name()).append(QUOTES).append(COMMA_NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA_NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_EARLY_ACCESS_ONLY).append(QUOTES).append(COLON).append(isEarlyAccessOnly()).append(COMMA_NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(getReleaseStatus().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                                        .append(INDENTED_QUOTES).append(FIELD_SCOPE).append(QUOTES).append(COLON).append(QUOTES).append(this.scope.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_VERSIONS).append(QUOTES).append(COLON).append(" ").append(SQUARE_BRACKET_OPEN).append(versions.isEmpty() ? "" : NEW_LINE);
         versions.forEach(versionNumber -> majorVersionMsgBuilder.append(INDENT).append(INDENTED_QUOTES).append(versionNumber).append(QUOTES).append(COMMA_NEW_LINE));
         if (!versions.isEmpty()) {
@@ -304,6 +351,6 @@ public class MajorVersion {
     }
 
     @Override public String toString() {
-        return toString(false);
+        return toString(false, BuildScope.BUILD_OF_OPEN_JDK);
     }
 }

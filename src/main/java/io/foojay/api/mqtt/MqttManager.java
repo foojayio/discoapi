@@ -26,8 +26,6 @@ import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient;
 import com.hivemq.client.mqtt.mqtt5.message.publish.Mqtt5PublishResult;
 import com.hivemq.client.mqtt.mqtt5.message.publish.Mqtt5WillPublish;
 import com.hivemq.client.mqtt.mqtt5.message.subscribe.suback.Mqtt5SubAck;
-import eu.hansolo.properties.BooleanProperty;
-import eu.hansolo.properties.ReadOnlyBooleanProperty;
 import io.foojay.api.util.Config;
 import io.foojay.api.util.Constants;
 import org.slf4j.Logger;
@@ -36,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.hivemq.client.mqtt.MqttGlobalPublishFilter.ALL;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -48,13 +47,13 @@ public class MqttManager {
     private static final String                TESTING_ENVIRONMENT    = "testing";
     private static final boolean               GHOST                  = !Config.INSTANCE.getFoojayApiEnvironment().equals(PRODUCTION_ENVIRONMENT) && !Config.INSTANCE.getFoojayApiEnvironment().equals(STAGING_ENVIRONMENT) && !Config.INSTANCE.getFoojayApiEnvironment().equals(TESTING_ENVIRONMENT);
     private              Mqtt5AsyncClient      asyncClient;
-    private              BooleanProperty       connected;
+    private              AtomicBoolean         connected;
     private              List<MqttEvtObserver> observers;
 
 
     // ******************** Constructors **************************************
     public MqttManager() {
-        this.connected = new BooleanProperty(MqttManager.this, "connected", false);
+        this.connected = new AtomicBoolean(Boolean.FALSE);
         this.observers = new CopyOnWriteArrayList<>();
         try {
             asyncClient = MqttClient.builder()
@@ -78,7 +77,6 @@ public class MqttManager {
 
     // ******************** Methods *******************************************
     public boolean isConnected() { return connected.get(); }
-    public ReadOnlyBooleanProperty connectedProperty() { return connected; }
 
     public CompletableFuture<Mqtt5PublishResult> publish(final String topic, final String msg) {
         return publish(topic, MqttQos.AT_LEAST_ONCE, false, msg);
@@ -138,7 +136,7 @@ public class MqttManager {
             }
         }
 
-        if (!asyncClient.getState().isConnected() && MqttClientState.CONNECTING != asyncClient.getState()) {
+        if (!asyncClient.getState().isConnectedOrReconnect() && MqttClientState.CONNECTING != asyncClient.getState() && MqttClientState.CONNECTING_RECONNECT != asyncClient.getState()) {
             asyncClient.connectWith()
                        .cleanStart(cleanStart)
                        .sessionExpiryInterval(0)

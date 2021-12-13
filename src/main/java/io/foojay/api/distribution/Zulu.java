@@ -36,6 +36,7 @@ import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
+import io.foojay.api.pkg.Verification;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
@@ -285,6 +286,12 @@ public class Zulu implements Distribution {
         pkg.setFileName(filename);
         pkg.setDirectDownloadUri(downloadLink);
 
+        if (jsonObj.has(FIELD_SHA_256_HASH)) {
+            String checksum = jsonObj.get(FIELD_SHA_256_HASH).getAsString();
+            pkg.setChecksum(checksum.isEmpty() ? "" : checksum);
+            pkg.setChecksumType(checksum.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
+        }
+
         if (jsonObj.has(FIELD_SIGNATURES)) {
             JsonArray signaturesArray = jsonObj.get(FIELD_SIGNATURES).getAsJsonArray();
             if (signaturesArray.size() > 0) {
@@ -414,6 +421,13 @@ public class Zulu implements Distribution {
 
         pkg.setFreeUseInProduction(Boolean.TRUE);
 
+        String directDownloadUri = pkg.getDirectDownloadUri();
+        String tckCertUri        = directDownloadUri.replaceAll("/bin/", "/pdf/cert\\.") + ".pdf";
+        if (Helper.isUriValid(tckCertUri)) {
+            pkg.setTckTested(Verification.YES);
+            pkg.setTckCertUri(tckCertUri);
+        }
+
         pkgs.add(pkg);
 
         return pkgs;
@@ -513,6 +527,13 @@ public class Zulu implements Distribution {
                 pkg.setJavaFXBundled(filename.contains("-fx"));
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
+
+                String directDownloadUri = pkg.getDirectDownloadUri();
+                String tckCertUri        = directDownloadUri.replaceAll("/bin/", "/pdf/cert\\.") + ".pdf";
+                if (Helper.isUriValid(tckCertUri)) {
+                    pkg.setTckTested(Verification.YES);
+                    pkg.setTckCertUri(tckCertUri);
+                }
 
                 pkgs.add(pkg);
             }

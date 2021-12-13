@@ -53,7 +53,7 @@ public class BiSheng implements Distribution {
     private static final Logger LOGGER = LoggerFactory.getLogger(BiSheng.class);
 
     private static final String                       GITHUB_USER            = "openeuler";
-    private static final String                       PACKAGE_URL            = "https://www.gitee.com/" + GITHUB_USER + "bishengjdk";
+    private static final String                       PACKAGE_URL            = "https://www.gitee.com/" + GITHUB_USER + "/bishengjdk";
     private static final String                       CDN_URL                = "https://mirror.iscas.ac.cn/kunpeng/archive/compiler/bisheng_jdk/";
 
     // URL parameters

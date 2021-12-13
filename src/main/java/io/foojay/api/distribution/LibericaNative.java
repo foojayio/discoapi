@@ -346,6 +346,12 @@ public class LibericaNative implements Distribution {
                             continue;
                         }
 
+                        if (pkgJsonObj.has(FIELD_SHA1)) {
+                            String hash = pkgJsonObj.get(FIELD_SHA1).getAsString();
+                            pkg.setChecksum(hash.isEmpty() ? "" : hash);
+                            pkg.setChecksumType(hash.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA1);
+                        }
+
                         pkgsFound.add(pkg);
                     }
                 }

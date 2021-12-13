@@ -49,6 +49,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
@@ -287,6 +288,32 @@ public class Kona implements Distribution {
 
             pkgs.add(pkg);
         }
+        }
+
+        // Fetch checksums
+        for (int i = 0 ; i < jsonArray.size(); i++) {
+            JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
+            JsonArray  assets  = jsonObj.getAsJsonArray("assets");
+            for (JsonElement element : assets) {
+                JsonObject assetJsonObj = element.getAsJsonObject();
+                String     filename     = assetJsonObj.get("name").getAsString();
+
+                if (null == filename || filename.isEmpty() || !filename.endsWith(Constants.FILE_ENDING_MD5)) { continue; }
+                String nameToMatch;
+                if (filename.endsWith(Constants.FILE_ENDING_MD5)) {
+                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_MD5, "");
+                } else {
+                    continue;
+                }
+
+                final String  downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+                Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFileName().contains(nameToMatch)).findFirst();
+                if (optPkg.isPresent()) {
+                    Pkg pkg = optPkg.get();
+                    pkg.setChecksumUri(downloadLink);
+                    pkg.setChecksumType(HashAlgorithm.MD5);
+                }
+            }
         }
 
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);

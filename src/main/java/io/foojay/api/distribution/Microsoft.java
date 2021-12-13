@@ -162,6 +162,7 @@ public class Microsoft implements Distribution {
 
         List<String> fileHrefs    = new ArrayList<>(Helper.getFileHrefsFromString(html));
         List<String> sigFileHrefs = new ArrayList<>(Helper.getSigFileHrefsFromString(html));
+        List<String> sha256FileHrefs = new ArrayList<>(Helper.getSha256FileHrefsFromString(html));
         for (String href : fileHrefs) {
             final String filename = Helper.getFileNameFromText(href);
             if (filename.contains("debugsymbols") || filename.startsWith("jdk")) { continue; }
@@ -231,6 +232,10 @@ public class Microsoft implements Distribution {
             pkg.setDirectDownloadUri(href);
             pkg.setFileName(filename);
             if (sigFileHrefs.contains(href.toLowerCase() + ".sig")) { pkg.setSignatureUri(href.toLowerCase() + ".sig"); }
+            if (sha256FileHrefs.contains(href.toLowerCase() + ".sha256sum.txt")) {
+                pkg.setChecksumUri(href.toLowerCase() + ".sha256sum.txt");
+                pkg.setChecksumType(HashAlgorithm.SHA256);
+            }
             pkg.setArchiveType(archiveType);
             pkg.setJavaFXBundled(false);
             pkg.setTermOfSupport(majorVersion.getTermOfSupport());

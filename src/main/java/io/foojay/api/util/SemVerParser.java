@@ -152,7 +152,9 @@ public class SemVerParser {
         Error err1;
         if (null != pre1 && !pre1.isEmpty()) {
             String[] eparts = pre1.split("\\.");
-            if (eparts.length > 0 && (eparts[0].equalsIgnoreCase("-ea") || eparts[0].equalsIgnoreCase("ea"))) {
+            if (eparts.length > 0 && (eparts[0].equalsIgnoreCase("-ea") ||
+                                      eparts[0].equalsIgnoreCase("ea")  ||
+                                      eparts[0].equalsIgnoreCase("beta"))) {
                 pre1 = "ea";
             }
             if (eparts.length > 1 && Helper.isPositiveInteger(eparts[1])) {
@@ -285,7 +287,9 @@ public class SemVerParser {
             Error err2;
             if (null != pre2 && !pre2.isEmpty()) {
             String[] eparts = pre2.split("\\.");
-            if (eparts.length > 0 && (eparts[0].equalsIgnoreCase("-ea") || eparts[0].equalsIgnoreCase("ea"))) {
+            if (eparts.length > 0 && (eparts[0].equalsIgnoreCase("-ea") ||
+                                      eparts[0].equalsIgnoreCase("ea")  ||
+                                      eparts[0].equalsIgnoreCase("beta"))) {
                 pre2 = "ea";
             }
             if (eparts.length > 1 && Helper.isPositiveInteger(eparts[1])) {

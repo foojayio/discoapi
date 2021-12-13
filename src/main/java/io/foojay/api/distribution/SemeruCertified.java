@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -258,6 +259,33 @@ public class SemeruCertified implements Distribution {
             }
         }
 
+        // Fetch checksums
+        for (int i = 0 ; i < jsonArray.size(); i++) {
+            JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
+            JsonArray  assets  = jsonObj.getAsJsonArray("assets");
+            for (JsonElement element : assets) {
+                JsonObject assetJsonObj = element.getAsJsonObject();
+                String     filename     = assetJsonObj.get("name").getAsString();
+                if (null == filename || filename.isEmpty() || !filename.endsWith(Constants.FILE_ENDING_SHA256_TXT)) { continue; }
+                String nameToMatch;
+                if (filename.endsWith(Constants.FILE_ENDING_SHA256_TXT)) {
+                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256_DMG_TXT, "");
+                } else if (filename.endsWith(Constants.FILE_ENDING_SHA256_TXT)) {
+                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256_TXT, "");
+                } else {
+                    continue;
+                }
+
+                final String  downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+                Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFileName().contains(nameToMatch)).findFirst();
+                if (optPkg.isPresent()) {
+                    Pkg pkg = optPkg.get();
+                    pkg.setChecksumUri(downloadLink);
+                    pkg.setChecksumType(HashAlgorithm.SHA256);
+                }
+            }
+        }
+
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
     }
@@ -266,6 +294,7 @@ public class SemeruCertified implements Distribution {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
         List<String> downloadLinks = new ArrayList<>(Helper.getDownloadLinkFromString(html));
+        List<String> signatureUris = new ArrayList<>(Helper.getSigFromString(html));
         for (String downloadLink : downloadLinks) {
             String filename = Helper.getFileNameFromText(downloadLink.replaceAll("'", ""));
 
@@ -343,6 +372,7 @@ public class SemeruCertified implements Distribution {
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.FALSE);
+            if (signatureUris.contains(downloadLink + ".sig")) { pkg.setSignatureUri(downloadLink + ".sig"); }
             pkgs.add(pkg);
         }
 

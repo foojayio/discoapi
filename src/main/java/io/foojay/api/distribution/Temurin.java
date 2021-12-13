@@ -116,6 +116,8 @@ public class Temurin implements Distribution {
     private static final String        FIELD_JVM_IMPL         = "jvm_impl";
     private static final String        FIELD_OS               = "os";
     private static final String        FIELD_CHECKSUM         = "checksum";
+    private static final String        FIELD_CHECKSUM_LINK    = "checksum_link";
+    private static final String        FIELD_SIGNATURE_LINK   = "signature_link";
 
     private static final HashAlgorithm HASH_ALGORITHM         = HashAlgorithm.NONE;
     private static final String        HASH_URI               = "";
@@ -183,7 +185,8 @@ public class Temurin implements Distribution {
         queryBuilder.append(versionNumber.getFeature().getAsInt()).append("/");
 
         if (null == RELEASE_STATUS_MAP.get(releaseStatus)) {
-            queryBuilder.append(RELEASE_STATUS_MAP.get(ReleaseStatus.GA));
+            final ReleaseStatus rs = versionNumber.getMajorVersion().isEarlyAccessOnly() ? ReleaseStatus.EA : ReleaseStatus.GA;
+            queryBuilder.append(RELEASE_STATUS_MAP.get(rs));
         } else {
             queryBuilder.append(RELEASE_STATUS_MAP.get(releaseStatus));
         }
@@ -310,6 +313,21 @@ public class Temurin implements Distribution {
                     installerPkg.setFreeUseInProduction(Boolean.TRUE);
                     pkgs.add(installerPkg);
                 }
+                if (installerObj.has(FIELD_SIGNATURE_LINK)) {
+                    String signatureLink = installerObj.get(FIELD_SIGNATURE_LINK).getAsString();
+                    installerPkg.setSignatureUri(signatureLink.isEmpty() ? "" : signatureLink);
+                }
+                if (installerObj.has(FIELD_CHECKSUM)) {
+                    String checksum = installerObj.get(FIELD_CHECKSUM).getAsString();
+                    installerPkg.setChecksum(checksum.isEmpty() ? "" : checksum);
+                    installerPkg.setChecksumType(checksum.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
+                }
+                if (installerObj.has(FIELD_CHECKSUM_LINK)) {
+                    String checksumLink = installerObj.get(FIELD_CHECKSUM_LINK).getAsString();
+                    installerPkg.setChecksumUri(checksumLink.isEmpty()  ? ""                 : checksumLink);
+                    installerPkg.setChecksumType(checksumLink.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
+                }
+
             }
 
             JsonElement packageElement = binariesObj.get(FIELD_PACKAGE);
@@ -356,6 +374,20 @@ public class Temurin implements Distribution {
                     packagePkg.setDirectDownloadUri(packageDownloadLink);
                     packagePkg.setFreeUseInProduction(Boolean.TRUE);
                     pkgs.add(packagePkg);
+                }
+                if (packageObj.has(FIELD_SIGNATURE_LINK)) {
+                    String signatureLink = packageObj.get(FIELD_SIGNATURE_LINK).getAsString();
+                    packagePkg.setSignatureUri(signatureLink.isEmpty() ? "" : signatureLink);
+                }
+                if (packageObj.has(FIELD_CHECKSUM)) {
+                    String checksum = packageObj.get(FIELD_CHECKSUM).getAsString();
+                    packagePkg.setChecksum(checksum.isEmpty() ? "" : checksum);
+                    packagePkg.setChecksumType(checksum.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
+                }
+                if (packageObj.has(FIELD_CHECKSUM_LINK)) {
+                    String checksumLink = packageObj.get(FIELD_CHECKSUM_LINK).getAsString();
+                    packagePkg.setChecksumUri(checksumLink.isEmpty()  ? ""                 : checksumLink);
+                    packagePkg.setChecksumType(checksumLink.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
                 }
             }
         }

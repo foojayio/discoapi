@@ -60,6 +60,7 @@ public class Constants {
     public static final String            ENDPOINT_PACKAGES                      = "packages";
     public static final String            ENDPOINT_EPHEMERAL_IDS                 = "ephemeral_ids";
     public static final String            SWAGGER_UI_URL                         = "https://api.foojay.io/swagger-ui/";
+    public static final String            RELEASE_DETAILS_URL                    = "https://foojay.io/java-";
 
     public static final String            SQUARE_BRACKET_OPEN                    = "[";
     public static final String            SQUARE_BRACKET_CLOSE                   = "]";
@@ -131,13 +132,15 @@ public class Constants {
     public static final String            FILE_ENDING_SYMBOLS_TAR_GZ             = "symbols.tar.gz";
     public static final String            FILE_ENDING_SIG                        = "sig";
     public static final String            FILE_ENDING_SOURCE_TAR_GZ              = "source.tar.gz";
+    public static final String            FILE_ENDING_SHA256_TXT                 = "sha256.txt";
+    public static final String            FILE_ENDING_SHA256_DMG_TXT             = "sha256.dmg.txt";
 
     public static final String            RESULT                                 = "result";
     public static final String            MESSAGE                                = "message";
 
     public static final String            SENTINEL_PKG_ID                        = "a2a505f4d8956eb730c1ef285b23c269"; //https://cdn.azul.com/zulu/bin/zulu6.2.0.9-ca-jdk6.0.42-linux.x86_64.rpm
 
-    public static final DateTimeFormatter DTF                                    = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
+    public static final DateTimeFormatter DTF                                    = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     public static final Map<String, String> PARAMETER_LOOKUP = new HashMap<>() {{
         put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, armel, armhf, arm64, ia64, mips, mipsel, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");

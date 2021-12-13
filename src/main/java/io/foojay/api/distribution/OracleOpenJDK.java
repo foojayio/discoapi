@@ -747,6 +747,7 @@ public class OracleOpenJDK implements Distribution {
             ReleaseStatus   releaseStatus   = (href.contains("/GA/") || href.contains("/ga/")) ? ReleaseStatus.GA : ReleaseStatus.EA;
             if (isReleaseCandidate) { releaseStatus = EA; }
             String          downloadLink    = href.replaceAll("\"", "").replace("href=", "");
+            String          checksumUri     = Helper.isUriValid(downloadLink + ".sha256") ? downloadLink + ".sha256" : "";
 
             BUILD_NUMBER_MATCHER.reset(downloadLink);
             while(BUILD_NUMBER_MATCHER.find()) {
@@ -782,6 +783,10 @@ public class OracleOpenJDK implements Distribution {
             pkg.setArchiveType(archiveType);
             pkg.setDirectDownloadUri(downloadLink);
             pkg.setJavaFXBundled(versionNumber.getFeature().getAsInt() <= 10);
+            if (!checksumUri.isEmpty()) {
+                pkg.setChecksumUri(checksumUri);
+                pkg.setChecksumType(HashAlgorithm.SHA256);
+            }
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
             pkgs.add(pkg);

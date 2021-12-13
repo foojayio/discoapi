@@ -39,8 +39,8 @@ import io.foojay.api.util.Config;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.EphemeralIdCache;
 import io.foojay.api.util.Helper;
-import io.foojay.api.util.Helper.DownloadInfo;
 import io.foojay.api.util.OutputFormat;
+import io.foojay.api.util.Records.DownloadInfo;
 import io.foojay.api.util.State;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
@@ -75,6 +75,7 @@ import static com.mongodb.client.model.Filters.in;
 import static com.mongodb.client.model.Filters.lte;
 import static com.mongodb.client.model.Filters.regex;
 import static com.mongodb.client.model.Updates.combine;
+import static com.mongodb.client.model.Updates.inc;
 import static com.mongodb.client.model.Updates.set;
 import static io.foojay.api.pkg.Pkg.FIELD_DISTRIBUTION;
 import static io.foojay.api.pkg.Pkg.FIELD_FILENAME;
@@ -239,7 +240,7 @@ public enum MongoDbManager {
                     } else {
                         return state;
                     }
-                case SYNCRONIZING:
+                case SYNCHRONIZING:
                     if (minutes > Constants.SYNCHRONIZING_TIMEOUT_IN_MINUTES) {
                         collection.updateOne(eq(FIELD_TYPE, FIELD_STATE), combine(set(FIELD_TYPE, FIELD_STATE), set(FIELD_STATE, State.IDLE.name()), set(FIELD_TIMESTAMP, now.getEpochSecond())), new UpdateOptions().upsert(true));
                         return State.IDLE;
@@ -425,7 +426,7 @@ public enum MongoDbManager {
                     long count = collection.countDocuments(new BsonDocument(FIELD_PACKAGE_ID, new BsonString(pkg.getId())));
                         if (count == 0) { documents.add(Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1))); }
                 } catch (JsonParseException e) {
-                    LOGGER.error("Error parsing json when adding package {}. {}", pkg.getId(), e.getMessage());
+                    LOGGER.error("Error parsing json when adding package {}. {}", pkg.getId(), e);
                 }
             });
 
@@ -434,11 +435,11 @@ public enum MongoDbManager {
     }
 
     /**
-     * Adds the given list of packages to the packages collection where existing packages will be updated
+     * Upsert the given list of packages to the packages collection where existing packages will be updated
      * @param pkgs
      * @return true when packages have been added successfully
      */
-    public boolean addNewPkgs(final Collection<Pkg> pkgs) {
+    public boolean upsertPkgs(final Collection<Pkg> pkgs) {
         connect();
         if (!connected) {
             LOGGER.debug("MongoDB not connected, no packages added");
@@ -1097,7 +1098,7 @@ public enum MongoDbManager {
             return new ArrayList<>();
         }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
-            LOGGER.debug("Cannot return packages because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            LOGGER.debug("Cannot return major versions because FOOJAY_MONGODB_DATABASE environment variable was not set.");
             return new ArrayList<>();
         }
         if (null == database) {

@@ -41,7 +41,9 @@ import java.io.StringReader;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.TreeSet;
@@ -143,7 +145,7 @@ public class ZuluPrime implements Distribution {
     public List<Pkg> getAllPkgs() {
         List<Pkg> pkgs = new ArrayList<>();
 
-        List<String> downloadLinks = new ArrayList<>();
+        Map<String, String> downloadLinkMap = new HashMap<>();
 
         // Load jdk properties
         try {
@@ -161,15 +163,19 @@ public class ZuluPrime implements Distribution {
             propertiesPkgs.load(new StringReader(propertiesText));
 
             propertiesPkgs.forEach((key, value) -> {
-                String downloadLink = value.toString();
-                downloadLinks.add(downloadLink);
+                downloadLinkMap.put(key.toString(), value.toString());
             });
         } catch (Exception e) {
             LOGGER.error("Error reading jdk properties file from github for {}. {}", getName(), e.getMessage());
         }
 
 
-        for(String downloadLink : downloadLinks) {
+        for(Entry<String, String> entry : downloadLinkMap.entrySet()) {
+            String   key              = entry.getKey();
+            String   downloadLink     = entry.getValue();
+
+            String[] keyParts         = key.split("-");
+
             String   filename         = Helper.getFileNameFromText(downloadLink);
             String   strippedFilename = filename.replaceFirst("zing[0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9]*-[0-9]*-ca-jdk", "").replaceAll("(\\.tar\\.gz)", "");
             String[] filenameParts    = strippedFilename.split("-");
@@ -184,7 +190,7 @@ public class ZuluPrime implements Distribution {
             pkg.setArchiveType(ext);
 
             Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                             .filter(entry -> strippedFilename.contains(entry.getKey()))
+                                                             .filter(e -> keyParts[2].contains(e.getKey()))
                                                              .findFirst()
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
@@ -193,7 +199,7 @@ public class ZuluPrime implements Distribution {
             pkg.setBitness(arch.getBitness());
 
 
-            VersionNumber vNumber = VersionNumber.fromText(filenameParts[0]);
+            VersionNumber vNumber = VersionNumber.fromText(keyParts[0].replaceAll("_", "\\."));
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
             pkg.setDistributionVersion(vNumber);
@@ -205,7 +211,7 @@ public class ZuluPrime implements Distribution {
             pkg.setReleaseStatus(GA);
 
             OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                                  .filter(entry -> strippedFilename.contains(entry.getKey()))
+                                                                  .filter(e -> keyParts[1].contains(e.getKey()))
                                                                   .findFirst()
                                                                   .map(Entry::getValue)
                                                                   .orElse(OperatingSystem.NONE);

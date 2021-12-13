@@ -26,6 +26,7 @@ import io.foojay.api.mqtt.MqttManager;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
+import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import io.foojay.api.util.JsonCache;
@@ -78,6 +79,7 @@ public enum CacheManager {
         put(16, true);
         put(17, true);
         put(18, true);
+        put(19, true);
     }};
     public final         AtomicBoolean                syncWithDatabaseInProgress  = new AtomicBoolean(false);
     public final         AtomicLong                   msToFillCacheWithPkgsFromDB = new AtomicLong(-1);
@@ -115,16 +117,23 @@ public enum CacheManager {
         jsonCacheV2.remove(keysToRemove);
     }
 
+    public String getEphemeralIdForPkg(final String pkgId) {
+        return MongoDbManager.INSTANCE.ephemeralIdCache.getEphemeralIdForPkgId(pkgId);
+    }
+
     public List<MajorVersion> getMajorVersions() {
+        return getMajorVersions(BuildScope.BUILD_OF_OPEN_JDK);
+    }
+    public List<MajorVersion> getMajorVersions(final BuildScope scope) {
         if (majorVersions.isEmpty()) { updateMajorVersions(); }
-        return majorVersions;
+        return majorVersions.stream().filter(majorVersion -> majorVersion.getScope() == scope).collect(Collectors.toList());
     }
 
     public void syncCacheWithDatabase() {
         if (syncWithDatabaseInProgress.get()) { return; }
 
         syncWithDatabaseInProgress.set(true);
-        StateManager.INSTANCE.setState(State.SYNCRONIZING, "Synchronizing cache with db");
+        StateManager.INSTANCE.setState(State.SYNCHRONIZING, "Synchronizing cache with db");
 
         final long startSyncronizingCache = System.currentTimeMillis();
         LOGGER.debug("Get last updates per distro from mongodb");

@@ -50,6 +50,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
@@ -151,6 +152,7 @@ public class Semeru implements Distribution {
 
     public List<Pkg> getAllPkgs() {
         List<Pkg> pkgs = new ArrayList<>();
+
         try {
             for (int i = 8 ; i <= MajorVersion.getLatest(true).getAsInt() ; i++) {
                 String packageUrl = PACKAGE_URL + "semeru" + i + "-binaries/releases";
@@ -182,7 +184,6 @@ public class Semeru implements Distribution {
 
     public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray) {
         List<Pkg> pkgs = new ArrayList<>();
-
         for (int i = 0; i < jsonArray.size(); i++) {
             JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
             if (jsonObj.has("prerelease")) {
@@ -271,6 +272,34 @@ public class Semeru implements Distribution {
                 pkg.setOperatingSystem(operatingSystem);
                 pkg.setFreeUseInProduction(Boolean.TRUE);
                 pkgs.add(pkg);
+            }
+        }
+
+        // Fetch checksums
+        for (int i = 0 ; i < jsonArray.size(); i++) {
+            JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
+            JsonArray  assets  = jsonObj.getAsJsonArray("assets");
+            for (JsonElement element : assets) {
+                JsonObject assetJsonObj = element.getAsJsonObject();
+                String     filename     = assetJsonObj.get("name").getAsString();
+
+                if (null == filename || filename.isEmpty() || (!filename.endsWith(Constants.FILE_ENDING_SHA256_TXT) && !filename.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT))) { continue; }
+                String nameToMatch;
+                if (filename.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT)) {
+                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256_DMG_TXT, "");
+                } else if (filename.endsWith(Constants.FILE_ENDING_SHA256_TXT)) {
+                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256_TXT, "");
+                } else {
+                    continue;
+                }
+
+                final String  downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+                Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFileName().contains(nameToMatch)).findFirst();
+                if (optPkg.isPresent()) {
+                    Pkg pkg = optPkg.get();
+                    pkg.setChecksumUri(downloadLink);
+                    pkg.setChecksumType(HashAlgorithm.SHA256);
+                }
             }
         }
 

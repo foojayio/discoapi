@@ -275,7 +275,6 @@ public class Liberica implements Distribution {
         Integer       bits          = jsonObj.get(FIELD_BITNESS).getAsInt();
         String        os            = jsonObj.get(FIELD_OS).getAsString();
         String        arc           = jsonObj.get(FIELD_ARCHITECTURE).getAsString();
-        //String        sha1          = jsonObj.get(FIELD_SHA1).getAsString();
 
         if (latest) {
             if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }
@@ -362,6 +361,12 @@ public class Liberica implements Distribution {
         pkg.setDirectDownloadUri(downloadLink);
 
         pkg.setFreeUseInProduction(Boolean.TRUE);
+
+        if (jsonObj.has(FIELD_SHA1)) {
+            String hash = jsonObj.get(FIELD_SHA1).getAsString();
+            pkg.setChecksum(hash.isEmpty() ? "" : hash);
+            pkg.setChecksumType(hash.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA1);
+        }
 
         pkgs.add(pkg);
         return pkgs;

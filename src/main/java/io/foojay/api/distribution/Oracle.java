@@ -35,6 +35,7 @@ import io.foojay.api.pkg.SemVer;
 import io.foojay.api.pkg.SignatureType;
 import io.foojay.api.pkg.TermOfSupport;
 import io.foojay.api.pkg.VersionNumber;
+import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
@@ -358,7 +359,7 @@ public class Oracle implements Distribution {
                              .stream()
                              .filter(majorVersion -> majorVersion.getAsInt() >= 17)
                              .forEach(majorVersion -> {
-                                 final List<SemVer> versions = majorVersion.getVersions();
+                                 final List<SemVer> versions = majorVersion.getVersions(BuildScope.BUILD_OF_OPEN_JDK);
                                  versions.stream().map(semver -> new VersionNumber(semver.getFeature(), semver.getInterim(), semver.getUpdate(), semver.getPatch())).collect(Collectors.toSet()).forEach(version -> {
                                      final int           featureVersion = version.getFeature().getAsInt();
                                      final int           update         = version.getUpdate().getAsInt();
@@ -384,6 +385,7 @@ public class Oracle implements Distribution {
                                                  uriBuilder.append(architecture.getApiString()).append("_").append("bin").append(".").append(archiveType.getApiString());
                                                  final String fileDownloadUri = uriBuilder.toString();
                                                  final String filename        = fileDownloadUri.substring(fileDownloadUri.lastIndexOf("/") + 1);
+                                                 final String checksumUri     = fileDownloadUri + ".sha256";
 
                                                  if (Helper.isUriValid(fileDownloadUri)) {
                                                      // Create pkg
@@ -404,6 +406,10 @@ public class Oracle implements Distribution {
                                                      pkg.setDirectlyDownloadable(true);
                                                      pkg.setFreeUseInProduction(Boolean.TRUE);
                                                      pkg.setDirectDownloadUri(fileDownloadUri);
+                                                     if (Helper.isUriValid(checksumUri)) {
+                                                         pkg.setChecksumUri(checksumUri);
+                                                         pkg.setChecksumType(HashAlgorithm.SHA256);
+                                                     }
 
                                                      if (filename.contains("hflt")) {
                                                          pkg.setFPU(FPU.HARD_FLOAT);

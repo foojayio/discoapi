@@ -35,6 +35,7 @@ import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.pkg.ReleaseStatus;
 import io.foojay.api.pkg.TermOfSupport;
+import io.foojay.api.pkg.Verification;
 import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.scopes.Scope;
 import io.foojay.api.util.Comparison;
@@ -62,7 +63,7 @@ public enum DiscoService {
     public List<Pkg> getPkgsFromCache(final VersionNumber fromVersionNumber, final VersionNumber toVersionNumber, final List<Distribution> distributions, final List<Architecture> architectures, final List<FPU> fpus, final List<ArchiveType> archiveTypes,
                                       final PackageType packageType, final List<OperatingSystem> operatingSystems, final List<LibCType> libCTypes, final List<ReleaseStatus> releaseStatus, final List<TermOfSupport> termsOfSupport,
                                       final Bitness bitness, final Boolean javafxBundled, final Boolean withFxIfAvailable, final Boolean directlyDownloadable, final List<Feature> features, final Boolean signatureAvailable,
-                                      final Boolean freeToUseInProduction, /*final Boolean tckTested,*/ final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
+                                      final Boolean freeToUseInProduction, final Verification tckTested, final Verification aqavitCertified, final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
         Collection<Pkg> selection = CacheManager.INSTANCE.pkgCache.getPkgs();
         if (null != pkgScopes && !pkgScopes.isEmpty()) {
             for (Scope scope : pkgScopes) {
@@ -97,7 +98,8 @@ public enum DiscoService {
                                           .filter(pkg -> features.isEmpty()                       ? pkg.getFeatures()            != null        : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                           .filter(pkg -> null == signatureAvailable ? (pkg != null) : !signatureAvailable ? (null == pkg.getSignatureUri() || pkg.getSignatureUri().isEmpty()) : (pkg.getSignatureUri() != null && !pkg.getSignatureUri().isEmpty()))
                                           .filter(pkg -> null == freeToUseInProduction            ? pkg.getFreeUseInProduction() != null        : pkg.getFreeUseInProduction())
-                                          //.filter(pkg -> null == tckTested                        ? pkg.isTckTested()            != null        : pkg.isTckTested())
+                                          .filter(pkg -> Verification.NONE == tckTested           ? pkg.getTckTested()           != null        : pkg.getTckTested()           == tckTested)
+                                          .filter(pkg -> Verification.NONE == aqavitCertified     ? pkg.getAqavitCertified()     != null        : pkg.getAqavitCertified()     == aqavitCertified)
                                           .filter(pkg -> pkg.getVersionNumber().compareTo(minVersionNumber) >= 0)
                                           .filter(pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) <= 0)
                                           .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
@@ -116,14 +118,14 @@ public enum DiscoService {
     public List<Pkg> getPkgsFromCache(final VersionNumber versionNumber, final Comparison comparison, final List<Distribution> distributions, final List<Architecture> architectures, final List<FPU> fpus, final List<ArchiveType> archiveTypes,
                                       final PackageType packageType, final List<OperatingSystem> operatingSystems, final List<LibCType> libCTypes, final List<ReleaseStatus> releaseStatus, final List<TermOfSupport> termsOfSupport,
                                       final Bitness bitness, final Boolean javafxBundled, final Boolean withFxIfAvailable, final Boolean directlyDownloadable, final Latest latest, final List<Feature> features, final Boolean signatureAvailable,
-                                      final Boolean freeToUseInProduction, /*final Boolean tckTested,*/ final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
-        return getPkgsFromCache(versionNumber, null, comparison, distributions, architectures, fpus, archiveTypes, packageType, operatingSystems, libCTypes, releaseStatus, termsOfSupport, bitness, javafxBundled, withFxIfAvailable, directlyDownloadable, latest, features, signatureAvailable, freeToUseInProduction, /*tckTested,*/ distroScopes, match, pkgScopes);
+                                      final Boolean freeToUseInProduction, final Verification tckTested, final Verification aqavitCertified, final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
+        return getPkgsFromCache(versionNumber, null, comparison, distributions, architectures, fpus, archiveTypes, packageType, operatingSystems, libCTypes, releaseStatus, termsOfSupport, bitness, javafxBundled, withFxIfAvailable, directlyDownloadable, latest, features, signatureAvailable, freeToUseInProduction, tckTested, aqavitCertified, distroScopes, match, pkgScopes);
     }
 
     public List<Pkg> getPkgsFromCache(final VersionNumber versionNumber, final VersionNumber toVersionNumber, final Comparison comparison, final List<Distribution> distributions, final List<Architecture> architectures, final List<FPU> fpus, final List<ArchiveType> archiveTypes,
                                       final PackageType packageType, final List<OperatingSystem> operatingSystems, final List<LibCType> libCTypes, final List<ReleaseStatus> releaseStatus, final List<TermOfSupport> termsOfSupport,
                                       final Bitness bitness, final Boolean javafxBundled, final Boolean withFxIfAvailable, final Boolean directlyDownloadable, final Latest latest, final List<Feature> features, final Boolean signatureAvailable,
-                                      final Boolean freeToUseInProduction, /*final Boolean tckTested,*/ final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
+                                      final Boolean freeToUseInProduction, final Verification tckTested, final Verification aqavitCertified, final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
         Collection<Pkg> selection = CacheManager.INSTANCE.pkgCache.getPkgs();
         if (null != pkgScopes && !pkgScopes.isEmpty()) {
             for (Scope scope : pkgScopes) {
@@ -146,13 +148,13 @@ public enum DiscoService {
                     final VersionNumber maxNumber;
                     if (null == versionNumber || versionNumber.getFeature().isEmpty()) {
                         Optional<Pkg> pkgWithMaxVersionNumber = pkgSelection.parallelStream()
-                                                                            .filter(pkg -> distributions.isEmpty() ? (pkg.getDistribution() != null &&
-                                                                                                                      pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8 &&
-                                                                                                                      pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11 &&
-                                                                                                                      pkg.getDistribution().getDistro() != Distro.GRAALVM_CE16 &&
-                                                                                                                      pkg.getDistribution().getDistro() != Distro.GRAALVM_CE17 &&
-                                                                                                                      pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE &&
-                                                                                                                      pkg.getDistribution().getDistro() != Distro.MANDREL) : distributions.contains(pkg.getDistribution()))
+                                                                            .filter(pkg -> distributions.isEmpty()                    ? (pkg.getDistribution() != null &&
+                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8 &&
+                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11 &&
+                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE16 &&
+                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE17 &&
+                                                                                                                                         pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE &&
+                                                                                                                                         pkg.getDistribution().getDistro() != Distro.MANDREL) : distributions.contains(pkg.getDistribution()))
                                                                             .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(distroScopes.stream().collect(toSet())::contains))
                                                                             .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
                                                                             .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
@@ -168,7 +170,8 @@ public enum DiscoService {
                                                                             .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                                             .filter(pkg -> null == signatureAvailable ? (pkg != null) : !signatureAvailable ? (null == pkg.getSignatureUri() || pkg.getSignatureUri().isEmpty()) : (pkg.getSignatureUri() != null && !pkg.getSignatureUri().isEmpty()))
                                                                             .filter(pkg -> null == freeToUseInProduction              ? pkg.getFreeUseInProduction() != null          : pkg.getFreeUseInProduction())
-                                                                            //.filter(pkg -> null == tckTested                          ? pkg.isTckTested()            != null          : pkg.isTckTested())
+                                                                            .filter(pkg -> Verification.NONE == tckTested             ? pkg.getTckTested()           != null          : pkg.getTckTested()           == tckTested)
+                                                                            .filter(pkg -> Verification.NONE == aqavitCertified       ? pkg.getAqavitCertified()     != null          : pkg.getAqavitCertified()     == aqavitCertified)
                                                                             .max(Comparator.comparing(Pkg::getSemver));
                         if (pkgWithMaxVersionNumber.isPresent()) {
                             maxNumber = pkgWithMaxVersionNumber.get().getVersionNumber();
@@ -194,7 +197,8 @@ public enum DiscoService {
                                                                             .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                                             .filter(pkg -> null == signatureAvailable ? (pkg != null) : !signatureAvailable ? (null == pkg.getSignatureUri() || pkg.getSignatureUri().isEmpty()) : (pkg.getSignatureUri() != null && !pkg.getSignatureUri().isEmpty()))
                                                                             .filter(pkg -> null == freeToUseInProduction              ? pkg.getFreeUseInProduction() != null          : pkg.getFreeUseInProduction())
-                                                                            //.filter(pkg -> null == tckTested                          ? pkg.isTckTested()            != null          : pkg.isTckTested())
+                                                                            .filter(pkg -> Verification.NONE == tckTested             ? pkg.getTckTested()           != null          : pkg.getTckTested()           == tckTested)
+                                                                            .filter(pkg -> Verification.NONE == aqavitCertified       ? pkg.getAqavitCertified()     != null          : pkg.getAqavitCertified()     == aqavitCertified)
                                                                             .filter(pkg -> featureVersion     == pkg.getVersionNumber().getFeature().getAsInt())
                                                                             .max(Comparator.comparing(Pkg::getSemver));
                         if (pkgWithMaxVersionNumber.isPresent()) {
@@ -221,7 +225,8 @@ public enum DiscoService {
                                                 .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                 .filter(pkg -> null == signatureAvailable ? (pkg != null) : !signatureAvailable ? (null == pkg.getSignatureUri() || pkg.getSignatureUri().isEmpty()) : (pkg.getSignatureUri() != null && !pkg.getSignatureUri().isEmpty()))
                                                 .filter(pkg -> null == freeToUseInProduction              ? pkg.getFreeUseInProduction() != null          : pkg.getFreeUseInProduction())
-                                                //.filter(pkg -> null == tckTested                          ? pkg.isTckTested()            != null          : pkg.isTckTested())
+                                                .filter(pkg -> Verification.NONE == tckTested             ? pkg.getTckTested()           != null          : pkg.getTckTested()           == tckTested)
+                                                .filter(pkg -> Verification.NONE == aqavitCertified       ? pkg.getAqavitCertified()     != null          : pkg.getAqavitCertified()     == aqavitCertified)
                                                 .filter(pkg -> pkg.getVersionNumber().compareTo(maxNumber) == 0)
                                                 .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
                                                 .collect(Collectors.toList());
@@ -243,7 +248,8 @@ public enum DiscoService {
                                                 .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                 .filter(pkg -> null == signatureAvailable ? (pkg != null) : !signatureAvailable ? (null == pkg.getSignatureUri() || pkg.getSignatureUri().isEmpty()) : (pkg.getSignatureUri() != null && !pkg.getSignatureUri().isEmpty()))
                                                 .filter(pkg -> null == freeToUseInProduction              ? pkg.getFreeUseInProduction() != null          : pkg.getFreeUseInProduction())
-                                                //.filter(pkg -> null == tckTested                          ? pkg.isTckTested()            != null          : pkg.isTckTested())
+                                                .filter(pkg -> Verification.NONE == tckTested             ? pkg.getTckTested()           != null          : pkg.getTckTested()           == tckTested)
+                                                .filter(pkg -> Verification.NONE == aqavitCertified       ? pkg.getAqavitCertified()     != null          : pkg.getAqavitCertified()     == aqavitCertified)
                                                 .filter(pkg -> (pkg.getVersionNumber().getFeature().getAsInt() >= maxNumber.getFeature().getAsInt() && pkg.getVersionNumber().compareTo(maxNumber) <= 0))
                                                 .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
                                                 .collect(Collectors.toList());
@@ -266,16 +272,16 @@ public enum DiscoService {
                     distributionsToCheck.forEach(distro -> {
                         Optional<Pkg> pkgFound = pkgSelection.parallelStream()
                                                              .filter(pkg -> pkg.getDistribution().equals(distro))
-                                                             .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null        : architectures.contains(pkg.getArchitecture()))
-                                                             .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null        : archiveTypes.contains(pkg.getArchiveType()))
-                                                             .filter(pkg -> operatingSystems.isEmpty()                 ? pkg.getOperatingSystem()     != null        : operatingSystems.contains(pkg.getOperatingSystem()))
-                                                             .filter(pkg -> libCTypes.isEmpty()                        ? pkg.getLibCType()            != null        : libCTypes.contains(pkg.getLibCType()))
-                                                             .filter(pkg -> termsOfSupport.isEmpty()                   ? pkg.getTermOfSupport()       != null        : termsOfSupport.contains(pkg.getTermOfSupport()))
-                                                             .filter(pkg -> PackageType.NONE   == packageType          ? pkg.getPackageType()         != packageType : pkg.getPackageType()         == packageType)
-                                                             .filter(pkg -> releaseStatus.isEmpty()                    ? pkg.getReleaseStatus()       != null        : releaseStatus.contains(pkg.getReleaseStatus()))
-                                                             .filter(pkg -> Bitness.NONE       == bitness              ? pkg.getBitness()             != bitness     : pkg.getBitness()             == bitness)
-                                                             .filter(pkg -> null               == javafxBundled        ? pkg.isJavaFXBundled()        != null        : pkg.isJavaFXBundled()        == javafxBundled)
-                                                             .filter(pkg -> null               == directlyDownloadable ? pkg.isDirectlyDownloadable() != null        : pkg.isDirectlyDownloadable() == directlyDownloadable)
+                                                             .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
+                                                             .filter(pkg -> archiveTypes.isEmpty()                     ? pkg.getArchiveType()         != null          : archiveTypes.contains(pkg.getArchiveType()))
+                                                             .filter(pkg -> operatingSystems.isEmpty()                 ? pkg.getOperatingSystem()     != null          : operatingSystems.contains(pkg.getOperatingSystem()))
+                                                             .filter(pkg -> libCTypes.isEmpty()                        ? pkg.getLibCType()            != null          : libCTypes.contains(pkg.getLibCType()))
+                                                             .filter(pkg -> termsOfSupport.isEmpty()                   ? pkg.getTermOfSupport()       != null          : termsOfSupport.contains(pkg.getTermOfSupport()))
+                                                             .filter(pkg -> PackageType.NONE   == packageType          ? pkg.getPackageType()         != packageType   : pkg.getPackageType()         == packageType)
+                                                             .filter(pkg -> releaseStatus.isEmpty()                    ? pkg.getReleaseStatus()       != null          : releaseStatus.contains(pkg.getReleaseStatus()))
+                                                             .filter(pkg -> Bitness.NONE       == bitness              ? pkg.getBitness()             != bitness       : pkg.getBitness()             == bitness)
+                                                             .filter(pkg -> null               == javafxBundled        ? pkg.isJavaFXBundled()        != null          : pkg.isJavaFXBundled()        == javafxBundled)
+                                                             .filter(pkg -> null               == directlyDownloadable ? pkg.isDirectlyDownloadable() != null          : pkg.isDirectlyDownloadable() == directlyDownloadable)
                                                              .max(Comparator.comparing(Pkg::getSemver));
                         if (pkgFound.isPresent()) { maxVersionPerDistribution.put(distro, pkgFound.get().getVersionNumber()); }
                     });
@@ -297,7 +303,8 @@ public enum DiscoService {
                                                                                    .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                                                                    .filter(pkg -> null == signatureAvailable ? (pkg != null) : !signatureAvailable ? (null == pkg.getSignatureUri() || pkg.getSignatureUri().isEmpty()) : (pkg.getSignatureUri() != null && !pkg.getSignatureUri().isEmpty()))
                                                                                    .filter(pkg -> null == freeToUseInProduction              ? pkg.getFreeUseInProduction() != null          : pkg.getFreeUseInProduction())
-                                                                                   //.filter(pkg -> null == tckTested                          ? pkg.isTckTested()            != null          : pkg.isTckTested())
+                                                                                   .filter(pkg -> Verification.NONE == tckTested             ? pkg.getTckTested()           != null          : pkg.getTckTested()           == tckTested)
+                                                                                   .filter(pkg -> Verification.NONE == aqavitCertified       ? pkg.getAqavitCertified()     != null          : pkg.getAqavitCertified()     == aqavitCertified)
                                                                                    .filter(pkg -> pkg.getVersionNumber().equals(maxVersionPerDistribution.get(distro)))
                                                                                    .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
                                                                                    .collect(Collectors.toList())));
@@ -321,7 +328,8 @@ public enum DiscoService {
                                             .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                             .filter(pkg -> null == signatureAvailable ? (pkg != null) : !signatureAvailable ? (null == pkg.getSignatureUri() || pkg.getSignatureUri().isEmpty()) : (pkg.getSignatureUri() != null && !pkg.getSignatureUri().isEmpty()))
                                             .filter(pkg -> null == freeToUseInProduction              ? pkg.getFreeUseInProduction() != null          : pkg.getFreeUseInProduction())
-                                            //.filter(pkg -> null == tckTested                          ? pkg.isTckTested()            != null          : pkg.isTckTested())
+                                            .filter(pkg -> Verification.NONE == tckTested             ? pkg.getTckTested()           != null          : pkg.getTckTested()           == tckTested)
+                                            .filter(pkg -> Verification.NONE == aqavitCertified       ? pkg.getAqavitCertified()     != null          : pkg.getAqavitCertified()     == aqavitCertified)
                                             .filter(pkg -> pkg.getVersionNumber().getFeature().getAsInt() == versionNumber.getFeature().getAsInt())
                                             .filter(pkg -> pkg.isLatestBuildAvailable())
                                             .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
@@ -345,7 +353,8 @@ public enum DiscoService {
                                             .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                             .filter(pkg -> null == signatureAvailable ? (pkg != null) : !signatureAvailable ? (null == pkg.getSignatureUri() || pkg.getSignatureUri().isEmpty()) : (pkg.getSignatureUri() != null && !pkg.getSignatureUri().isEmpty()))
                                             .filter(pkg -> null == freeToUseInProduction              ? pkg.getFreeUseInProduction() != null          : pkg.getFreeUseInProduction())
-                                            //.filter(pkg -> null == tckTested                          ? pkg.isTckTested()            != null          : pkg.isTckTested())
+                                            .filter(pkg -> Verification.NONE == tckTested             ? pkg.getTckTested()           != null          : pkg.getTckTested()           == tckTested)
+                                            .filter(pkg -> Verification.NONE == aqavitCertified       ? pkg.getAqavitCertified()     != null          : pkg.getAqavitCertified()     == aqavitCertified)
                                             .filter(pkg -> null               == versionNumber        ? pkg.getVersionNumber()       != null          : pkg.getVersionNumber().getFeature().getAsInt() == versionNumber.getFeature().getAsInt())
                                             .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
                                             .collect(Collectors.toList());
@@ -398,7 +407,8 @@ public enum DiscoService {
                                             .filter(pkg -> features.isEmpty()                         ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                             .filter(pkg -> null == signatureAvailable ? (pkg != null) : !signatureAvailable ? (null == pkg.getSignatureUri() || pkg.getSignatureUri().isEmpty()) : (pkg.getSignatureUri() != null && !pkg.getSignatureUri().isEmpty()))
                                             .filter(pkg -> null == freeToUseInProduction              ? pkg.getFreeUseInProduction() != null          : pkg.getFreeUseInProduction())
-                                            //.filter(pkg -> null == tckTested                          ? pkg.isTckTested()            != null          : pkg.isTckTested())
+                                            .filter(pkg -> Verification.NONE == tckTested             ? pkg.getTckTested()           != null          : pkg.getTckTested()           == tckTested)
+                                            .filter(pkg -> Verification.NONE == aqavitCertified       ? pkg.getAqavitCertified()     != null          : pkg.getAqavitCertified()     == aqavitCertified)
                                             .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
                                             .collect(Collectors.toList());
 
@@ -525,7 +535,8 @@ public enum DiscoService {
                                     .filter(pkg -> features.isEmpty()                       ? pkg.getFeatures()            != null          : features.stream().anyMatch(feature -> pkg.getFeatures().contains(feature)))
                                     .filter(pkg -> null == signatureAvailable ? (pkg != null) : !signatureAvailable ? (null == pkg.getSignatureUri() || pkg.getSignatureUri().isEmpty()) : (pkg.getSignatureUri() != null && !pkg.getSignatureUri().isEmpty()))
                                     .filter(pkg -> null == freeToUseInProduction              ? pkg.getFreeUseInProduction() != null          : pkg.getFreeUseInProduction())
-                                    //.filter(pkg -> null == tckTested                          ? pkg.isTckTested()            != null          : pkg.isTckTested())
+                                    .filter(pkg -> Verification.NONE == tckTested             ? pkg.getTckTested()           != null          : pkg.getTckTested()           == tckTested)
+                                    .filter(pkg -> Verification.NONE == aqavitCertified       ? pkg.getAqavitCertified()     != null          : pkg.getAqavitCertified()     == aqavitCertified)
                                     .filter(greaterCheck)
                                     .filter(smallerCheck)
                                     .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
