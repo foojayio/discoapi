@@ -20,21 +20,21 @@
 package io.foojay.api.distribution;
 
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.FPU;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.FPU;
-import io.foojay.api.pkg.HashAlgorithm;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
@@ -48,35 +48,47 @@ import java.util.Map.Entry;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.Architecture.AARCH64;
-import static io.foojay.api.pkg.Architecture.AMD64;
-import static io.foojay.api.pkg.Architecture.ARM;
-import static io.foojay.api.pkg.Architecture.PPC;
-import static io.foojay.api.pkg.Architecture.SPARC;
-import static io.foojay.api.pkg.Architecture.X64;
-import static io.foojay.api.pkg.Architecture.X86;
-import static io.foojay.api.pkg.ArchiveType.DEB;
-import static io.foojay.api.pkg.ArchiveType.DMG;
-import static io.foojay.api.pkg.ArchiveType.MSI;
-import static io.foojay.api.pkg.ArchiveType.PKG;
-import static io.foojay.api.pkg.ArchiveType.RPM;
-import static io.foojay.api.pkg.ArchiveType.SRC_TAR;
-import static io.foojay.api.pkg.ArchiveType.TAR_GZ;
-import static io.foojay.api.pkg.ArchiveType.ZIP;
-import static io.foojay.api.pkg.Bitness.BIT_32;
-import static io.foojay.api.pkg.Bitness.BIT_64;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.OperatingSystem.LINUX_MUSL;
-import static io.foojay.api.pkg.OperatingSystem.MACOS;
-import static io.foojay.api.pkg.OperatingSystem.SOLARIS;
-import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.PackageType.JRE;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
-import static io.foojay.api.pkg.TermOfSupport.LTS;
-import static io.foojay.api.pkg.TermOfSupport.MTS;
-import static io.foojay.api.pkg.TermOfSupport.STS;
+import static eu.hansolo.jdktools.Architecture.AARCH64;
+import static eu.hansolo.jdktools.Architecture.AMD64;
+import static eu.hansolo.jdktools.Architecture.ARM;
+import static eu.hansolo.jdktools.Architecture.ARMEL;
+import static eu.hansolo.jdktools.Architecture.ARMHF;
+import static eu.hansolo.jdktools.Architecture.I386;
+import static eu.hansolo.jdktools.Architecture.MIPS;
+import static eu.hansolo.jdktools.Architecture.MIPSEL;
+import static eu.hansolo.jdktools.Architecture.PPC;
+import static eu.hansolo.jdktools.Architecture.PPC64LE;
+import static eu.hansolo.jdktools.Architecture.S390X;
+import static eu.hansolo.jdktools.Architecture.SPARC;
+import static eu.hansolo.jdktools.Architecture.SPARCV9;
+import static eu.hansolo.jdktools.Architecture.X64;
+import static eu.hansolo.jdktools.Architecture.X86;
+import static eu.hansolo.jdktools.ArchiveType.CAB;
+import static eu.hansolo.jdktools.ArchiveType.DEB;
+import static eu.hansolo.jdktools.ArchiveType.DMG;
+import static eu.hansolo.jdktools.ArchiveType.MSI;
+import static eu.hansolo.jdktools.ArchiveType.PKG;
+import static eu.hansolo.jdktools.ArchiveType.RPM;
+import static eu.hansolo.jdktools.ArchiveType.SRC_TAR;
+import static eu.hansolo.jdktools.ArchiveType.TAR_GZ;
+import static eu.hansolo.jdktools.ArchiveType.ZIP;
+import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
+import static eu.hansolo.jdktools.Bitness.BIT_32;
+import static eu.hansolo.jdktools.Bitness.BIT_64;
+import static eu.hansolo.jdktools.OperatingSystem.ALPINE_LINUX;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX_MUSL;
+import static eu.hansolo.jdktools.OperatingSystem.MACOS;
+import static eu.hansolo.jdktools.OperatingSystem.QNX;
+import static eu.hansolo.jdktools.OperatingSystem.SOLARIS;
+import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.PackageType.JRE;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.TermOfSupport.LTS;
+import static eu.hansolo.jdktools.TermOfSupport.MTS;
+import static eu.hansolo.jdktools.TermOfSupport.STS;
 
 
 public class Liberica implements Distribution {
@@ -165,12 +177,12 @@ public class Liberica implements Distribution {
         return List.of("liberica", "LIBERICA", "Liberica");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.LIBERICA.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
 
@@ -257,7 +269,7 @@ public class Liberica implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType bundleType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         String        filename      = jsonObj.get(FIELD_FILENAME).getAsString();
@@ -265,6 +277,11 @@ public class Liberica implements Distribution {
         VersionNumber vNumber       = new VersionNumber(jsonObj.get(FIELD_FEATURE_VERSION).getAsInt(), jsonObj.get(FIELD_INTERIM_VERSION).getAsInt(), jsonObj.get(FIELD_UPDATE_VERSION).getAsInt(), jsonObj.get(FIELD_PATCH_VERSION).getAsInt());
         VersionNumber dNumber       = new VersionNumber(versionNumber);
         Integer       buildVersion  = jsonObj.get(FIELD_BUILD_VERSION).getAsInt();
+
+        if (onlyNewPkgs) {
+            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { return pkgs; }
+        }
+
         dNumber.setBuild(buildVersion);
         vNumber.setBuild(buildVersion);
         String        packageType   = jsonObj.get(FIELD_PACKAGE_TYPE).toString().replaceAll("\"", "");
@@ -367,6 +384,8 @@ public class Liberica implements Distribution {
             pkg.setChecksum(hash.isEmpty() ? "" : hash);
             pkg.setChecksumType(hash.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA1);
         }
+
+        pkg.setSize(Helper.getFileSize(downloadLink));
 
         pkgs.add(pkg);
         return pkgs;

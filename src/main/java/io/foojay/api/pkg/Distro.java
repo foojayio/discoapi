@@ -19,11 +19,14 @@
 
 package io.foojay.api.pkg;
 
+import eu.hansolo.jdktools.Api;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.scopes.BuildScope;
+import eu.hansolo.jdktools.scopes.UsageScope;
+import eu.hansolo.jdktools.util.OutputFormat;
+import eu.hansolo.jdktools.versioning.Semver;
 import io.foojay.api.CacheManager;
 import io.foojay.api.distribution.*;
-import io.foojay.api.scopes.BuildScope;
-import io.foojay.api.scopes.UsageScope;
-import io.foojay.api.util.OutputFormat;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -47,7 +50,7 @@ import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
 import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
-public enum Distro implements ApiFeature {
+public enum Distro implements Api {
     AOJ("AOJ", "aoj", new AOJ(), 4320, false),
     AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 4320, false),
     BISHENG("Bi Sheng", "bisheng", new BiSheng(), 2880, true),
@@ -394,6 +397,7 @@ public enum Distro implements ApiFeature {
                      .filter(distro -> Distro.GRAALVM_CE16 != distro)
                      .filter(distro -> Distro.GRAALVM_CE11 != distro)
                      .filter(distro -> Distro.GRAALVM_CE8  != distro)
+                     .filter(distro -> Distro.LIBERICA_NATIVE != distro)
                      .filter(distro -> Distro.MANDREL      != distro)
                      .collect(Collectors.toList());
     }
@@ -419,27 +423,39 @@ public enum Distro implements ApiFeature {
         return toString(outputFormat, true, true, false);
     }
     public String toString(final OutputFormat outputFormat, final boolean include_versions, final boolean include_synonyms, final boolean latest_per_update) {
+        return toString(outputFormat, include_versions, include_synonyms, latest_per_update, true);
+    }
+    public String toString(final OutputFormat outputFormat, final boolean include_versions, final boolean include_synonyms, final boolean latest_per_update, final boolean include_ea) {
         final StringBuilder msgBuilder = new StringBuilder();
-        final List<SemVer> versions;
+        final List<Semver>  versions;
         if (latest_per_update) {
-            final List<SemVer> allVersions = get().getVersions();
+            final List<Semver> allVersions;
+            if (include_ea) {
+                allVersions = get().getVersions();
+            } else {
+                allVersions = get().getVersions().stream().filter(semver -> semver.getReleaseStatus() == ReleaseStatus.GA).collect(Collectors.toList());
+            }
             versions = allVersions.stream()
                                   .map(semver -> semver.getVersionNumber().toString(OutputFormat.REDUCED_COMPRESSED, true, false))
                                   .collect(Collectors.toList())
                                   .stream()
                                   .distinct()
-                                  .map(vtext -> SemVer.fromText(vtext).getSemVer1())
+                                  .map(vtext -> Semver.fromText(vtext).getSemver1())
                                   .collect(Collectors.toSet())
                                   .stream()
                                   .map(unique -> allVersions.stream()
                                                             .filter(semver -> semver.getVersionNumber().equals(unique.getVersionNumber()))
-                                                            .max(Comparator.comparing(SemVer::getVersionNumber)))
+                                                            .max(Comparator.comparing(Semver::getVersionNumber)))
                                   .filter(Optional::isPresent)
                                   .map(Optional::get)
-                                  .sorted(Comparator.comparing(SemVer::getVersionNumber).reversed())
+                                  .sorted(Comparator.comparing(Semver::getVersionNumber).reversed())
                                   .collect(Collectors.toList());
         } else {
+            if (include_ea) {
             versions = get().getVersions();
+            } else {
+                versions = get().getVersions().stream().filter(semver -> semver.getReleaseStatus() == ReleaseStatus.GA).collect(Collectors.toList());
+            }
         }
 
         List<String> synonyms = get().getSynonyms();
@@ -450,11 +466,11 @@ public enum Distro implements ApiFeature {
                           .append(INDENTED_QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA_NEW_LINE)
-                          .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                          .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA_NEW_LINE)
-                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA_NEW_LINE)
+                          //.append(INDENTED_QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          //.append(INDENTED_QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA_NEW_LINE)
+                          //.append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          //.append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          //.append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_OFFICIAL_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getOfficialUri()).append(QUOTES);
                 if (include_synonyms) {
                     msgBuilder.append(COMMA_NEW_LINE)
@@ -486,11 +502,11 @@ public enum Distro implements ApiFeature {
                           .append(QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA)
-                          .append(QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA)
-                          .append(QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA)
-                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
-                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA)
-                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA)
+                          //.append(QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA)
+                          //.append(QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA)
+                          //.append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
+                          //.append(QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA)
+                          //.append(QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_OFFICIAL_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getOfficialUri()).append(QUOTES);
                 if (include_synonyms) {
                     msgBuilder.append(COMMA)
@@ -520,11 +536,11 @@ public enum Distro implements ApiFeature {
                           .append(INDENTED_QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA_NEW_LINE)
-                          .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                          .append(INDENTED_QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA_NEW_LINE)
-                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                          .append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA_NEW_LINE)
+                          //.append(INDENTED_QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          //.append(INDENTED_QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA_NEW_LINE)
+                          //.append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          //.append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                          //.append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_OFFICIAL_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getOfficialUri()).append(QUOTES).append(NEW_LINE)
                           .append(CURLY_BRACKET_CLOSE);
                 return msgBuilder.toString();
@@ -534,11 +550,11 @@ public enum Distro implements ApiFeature {
                           .append(QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA)
-                          .append(QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA)
-                          .append(QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA)
-                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
-                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA)
-                          .append(QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA)
+                          //.append(QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA)
+                          //.append(QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA)
+                          //.append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
+                          //.append(QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA)
+                          //.append(QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_OFFICIAL_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getOfficialUri()).append(QUOTES)
                           .append(CURLY_BRACKET_CLOSE);
                 return msgBuilder.toString();

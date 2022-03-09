@@ -19,6 +19,8 @@
 
 package io.foojay.api.scopes;
 
+import eu.hansolo.jdktools.scopes.Scope;
+
 import java.util.Arrays;
 import java.util.List;
 

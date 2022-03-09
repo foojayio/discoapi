@@ -19,16 +19,16 @@
 
 package io.foojay.api.util;
 
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import org.junit.jupiter.api.Test;
 
 import java.io.StringReader;
@@ -177,7 +177,7 @@ public class HelperTest {
             Properties properties = new Properties();
             properties.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PROPERTIES)));
             List<Pkg> pkgs = Distro.ORACLE_OPEN_JDK.get().getPkgFromJson(null, new VersionNumber(16), false, OperatingSystem.NONE,
-                                                                         Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, false, ReleaseStatus.NONE, TermOfSupport.NONE);
+                                                                         Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, false, ReleaseStatus.NONE, TermOfSupport.NONE, true);
             assert pkgs.size() == 5;
         } catch (Exception e) {
             e.printStackTrace();

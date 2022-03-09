@@ -17,21 +17,21 @@
 package io.foojay.api.distribution;
 
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.LibCType;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
-import io.foojay.api.pkg.LibCType;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
@@ -47,14 +47,16 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.ArchiveType.getFromFileName;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.OperatingSystem.MACOS;
-import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX;
+import static eu.hansolo.jdktools.OperatingSystem.MACOS;
+import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.PackageType.JRE;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
 public class ZuluPrime implements Distribution {
@@ -116,12 +118,12 @@ public class ZuluPrime implements Distribution {
         return List.of("zing", "ZING", "Zing", "prime", "PRIME", "Prime", "zuluprime", "ZULUPRIME", "ZuluPrime", "zulu_prime","ZULU_PRIME", "Zulu_Prime", "zulu prime", "ZULU PRIME", "Zulu Prime");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.ZULU_PRIME.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
 
@@ -137,12 +139,12 @@ public class ZuluPrime implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType bundleType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs() {
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         Map<String, String> downloadLinkMap = new HashMap<>();
@@ -185,6 +187,10 @@ public class ZuluPrime implements Distribution {
             pkg.setDistribution(Distro.ZULU_PRIME.get());
             pkg.setFileName(filename);
             pkg.setDirectDownloadUri(downloadLink);
+
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+            }
 
             ArchiveType ext = getFromFileName(filename);
             pkg.setArchiveType(ext);
@@ -250,10 +256,101 @@ public class ZuluPrime implements Distribution {
             }
 
             pkg.setFreeUseInProduction(Boolean.FALSE);
+            pkg.setSize(Helper.getFileSize(downloadLink));
 
             pkgs.add(pkg);
         }
 
+        return pkgs;
+    }
+
+    public List<Pkg> getAllPkgsFromHtml(final boolean onlyNewPkgs) {
+        List<Pkg> pkgs = new ArrayList<>();
+        final String html;
+        try {
+            final HttpResponse<String> response = Helper.get(PACKAGE_URL);
+            if (null == response) { return pkgs; }
+            html = response.body();
+            if (null == html || html.isEmpty()) { return pkgs; }
+        } catch (Exception e) {
+            LOGGER.error("Error fetching all packages from {}. {}", getName(), e);
+            return pkgs;
+        }
+
+        List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
+        Pattern zingPattern = Pattern.compile("zing[0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9]*-[0-9]*-");
+        for (String fileHref : fileHrefs) {
+            String filename = Helper.getFileNameFromText(fileHref.replaceAll("\"", ""));
+
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(fileHref)).count() > 0) { continue; }
+            }
+
+            String withoutPrefix = zingPattern.matcher(filename).replaceAll("");
+
+            Pkg pkg = new Pkg();
+            pkg.setDistribution(Distro.ZULU_PRIME.get());
+            pkg.setJavaFXBundled(false);
+            pkg.setPackageType(withoutPrefix.contains("jre") ? JRE : JDK);
+
+            withoutPrefix = withoutPrefix.replace(JDK == pkg.getPackageType() ? "jdk" : "jre", "");
+
+            Architecture architecture = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                                                                     .filter(entry -> filename.contains(entry.getKey()))
+                                                                     .findFirst()
+                                                                     .map(Entry::getValue)
+                                                                     .orElse(Architecture.NOT_FOUND);
+            if (Architecture.NOT_FOUND == architecture) {
+                LOGGER.debug("Architecture not found in {} for filename: {}", getName(), filename);
+                continue;
+            }
+            pkg.setArchitecture(architecture);
+            pkg.setBitness(architecture.getBitness());
+
+            OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
+                                                                               .filter(entry -> filename.contains(entry.getKey()))
+                                                                               .findFirst()
+                                                                               .map(Entry::getValue)
+                                                                               .orElse(OperatingSystem.NOT_FOUND);
+            if (OperatingSystem.NOT_FOUND == operatingSystem) {
+                LOGGER.debug("Operating System not found in {} for filename: {}", getName(), filename);
+                continue;
+            }
+            pkg.setOperatingSystem(operatingSystem);
+
+            ArchiveType archiveType = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
+                                                                   .filter(entry -> filename.contains(entry.getKey()))
+                                                                   .findFirst()
+                                                                   .map(Entry::getValue)
+                                                                   .orElse(ArchiveType.NOT_FOUND);
+            if (ArchiveType.NOT_FOUND == archiveType) {
+                LOGGER.debug("Archive Type not found in {} for filename: {}", getName(), filename);
+                continue;
+            }
+            pkg.setArchiveType(archiveType);
+
+            // No support for Feature.Interim.Update.Path but only Major.Minor.Update => setPatch(0)
+            VersionNumber versionNumber = VersionNumber.fromText(withoutPrefix.substring(0, withoutPrefix.indexOf("-")));
+            pkg.setVersionNumber(versionNumber);
+            pkg.setJavaVersion(versionNumber);
+
+            VersionNumber distributionVersion = VersionNumber.fromText(filename.substring(4, filename.indexOf("-")));
+            pkg.setDistributionVersion(distributionVersion);
+            pkg.setReleaseStatus(GA);
+
+            pkg.setTermOfSupport(Helper.getTermOfSupport(versionNumber));
+
+            pkg.setDirectlyDownloadable(true);
+
+            pkg.setFileName(Helper.getFileNameFromText(filename));
+            pkg.setDirectDownloadUri(fileHref);
+
+            pkg.setFreeUseInProduction(Boolean.FALSE);
+
+            pkg.setSize(Helper.getFileSize(fileHref));
+
+            pkgs.add(pkg);
+        }
         return pkgs;
     }
 }

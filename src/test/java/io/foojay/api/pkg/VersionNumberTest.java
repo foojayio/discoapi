@@ -13,13 +13,17 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.pkg;
 
-import io.foojay.api.util.OutputFormat;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.util.OutputFormat;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
+import eu.hansolo.jdktools.versioning.VersionNumberBuilder;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -310,8 +314,8 @@ public class VersionNumberTest {
     @Test
     public void zeroBuildNumber() {
         VersionNumber versionNumber1 = VersionNumber.fromText("8.0.202+0");
-        SemVer semVer1 = new SemVer(versionNumber1);
-        SemVer semVer2 = SemVer.fromText("8.0.202+0").getSemVer1();
+        Semver        semVer1        = new Semver(versionNumber1);
+        Semver        semVer2        = Semver.fromText("8.0.202+0").getSemver1();
 
         String correctResult = "8.0.202";
 
@@ -418,14 +422,14 @@ public class VersionNumberTest {
         List<VersionNumber> versions       = new ArrayList<>(Arrays.asList(new VersionNumber[]{vn1, vn2, vn3, vn4, vn5}));
         List<VersionNumber> sortedVersions = versions.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
 
-        SemVer sv1 = new SemVer(vn1);
-        SemVer sv2 = new SemVer(vn2);
-        SemVer sv3 = new SemVer(vn3);
-        SemVer sv4 = new SemVer(vn4);
-        SemVer sv5 = new SemVer(vn5);
+        Semver sv1 = new Semver(vn1);
+        Semver sv2 = new Semver(vn2);
+        Semver sv3 = new Semver(vn3);
+        Semver sv4 = new Semver(vn4);
+        Semver sv5 = new Semver(vn5);
 
-        List<SemVer> semvers       = new ArrayList<>(Arrays.asList(new SemVer[]{sv1, sv2, sv3, sv4, sv5}));
-        List<SemVer> sortedSemvers = semvers.stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+        List<Semver> semvers       = new ArrayList<>(Arrays.asList(new Semver[]{sv1, sv2, sv3, sv4, sv5}));
+        List<Semver> sortedSemvers = semvers.stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
 
         List<VersionNumber> expected = List.of(vn5, vn3, vn2, vn1, vn4);
         for (int i = 0 ; i < 5 ; i++) {
@@ -457,18 +461,18 @@ public class VersionNumberTest {
         versionNumbers.add(v8);
         versionNumbers.add(v9);
 
-        SemVer s0 = SemVer.fromText("15.0.1-ea+1").getSemVer1();
-        SemVer s1 = SemVer.fromText("15-ea+13").getSemVer1();
-        SemVer s2 = SemVer.fromText("15-ea+15").getSemVer1();
-        SemVer s3 = SemVer.fromText("15-ea+17").getSemVer1();
-        SemVer s4 = SemVer.fromText("15+36").getSemVer1();
-        SemVer s5 = SemVer.fromText("15-ea+18").getSemVer1();
-        SemVer s6 = SemVer.fromText("15+17").getSemVer1();
-        SemVer s7 = SemVer.fromText("15-ea").getSemVer1();
-        SemVer s8 = SemVer.fromText("15").getSemVer1();
-        SemVer s9 = SemVer.fromText("15.0.1").getSemVer1();
+        Semver s0 = Semver.fromText("15.0.1-ea+1").getSemver1();
+        Semver s1 = Semver.fromText("15-ea+13").getSemver1();
+        Semver s2 = Semver.fromText("15-ea+15").getSemver1();
+        Semver s3 = Semver.fromText("15-ea+17").getSemver1();
+        Semver s4 = Semver.fromText("15+36").getSemver1();
+        Semver s5 = Semver.fromText("15-ea+18").getSemver1();
+        Semver s6 = Semver.fromText("15+17").getSemver1();
+        Semver s7 = Semver.fromText("15-ea").getSemver1();
+        Semver s8 = Semver.fromText("15").getSemver1();
+        Semver s9 = Semver.fromText("15.0.1").getSemver1();
 
-        List<SemVer> semVers = new LinkedList<>();
+        List<Semver> semVers = new LinkedList<>();
         semVers.add(s0);
         semVers.add(s1);
         semVers.add(s2);
@@ -481,7 +485,7 @@ public class VersionNumberTest {
         semVers.add(s9);
 
         List<VersionNumber> sortedVersionNumbers = versionNumbers.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
-        List<SemVer>        sortedSemVers        = semVers.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
+        List<Semver>        sortedSemvers1       = semVers.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
         List<String>        correct              = List.of("15.0.1", "15.0.1-ea+1", "15+36", "15+17", "15", "15-ea+18", "15-ea+17", "15-ea+15", "15-ea+13", "15-ea");
 
         // Correct VersionNumbers
@@ -489,56 +493,56 @@ public class VersionNumberTest {
             assert correct.get(i).equals(sortedVersionNumbers.get(i).toString(OutputFormat.REDUCED_COMPRESSED, true, true));
         }
 
-        // Correct SemVers
+        // Correct Semvers
         for (int i = 0 ; i < correct.size() ; i++) {
-            assert correct.get(i).equals(sortedSemVers.get(i).toString(true));
+            assert correct.get(i).equals(sortedSemvers1.get(i).toString(true));
         }
     }
 
     @Test
     public void latestPerUpdate() {
-        List<SemVer> semvers = new ArrayList<>();
-        semvers.add(new SemVer(VersionNumberBuilder.create(8).updateNumber(42).buildNumber(1).build()));
-        semvers.add(new SemVer(VersionNumberBuilder.create(8).updateNumber(42).buildNumber(2).build()));
-        semvers.add(new SemVer(VersionNumberBuilder.create(8).updateNumber(42).buildNumber(3).build()));
-        semvers.add(new SemVer(VersionNumberBuilder.create(8).updateNumber(42).buildNumber(3).build()));
-        semvers.add(new SemVer(VersionNumberBuilder.create(8).updateNumber(42).buildNumber(4).build()));
-        semvers.add(new SemVer(VersionNumberBuilder.create(9).updateNumber(1).buildNumber(1).build()));
-        semvers.add(new SemVer(VersionNumberBuilder.create(9).updateNumber(1).buildNumber(2).build()));
-        semvers.add(new SemVer(VersionNumberBuilder.create(9).updateNumber(2).buildNumber(1).build()));
-        semvers.add(new SemVer(VersionNumberBuilder.create(9).updateNumber(2).buildNumber(4).build()));
-        semvers.add(new SemVer(VersionNumberBuilder.create(11).updateNumber(2).buildNumber(1).build()));
-        semvers.add(new SemVer(VersionNumberBuilder.create(11).updateNumber(2).buildNumber(2).build()));
-        semvers.add(new SemVer(VersionNumberBuilder.create(11).updateNumber(4).buildNumber(3).build()));
-        semvers.add(new SemVer(VersionNumberBuilder.create(11).updateNumber(5).buildNumber(4).build()));
+        List<Semver> semvers = new ArrayList<>();
+        semvers.add(new Semver(VersionNumberBuilder.create(8).updateNumber(42).buildNumber(1).build()));
+        semvers.add(new Semver(VersionNumberBuilder.create(8).updateNumber(42).buildNumber(2).build()));
+        semvers.add(new Semver(VersionNumberBuilder.create(8).updateNumber(42).buildNumber(3).build()));
+        semvers.add(new Semver(VersionNumberBuilder.create(8).updateNumber(42).buildNumber(3).build()));
+        semvers.add(new Semver(VersionNumberBuilder.create(8).updateNumber(42).buildNumber(4).build()));
+        semvers.add(new Semver(VersionNumberBuilder.create(9).updateNumber(1).buildNumber(1).build()));
+        semvers.add(new Semver(VersionNumberBuilder.create(9).updateNumber(1).buildNumber(2).build()));
+        semvers.add(new Semver(VersionNumberBuilder.create(9).updateNumber(2).buildNumber(1).build()));
+        semvers.add(new Semver(VersionNumberBuilder.create(9).updateNumber(2).buildNumber(4).build()));
+        semvers.add(new Semver(VersionNumberBuilder.create(11).updateNumber(2).buildNumber(1).build()));
+        semvers.add(new Semver(VersionNumberBuilder.create(11).updateNumber(2).buildNumber(2).build()));
+        semvers.add(new Semver(VersionNumberBuilder.create(11).updateNumber(4).buildNumber(3).build()));
+        semvers.add(new Semver(VersionNumberBuilder.create(11).updateNumber(5).buildNumber(4).build()));
 
         // Get a list that only contains the max version per update
-        List<SemVer> maxSemVerPerUpdate = semvers.stream()
+        List<Semver> maxSemverPerUpdate = semvers.stream()
                                                  .map(semver -> semver.getVersionNumber().toString(OutputFormat.REDUCED_COMPRESSED, true, false))
                                                  .collect(Collectors.toList())
                                                  .stream()
                                                  .distinct()
-                                                 .map(vtext -> SemVer.fromText(vtext).getSemVer1())
+                                                 .map(vtext -> Semver.fromText(vtext).getSemver1())
                                                  .collect(Collectors.toSet())
                                                  .stream()
                                                  .map(unique -> semvers.stream()
                                                                        .filter(semver -> semver.getVersionNumber().equals(unique.getVersionNumber()))
-                                                                       .max(Comparator.comparing(SemVer::getVersionNumber)))
+                                                                       .max(Comparator.comparing(Semver::getVersionNumber)))
                                                  .filter(Optional::isPresent)
                                                  .map(Optional::get)
-                                                 .sorted(Comparator.comparing(SemVer::getVersionNumber).reversed())
+                                                 .sorted(Comparator.comparing(Semver::getVersionNumber).reversed())
                                                  .collect(Collectors.toList());
 
-        List<SemVer> correct = List.of(SemVer.fromText("11.0.5+b4").getSemVer1(),
-                                       SemVer.fromText("11.0.4+b3").getSemVer1(),
-                                       SemVer.fromText("11.0.2+b2").getSemVer1(),
-                                       SemVer.fromText("9.0.2+b4").getSemVer1(),
-                                       SemVer.fromText("9.0.1+b2").getSemVer1(),
-                                       SemVer.fromText("8.0.42+b4").getSemVer1());
+        List<Semver> correct = List.of(Semver.fromText("11.0.5+b4").getSemver1(),
+                                       Semver.fromText("11.0.4+b3").getSemver1(),
+                                       Semver.fromText("11.0.2+b2").getSemver1(),
+                                       Semver.fromText("9.0.2+b4").getSemver1(),
+                                       Semver.fromText("9.0.1+b2").getSemver1(),
+                                       Semver.fromText("8.0.42+b4").getSemver1());
 
-        List<String> correctSemVerStrings = correct.stream().map(semver -> semver.toString()).collect(Collectors.toList());
+        List<String> correctSemverStrings = correct.stream().map(semver -> semver.toString()).collect(Collectors.toList());
 
-        assert correct.size() == maxSemVerPerUpdate.size();
-        maxSemVerPerUpdate.forEach(semver -> { assert(correctSemVerStrings.contains(semver.toString(true))); });
+        assert correct.size() == maxSemverPerUpdate.size();
+        maxSemverPerUpdate.forEach(semver -> { assert(correctSemverStrings.contains(semver.toString(true))); });
     }
 }

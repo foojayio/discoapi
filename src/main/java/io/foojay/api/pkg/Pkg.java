@@ -22,13 +22,27 @@ package io.foojay.api.pkg;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import io.foojay.api.CacheManager;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.FPU;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.LibCType;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.Verification;
+import eu.hansolo.jdktools.util.OutputFormat;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.SimpleMajorVersion;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.distribution.Distribution;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
-import io.foojay.api.util.OutputFormat;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -45,6 +59,7 @@ import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_OPEN;
 import static io.foojay.api.util.Constants.ENDPOINT_EPHEMERAL_IDS;
+import static io.foojay.api.util.Constants.ENDPOINT_IDS;
 import static io.foojay.api.util.Constants.INDENT;
 import static io.foojay.api.util.Constants.INDENTED_QUOTES;
 import static io.foojay.api.util.Constants.NEW_LINE;
@@ -93,12 +108,15 @@ public class Pkg {
     public static final String          FIELD_TCK_CERT_URI           = "tck_cert_uri";
     public static final String          FIELD_AQAVIT_CERTIFIED       = "aqavit_certified";
     public static final String          FIELD_AQAVIT_CERT_URI        = "aqavit_cert_uri";
+    public static final String          FIELD_VALIDATED_AT           = "validated_at";
+    public static final String          FIELD_URL_VALID              = "url_valid";
+    public static final String          FIELD_SIZE                   = "size";
     public static final String          FIELD_FEATURE                = "feature";
     private             Distribution    distribution;
     private             VersionNumber   versionNumber;
     private             VersionNumber   javaVersion;
     private             VersionNumber   distributionVersion;
-    private             SemVer          semver;
+    private             Semver          semver;
     private             Architecture    architecture;
     private             Bitness         bitness;
     private             FPU             fpu;
@@ -124,16 +142,20 @@ public class Pkg {
     private             String          tckCertUri;
     private             Verification    aqavitCertified;
     private             String          aqavitCertUri;
+    private             long            validatedAt;
+    private             Boolean         urlValid;
+    private             long            size;
     private             List<Feature>   features;
 
 
     public Pkg() {
-        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, FPU.UNKNOWN, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, Boolean.FALSE, Boolean.TRUE, "", "", "", "", "", "", HashAlgorithm.NONE, Boolean.FALSE, Verification.UNKNOWN, "", Verification.UNKNOWN, "", new ArrayList<>());
+        this(null, new VersionNumber(), Architecture.NONE, Bitness.NONE, FPU.UNKNOWN, OperatingSystem.NONE, PackageType.NONE, ReleaseStatus.NONE, ArchiveType.NONE, TermOfSupport.NONE, Boolean.FALSE, Boolean.TRUE, "", "", "", "", "", "", HashAlgorithm.NONE, Boolean.FALSE, Verification.UNKNOWN, "", Verification.UNKNOWN, "",
+             Instant.now().getEpochSecond() - Constants.SECONDS_PER_MONTH, Boolean.TRUE, -1, new ArrayList<>());
     }
     public Pkg(final Distribution distribution, final VersionNumber versionNumber, final Architecture architecture, final Bitness bitness, final FPU fpu, final OperatingSystem operatingSystem, final PackageType packageType,
                final ReleaseStatus releaseStatus, final ArchiveType archiveType, final TermOfSupport termOfSupport, final boolean javafxBundled, final boolean directlyDownloadable, final String filename,
                final String directDownloadUri, final String downloadSiteUri, final String signatureUri, final String checksumUri, final String checksum, final HashAlgorithm checksumType, final Boolean freeUseInProduction,
-               final Verification tckTested, final String tckCertUri, final Verification aqavitCertified, final String aqavitCertUri, final List<Feature> features) {
+               final Verification tckTested, final String tckCertUri, final Verification aqavitCertified, final String aqavitCertUri, final long validatedAt, final boolean urlValid, final long size, final List<Feature> features) {
         this.distribution         = distribution;
         this.versionNumber        = versionNumber;
         this.javaVersion          = new VersionNumber();
@@ -163,8 +185,11 @@ public class Pkg {
         this.tckCertUri           = tckCertUri;
         this.aqavitCertified      = aqavitCertified;
         this.aqavitCertUri        = aqavitCertUri;
+        this.validatedAt          = validatedAt;
+        this.urlValid             = urlValid;
+        this.size                 = size;
         this.features             = features;
-        this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
+        this.semver               = Semver.fromText(versionNumber.toString()).getSemver1();
     }
     public Pkg(final String jsonText) {
         if (null == jsonText || jsonText.isEmpty()) { throw new IllegalArgumentException("Json text cannot be null or empty"); }
@@ -196,12 +221,15 @@ public class Pkg {
         this.checksumUri          = json.has(FIELD_CHECKSUM_URI) ? json.get(FIELD_CHECKSUM_URI).getAsString() : "";
         this.checksum             = json.has(FIELD_CHECKSUM) ? json.get(FIELD_CHECKSUM).getAsString() : "";
         this.checksumType         = json.has(FIELD_CHECKSUM_TYPE) ? HashAlgorithm.fromText(json.get(FIELD_CHECKSUM_TYPE).getAsString()) : HashAlgorithm.NONE;
-        this.semver               = SemVer.fromText(json.get(FIELD_JAVA_VERSION).getAsString()).getSemVer1();
+        this.semver               = Semver.fromText(json.get(FIELD_JAVA_VERSION).getAsString()).getSemver1();
         this.freeUseInProduction  = json.has(FIELD_FREE_USE_IN_PROD) ? json.get(FIELD_FREE_USE_IN_PROD).getAsBoolean() : Boolean.FALSE;
         this.tckTested            = json.has(FIELD_TCK_TESTED) ? Verification.fromText(json.get(FIELD_TCK_TESTED).getAsString()) : Verification.UNKNOWN;
         this.tckCertUri           = json.has(FIELD_TCK_CERT_URI) ? json.get(FIELD_TCK_CERT_URI).getAsString() : "";
         this.aqavitCertified      = json.has(FIELD_AQAVIT_CERTIFIED) ? Verification.fromText(json.get(FIELD_AQAVIT_CERTIFIED).getAsString()) : Verification.UNKNOWN;
         this.aqavitCertUri        = json.has(FIELD_AQAVIT_CERT_URI) ? json.get(FIELD_AQAVIT_CERT_URI).getAsString() : "";
+        this.validatedAt          = json.has(FIELD_VALIDATED_AT) ? json.get(FIELD_VALIDATED_AT).getAsLong() : Instant.now().getEpochSecond() - Constants.SECONDS_PER_MONTH;
+        this.urlValid             = json.has(FIELD_URL_VALID) ? json.get(FIELD_URL_VALID).getAsBoolean() : Boolean.TRUE;
+        this.size                 = json.has(FIELD_SIZE) ? json.get(FIELD_SIZE).getAsLong() : -1;
         if (json.has(FIELD_FEATURE)) {
             features = new ArrayList<>();
             JsonArray featureArray = json.getAsJsonArray(FIELD_FEATURE);
@@ -265,8 +293,11 @@ public class Pkg {
         this.tckCertUri           = pkg.getTckCertUri();
         this.aqavitCertified      = Verification.fromText(pkg.getAqavitCertified().getApiString());
         this.aqavitCertUri        = pkg.getAqavitCertUri();
+        this.validatedAt          = pkg.getValidatedAt();
+        this.urlValid             = pkg.isUrlValid();
+        this.size                 = pkg.getSize();
         pkg.getFeatures().forEach(feature -> this.features.add(Feature.fromText(feature.getApiString())));
-        this.semver               = SemVer.fromText(versionNumber.toString()).getSemVer1();
+        this.semver               = Semver.fromText(versionNumber.toString()).getSemver1();
     }
 
 
@@ -275,12 +306,12 @@ public class Pkg {
 
     public String getDistributionName() { return this.distribution.getDistro().getName(); }
 
-    public MajorVersion getMajorVersion() { return versionNumber.getMajorVersion(); }
+    public MajorVersion getMajorVersion() { return new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0); }
 
     public VersionNumber getVersionNumber() { return versionNumber; }
     public void setVersionNumber(final VersionNumber versionNumber) {
         this.versionNumber = versionNumber;
-        this.semver        = SemVer.fromText(versionNumber.toString()).getSemVer1();
+        this.semver        = Semver.fromText(versionNumber.toString()).getSemver1();
     }
 
     public VersionNumber getJavaVersion() { return javaVersion; }
@@ -292,7 +323,7 @@ public class Pkg {
     public Boolean isLatestBuildAvailable() { return null == latestBuildAvailable ? false : latestBuildAvailable; }
     public void setLatestBuildAvailable(final Boolean latestBuildAvailable) { this.latestBuildAvailable = latestBuildAvailable; }
 
-    public SemVer getSemver() { return semver; }
+    public Semver getSemver() { return semver; }
 
     public OptionalInt getFeatureVersion() { return versionNumber.getFeature(); }
 
@@ -327,7 +358,7 @@ public class Pkg {
     public void setReleaseStatus(final ReleaseStatus releaseStatus) {
         this.releaseStatus = releaseStatus;
         this.versionNumber.setReleaseStatus(releaseStatus);
-        this.semver        = SemVer.fromText(versionNumber.toString()).getSemVer1();
+        this.semver        = Semver.fromText(versionNumber.toString()).getSemver1();
     }
 
     public ArchiveType getArchiveType() { return archiveType; }
@@ -381,6 +412,15 @@ public class Pkg {
     public String getAqavitCertUri() { return aqavitCertUri; }
     public void setAqavitCertUri(final String aqavitCertUri) { this.aqavitCertUri = aqavitCertUri; }
 
+    public long getValidatedAt() { return validatedAt; }
+    public void setValidatedAt(final long validatedAt) { this.validatedAt = validatedAt; }
+
+    public Boolean isUrlValid() { return urlValid; }
+    public void setUrlValid(final boolean urlValid) { this.urlValid = urlValid; }
+
+    public long getSize() { return size; }
+    public void setSize(final long size) { this.size = size; }
+
     public List<Feature> getFeatures() { return features; }
     public void setFeatures(final List<Feature> features) { this.features = features; }
 
@@ -427,6 +467,9 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(FIELD_VALIDATED_AT).append(QUOTES).append(COLON).append(validatedAt).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(FIELD_URL_VALID).append(QUOTES).append(COLON).append(urlValid).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
@@ -455,6 +498,7 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                                                   .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
@@ -492,6 +536,7 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                                                   .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
@@ -529,6 +574,9 @@ public class Pkg {
                                                   .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_VALIDATED_AT).append(QUOTES).append(COLON).append(validatedAt).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_URL_VALID).append(QUOTES).append(COLON).append(urlValid).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
                                                   .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
@@ -566,10 +614,12 @@ public class Pkg {
                                                   .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
                                                   .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case REDUCED_COMPRESSED:
+                    case MINIMIZED:
                     default:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN)
                                                   .append(QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
@@ -599,6 +649,7 @@ public class Pkg {
                                                   .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
                                                   .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
@@ -636,6 +687,9 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(FIELD_VALIDATED_AT).append(QUOTES).append(COLON).append(validatedAt).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(FIELD_URL_VALID).append(QUOTES).append(COLON).append(urlValid).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
@@ -663,9 +717,10 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append("/redirect").append(QUOTES)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
@@ -699,9 +754,10 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append("/redirect").append(QUOTES)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
@@ -736,6 +792,9 @@ public class Pkg {
                                                   .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_VALIDATED_AT).append(QUOTES).append(COLON).append(validatedAt).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_URL_VALID).append(QUOTES).append(COLON).append(urlValid).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
                                                   .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
@@ -764,15 +823,37 @@ public class Pkg {
                                                   .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
                                                   .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append("/redirect").append(QUOTES)
+                                                  .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(CURLY_BRACKET_CLOSE).append(COMMA)
                                                   .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
                                                   .append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
                                                   .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
+                                                  .append(CURLY_BRACKET_CLOSE)
+                                                  .toString().replaceAll("\\\\", "");
+                    case MINIMIZED:
+                        return new StringBuilder().append(CURLY_BRACKET_OPEN)
+                                                  .append(QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES)
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case REDUCED_COMPRESSED:
@@ -796,14 +877,15 @@ public class Pkg {
                                                   .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
                                                   .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(CacheManager.INSTANCE.getEphemeralIdForPkg(getId())).append("/redirect").append(QUOTES)
+                                                  .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(CURLY_BRACKET_CLOSE).append(COMMA)
                                                   .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
                                                   .append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
                                                   .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");

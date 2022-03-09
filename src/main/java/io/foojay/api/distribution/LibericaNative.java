@@ -20,24 +20,25 @@
 package io.foojay.api.distribution;
 
 import com.google.gson.Gson;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.FPU;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.util.OutputFormat;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.FPU;
-import io.foojay.api.pkg.HashAlgorithm;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,27 +52,46 @@ import java.util.Map;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.Architecture.ARM;
-import static io.foojay.api.pkg.Architecture.X86;
-import static io.foojay.api.pkg.ArchiveType.APK;
-import static io.foojay.api.pkg.ArchiveType.DEB;
-import static io.foojay.api.pkg.ArchiveType.DMG;
-import static io.foojay.api.pkg.ArchiveType.MSI;
-import static io.foojay.api.pkg.ArchiveType.PKG;
-import static io.foojay.api.pkg.ArchiveType.RPM;
-import static io.foojay.api.pkg.ArchiveType.SRC_TAR;
-import static io.foojay.api.pkg.ArchiveType.TAR_GZ;
-import static io.foojay.api.pkg.ArchiveType.ZIP;
-import static io.foojay.api.pkg.Bitness.BIT_32;
-import static io.foojay.api.pkg.Bitness.BIT_64;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.OperatingSystem.LINUX_MUSL;
-import static io.foojay.api.pkg.OperatingSystem.MACOS;
-import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
-import static io.foojay.api.pkg.TermOfSupport.LTS;
+import static eu.hansolo.jdktools.Architecture.AMD64;
+import static eu.hansolo.jdktools.Architecture.ARM;
+import static eu.hansolo.jdktools.Architecture.ARMEL;
+import static eu.hansolo.jdktools.Architecture.ARMHF;
+import static eu.hansolo.jdktools.Architecture.I386;
+import static eu.hansolo.jdktools.Architecture.MIPS;
+import static eu.hansolo.jdktools.Architecture.MIPSEL;
+import static eu.hansolo.jdktools.Architecture.PPC;
+import static eu.hansolo.jdktools.Architecture.PPC64LE;
+import static eu.hansolo.jdktools.Architecture.S390X;
+import static eu.hansolo.jdktools.Architecture.SPARCV9;
+import static eu.hansolo.jdktools.Architecture.X64;
+import static eu.hansolo.jdktools.Architecture.X86;
+import static eu.hansolo.jdktools.ArchiveType.APK;
+import static eu.hansolo.jdktools.ArchiveType.CAB;
+import static eu.hansolo.jdktools.ArchiveType.DEB;
+import static eu.hansolo.jdktools.ArchiveType.DMG;
+import static eu.hansolo.jdktools.ArchiveType.MSI;
+import static eu.hansolo.jdktools.ArchiveType.PKG;
+import static eu.hansolo.jdktools.ArchiveType.RPM;
+import static eu.hansolo.jdktools.ArchiveType.SRC_TAR;
+import static eu.hansolo.jdktools.ArchiveType.TAR_GZ;
+import static eu.hansolo.jdktools.ArchiveType.ZIP;
+import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
+import static eu.hansolo.jdktools.Bitness.BIT_32;
+import static eu.hansolo.jdktools.Bitness.BIT_64;
+import static eu.hansolo.jdktools.OperatingSystem.ALPINE_LINUX;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX_MUSL;
+import static eu.hansolo.jdktools.OperatingSystem.MACOS;
+import static eu.hansolo.jdktools.OperatingSystem.QNX;
+import static eu.hansolo.jdktools.OperatingSystem.SOLARIS;
+import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.PackageType.JRE;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.TermOfSupport.LTS;
+import static eu.hansolo.jdktools.TermOfSupport.MTS;
+import static eu.hansolo.jdktools.TermOfSupport.STS;
 
 
 public class LibericaNative implements Distribution {
@@ -156,12 +176,12 @@ public class LibericaNative implements Distribution {
         return List.of("liberica_native", "LIBERICA_NATIVE", "libericaNative", "LibericaNative", "liberica native", "LIBERICA NATIVE", "Liberica Native");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.LIBERICA_NATIVE.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
 
@@ -234,12 +254,12 @@ public class LibericaNative implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType bundleType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs() {
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         final List<Pkg>           pkgsFound = new ArrayList<>();
 
         final String              apiUrl    = "https://api.bell-sw.com/v1/nik/releases?bundle-type=standard";
@@ -324,8 +344,11 @@ public class LibericaNative implements Distribution {
                             continue;
                         }
 
+                        final String filename;
+                        final String downloadLink;
+
                         if (pkgJsonObj.has(FIELD_FILENAME)) {
-                            String filename = pkgJsonObj.get(FIELD_FILENAME).getAsString();
+                            filename = pkgJsonObj.get(FIELD_FILENAME).getAsString();
                             if (null == filename || filename.isEmpty()) {
                                 continue;
                             } else {
@@ -336,14 +359,19 @@ public class LibericaNative implements Distribution {
                         }
 
                         if (pkgJsonObj.has(FIELD_DOWNLOAD_URL)) {
-                            String downloadUrl = pkgJsonObj.get(FIELD_DOWNLOAD_URL).getAsString();
-                            if (null == downloadUrl || downloadUrl.isEmpty()) {
+                            downloadLink = pkgJsonObj.get(FIELD_DOWNLOAD_URL).getAsString();
+                            if (null == downloadLink || downloadLink.isEmpty()) {
                                 continue;
                             } else {
-                                pkg.setDirectDownloadUri(downloadUrl);
+                                pkg.setDirectDownloadUri(downloadLink);
+                                pkg.setSize(Helper.getFileSize(downloadLink));
                             }
                         } else {
                             continue;
+                        }
+
+                        if (onlyNewPkgs) {
+                            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
                         }
 
                         if (pkgJsonObj.has(FIELD_SHA1)) {

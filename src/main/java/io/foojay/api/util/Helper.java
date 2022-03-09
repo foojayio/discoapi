@@ -24,29 +24,28 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.stream.JsonReader;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.scopes.BasicScope;
+import eu.hansolo.jdktools.scopes.BuildScope;
+import eu.hansolo.jdktools.scopes.DownloadScope;
+import eu.hansolo.jdktools.scopes.QualityScope;
+import eu.hansolo.jdktools.scopes.Scope;
+import eu.hansolo.jdktools.scopes.SignatureScope;
+import eu.hansolo.jdktools.scopes.UsageScope;
+import eu.hansolo.jdktools.util.OutputFormat;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.MongoDbManager;
 import io.foojay.api.distribution.Zulu;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
-import io.foojay.api.pkg.OperatingSystem;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
-import io.foojay.api.requester.JBang;
-import io.foojay.api.requester.Requester;
-import io.foojay.api.scopes.BasicScope;
-import io.foojay.api.scopes.BuildScope;
-import io.foojay.api.scopes.DownloadScope;
 import io.foojay.api.scopes.IDEScope;
-import io.foojay.api.scopes.QualityScope;
-import io.foojay.api.scopes.Scope;
-import io.foojay.api.scopes.SignatureScope;
-import io.foojay.api.scopes.UsageScope;
 import io.foojay.api.scopes.YamlScopes;
 import io.foojay.api.util.Records.DownloadInfo;
 import io.micronaut.http.HttpHeaders;
@@ -77,6 +76,7 @@ import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -202,7 +202,6 @@ public class Helper {
         }
         return sigsFound;
     }
-
 
     public static final Set<String> getSigFileHrefsFromString(final String text) {
         Set<String> sigHrefsFound = new HashSet<>();
@@ -615,7 +614,6 @@ public class Helper {
             if (optUserAgent.isPresent()) { userAgent = optUserAgent.get(); }
             Optional<String> optUserInfo = headers.findFirst("Disco-User-Info");
             if (optUserInfo.isPresent()) { userAgent = optUserInfo.get(); }
-
         }
         return userAgent;
     }
@@ -704,101 +702,6 @@ public class Helper {
         return "";
     }
 
-    public static JBang getJBangFromHeader(final String headerText) {
-        JBANG_HEADER_MATCHER.reset(headerText);
-        final List<MatchResult> results     = JBANG_HEADER_MATCHER.results().collect(Collectors.toList());
-        final int               noOfResults = results.size();
-        if (noOfResults > 0) {
-            MatchResult result = results.get(0);
-            String group2 = result.group(2);  // version
-            String group4 = result.group(4);  // environment
-            String group5 = result.group(5);  // environmentVersion
-            String group6 = result.group(6);  // architecture
-            String group8 = result.group(8);  // java version
-            String group9 = result.group(12); // vendor
-
-            return new JBang(group2, group4, group5, group6, group8, group9);
-        }
-        return null;
-    }
-
-    public static final String getStatsFor(final String requester, final Long from, final Long to) {
-        Requester req   = Requester.fromText(requester);
-        if (Requester.NOT_FOUND == req) { return ""; }
-
-        Long      start = null == from ? Instant.MIN.getEpochSecond() : from;
-        Long      end   = null == to   ? Instant.MAX.getEpochSecond() : to;
-        if (null != from && null != to) {
-            if (from > to) { start = Instant.MIN.getEpochSecond(); }
-            if (to < from) { end   = Instant.MAX.getEpochSecond(); }
-        }
-
-        switch(req) {
-            case JBANG -> {
-                Map<String, List<Pkg>> downloadsFromJBang = new HashMap<>();
-                Map<String, JBang>     jBangMap           = new HashMap<>();
-
-                List<DownloadInfo> downloads = MongoDbManager.INSTANCE.getPkgDownloadsForRequester(req, start, end);
-                Instant jbangMinTimestamp = Instant.MAX;
-                Instant jbangMaxTimestamp = Instant.MIN;
-                long    jbangDownloads    = downloads.size();
-                for (DownloadInfo downloadInfo : downloads) {
-                    String  userAgent = downloadInfo.userAgent();
-                    Pkg     pkg       = CacheManager.INSTANCE.pkgCache.get(downloadInfo.pkgId());
-                    Instant timestamp = downloadInfo.timestamp();
-
-                    if (!downloadsFromJBang.containsKey(userAgent)) { downloadsFromJBang.put(userAgent, new ArrayList<>()); }
-                    downloadsFromJBang.get(userAgent).add(pkg);
-
-                    jbangMinTimestamp = timestamp.isBefore(jbangMinTimestamp) ? timestamp : jbangMinTimestamp;
-                    jbangMaxTimestamp = timestamp.isAfter(jbangMaxTimestamp)  ? timestamp : jbangMaxTimestamp;
-                }
-                downloadsFromJBang.entrySet().forEach(entry -> {
-                    String jbangHeader = entry.getKey();
-                    JBang  jbangTemp   = getJBangFromHeader(jbangHeader);
-                    if (null != jbangTemp) {
-                        JBang jbang;
-                        if (jBangMap.containsKey(jbangTemp.toString())) {
-                            jbang = jBangMap.get(jbangTemp.toString());
-                        } else {
-                            jbang = jbangTemp;
-                            jBangMap.put(jbang.toString(), jbang);
-                        }
-                        List<Pkg> pkgsForJBang = entry.getValue();
-                        pkgsForJBang.stream().forEach(pkg -> {
-                            SemVer semver = pkg.getSemver();
-                            String os_arc = String.join("_", pkg.getOperatingSystem().getApiString(), pkg.getArchitecture().getApiString());
-                            if (jbang.getDownloads().containsKey(semver.toString(true))) {
-                                if (jbang.getDownloads().get(semver.toString(true)).containsKey(os_arc)) {
-                                    long numberOfDownloads = jbang.getDownloads().get(semver.toString(true)).get(os_arc);
-                                    jbang.getDownloads().get(semver.toString(true)).put(os_arc, numberOfDownloads + 1L);
-                                } else {
-                                    jbang.getDownloads().get(semver.toString(true)).put(os_arc, 1L);
-                                }
-                            } else {
-                                jbang.getDownloads().put(semver.toString(true), new HashMap<>());
-                                jbang.getDownloads().get(semver.toString(true)).put(os_arc, 1L);
-                            }
-                        });
-                    }
-                });
-
-                if (jBangMap.isEmpty()) { return ""; }
-                StringBuilder jsonBuilder = new StringBuilder().append("{")
-                                                               .append("\"").append("min_timestamp").append("\":").append(jbangMinTimestamp.getEpochSecond()).append(",")
-                                                               .append("\"").append("max_timestamp").append("\":").append(jbangMaxTimestamp.getEpochSecond()).append(",")
-                                                               .append("\"").append("number_of_downloads").append("\":").append(jbangDownloads).append(",")
-                                                               .append("\"").append("stats").append("\":");
-                jsonBuilder.append(jBangMap.values().parallelStream()
-                                           .map(n -> n.toString())
-                                           .collect(Collectors.joining(",\n", "[", "]")));
-                jsonBuilder.append("}");
-                return jsonBuilder.toString();
-            }
-        }
-        return "";
-    }
-
     public static final String formatBytes(long bytes) {
         if (-1000 < bytes && bytes < 1000) {
             return bytes + " B";
@@ -811,7 +714,27 @@ public class Helper {
         return String.format("%.1f %cB", bytes / 1000.0, ci.current());
     }
 
-    public static final String getReleaseDetailsUrl(final SemVer semver) {
+    public static long getFileSize(final String uri) {
+        long size = -1;
+        HttpResponse<String> response = Helper.httpHeadRequestSync(uri);
+        if (null != response) {
+            java.net.http.HttpHeaders headers   = response.headers();
+            Map<String, List<String>> headerMap = headers.map();
+            if (headerMap.containsKey("Content-Length")) {
+                List<String> content = headerMap.get("Content-Length");
+                if (content.size() > 0) {
+                    try {
+                        size = Long.parseLong(headerMap.get("Content-Length").get(0));
+                    } catch (NumberFormatException e) {
+                        LOGGER.debug("Error parsing file size from {}.", uri);
+                    }
+                }
+            }
+        }
+        return size;
+    }
+
+    public static final String getReleaseDetailsUrl(final Semver semver) {
         if (null == semver) { return ""; }
         final int           majorVersion  = semver.getMajorVersion().getAsInt();
         final VersionNumber versionNumber = semver.getVersionNumber();
@@ -909,6 +832,39 @@ public class Helper {
                                                .timeout(Duration.ofSeconds(10))
                                                .build();
 
+        return httpClientAsync.sendAsync(request, BodyHandlers.ofString());
+    }
+
+    public static final HttpResponse<String> httpHeadRequestSync(final String uri) {
+        if (null == httpClient) { httpClient = createHttpClient(); }
+
+        final HttpRequest request = HttpRequest.newBuilder()
+                                               .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                                               .uri(URI.create(uri))
+                                               .build();
+
+        try {
+            HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                return response;
+            } else {
+                // Problem with url request
+                LOGGER.debug("Error executing get request {}", uri);
+                LOGGER.debug("Response (Status Code {}) {} ", response.statusCode(), response.body());
+                return response;
+            }
+        } catch (CompletionException | InterruptedException | IOException e) {
+            LOGGER.error("Error executing get request {} : {}", uri, e.getMessage());
+            return null;
+        }
+    }
+    public static final  CompletableFuture<HttpResponse<String>> httpHeadRequestAsync(final String uri) {
+        if (null == httpClientAsync) { httpClientAsync = createHttpClient(); }
+
+        final HttpRequest request = HttpRequest.newBuilder()
+                                               .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                                               .uri(URI.create(uri))
+                                               .build();
         return httpClientAsync.sendAsync(request, BodyHandlers.ofString());
     }
 }

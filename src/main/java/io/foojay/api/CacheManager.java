@@ -20,20 +20,19 @@
 package io.foojay.api;
 
 import com.hivemq.client.mqtt.datatypes.MqttQos;
+import eu.hansolo.jdktools.scopes.BuildScope;
+import eu.hansolo.jdktools.util.OutputFormat;
 import io.foojay.api.mqtt.MqttEvt;
 import io.foojay.api.mqtt.MqttEvtObserver;
 import io.foojay.api.mqtt.MqttManager;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.scopes.BuildScope;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import io.foojay.api.util.JsonCache;
-import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.PkgCache;
 import io.foojay.api.util.State;
-import io.foojay.api.util.UpdateState;
 import io.micronaut.context.annotation.Requires;
 import io.micronaut.context.env.Environment;
 import org.slf4j.Logger;
@@ -60,6 +59,8 @@ public enum CacheManager {
     public final         MqttEvtObserver              mqttEvtObserver             = evt -> handleMqttEvt(evt);
     public final         PkgCache<String, Pkg>        pkgCache                    = new PkgCache<>();
     public final         JsonCache<String, String>    jsonCacheV2                 = new JsonCache<>();
+    public final         JsonCache<String, String>    jsonCacheV3                 = new JsonCache<>();
+    public final         JsonCache<String, String>    jsonCacheMinimizedV3        = new JsonCache<>();
     public final         Map<Integer, Boolean>        maintainedMajorVersions     = new ConcurrentHashMap<>() {{
         put(1, false);
         put(2, false);
@@ -79,13 +80,11 @@ public enum CacheManager {
         put(16, true);
         put(17, true);
         put(18, true);
-        put(19, true);
     }};
     public final         AtomicBoolean                syncWithDatabaseInProgress  = new AtomicBoolean(false);
     public final         AtomicLong                   msToFillCacheWithPkgsFromDB = new AtomicLong(-1);
     public final         AtomicLong                   numberOfPackages            = new AtomicLong(-1);
     public final         AtomicReference<Instant>     lastSync                    = new AtomicReference<>(Instant.MIN);
-    public final         AtomicReference<UpdateState> updateState                 = new AtomicReference<>(UpdateState.NOMINAL);
     private final        List<MajorVersion>           majorVersions               = new LinkedList<>();
 
 
@@ -112,13 +111,21 @@ public enum CacheManager {
 
     public void updateJsonCacheV2() {
         StateManager.INSTANCE.setState(State.UPDATING, "Updating Json Cache V2");
-        pkgCache.getEntrySet().stream().forEach(entry -> jsonCacheV2.put(entry.getKey(), entry.getValue().toString(OutputFormat.REDUCED_COMPRESSED, Constants.API_VERSION_V2)));
+        pkgCache.getEntrySet().parallelStream().forEach(entry -> jsonCacheV2.put(entry.getKey(), entry.getValue().toString(OutputFormat.REDUCED_COMPRESSED, Constants.API_VERSION_V2)));
         final List<String> keysToRemove = jsonCacheV2.getEntrySet().parallelStream().filter(entry -> !pkgCache.containsKey(entry.getKey())).map(entry -> entry.getKey()).collect(Collectors.toList());
         jsonCacheV2.remove(keysToRemove);
     }
-
-    public String getEphemeralIdForPkg(final String pkgId) {
-        return MongoDbManager.INSTANCE.ephemeralIdCache.getEphemeralIdForPkgId(pkgId);
+    public void updateJsonCacheV3() {
+        StateManager.INSTANCE.setState(State.UPDATING, "Updating Json Cache V3");
+        pkgCache.getEntrySet().parallelStream().forEach(entry -> jsonCacheV3.put(entry.getKey(), entry.getValue().toString(OutputFormat.REDUCED_COMPRESSED, Constants.API_VERSION_V3)));
+        final List<String> keysToRemove = jsonCacheV3.getEntrySet().parallelStream().filter(entry -> !pkgCache.containsKey(entry.getKey())).map(entry -> entry.getKey()).collect(Collectors.toList());
+        jsonCacheV3.remove(keysToRemove);
+    }
+    public void updateJsonCacheMinimizedV3() {
+        StateManager.INSTANCE.setState(State.UPDATING, "Updating Json Cache Reduced V3");
+        pkgCache.getEntrySet().parallelStream().forEach(entry -> jsonCacheMinimizedV3.put(entry.getKey(), entry.getValue().toString(OutputFormat.MINIMIZED, Constants.API_VERSION_V3)));
+        final List<String> keysToRemove = jsonCacheMinimizedV3.getEntrySet().parallelStream().filter(entry -> !pkgCache.containsKey(entry.getKey())).map(entry -> entry.getKey()).collect(Collectors.toList());
+        jsonCacheMinimizedV3.remove(keysToRemove);
     }
 
     public List<MajorVersion> getMajorVersions() {
@@ -167,7 +174,6 @@ public enum CacheManager {
         if (topic.equals(Constants.MQTT_PKG_UPDATE_TOPIC)) {
             switch(msg) {
                 case Constants.MQTT_PKG_UPDATE_FINISHED_EMPTY_MSG -> {
-                    updateState.set(UpdateState.NOMINAL);
                     if (!pkgCache.isEmpty()) { return; }
                         try {
                         LOGGER.debug("PkgCache is empty -> syncCacheWithDatabase(). MQTT event: {}", evt);
@@ -177,12 +183,13 @@ public enum CacheManager {
 
                             // Update json cache
                             updateJsonCacheV2();
+                        updateJsonCacheV3();
+                        updateJsonCacheMinimizedV3();
                         } catch (Exception e) {
                             syncWithDatabaseInProgress.set(false);
                         }
                     }
                 case Constants.MQTT_PKG_UPDATE_FINISHED_MSG -> {
-                    updateState.set(UpdateState.NOMINAL);
                     try {
                         LOGGER.debug("Database updated -> syncCacheWithDatabase(). MQTT event: {}", evt);
 
@@ -191,12 +198,13 @@ public enum CacheManager {
 
                         // Update json cache
                         updateJsonCacheV2();
+                        updateJsonCacheV3();
+                        updateJsonCacheMinimizedV3();
                     } catch (Exception e) {
                         syncWithDatabaseInProgress.set(false);
                     }
                 }
                 case Constants.MQTT_FORCE_PKG_UPDATE_MSG -> {
-                    updateState.set(UpdateState.NOMINAL);
                     try {
                         LOGGER.debug("Force pkg update -> syncCacheWithDatabase(). MQTT event: {}", evt);
 
@@ -205,6 +213,8 @@ public enum CacheManager {
 
                         // Update json cache
                         updateJsonCacheV2();
+                        updateJsonCacheV3();
+                        updateJsonCacheMinimizedV3();
                     } catch (Exception e) {
                         syncWithDatabaseInProgress.set(false);
                     }

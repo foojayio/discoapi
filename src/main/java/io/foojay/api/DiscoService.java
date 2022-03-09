@@ -19,26 +19,26 @@
 
 package io.foojay.api;
 
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.FPU;
+import eu.hansolo.jdktools.Latest;
+import eu.hansolo.jdktools.LibCType;
+import eu.hansolo.jdktools.Match;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.Verification;
+import eu.hansolo.jdktools.scopes.Scope;
+import eu.hansolo.jdktools.util.Comparison;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.distribution.Distribution;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.FPU;
 import io.foojay.api.pkg.Feature;
-import io.foojay.api.pkg.Latest;
-import io.foojay.api.pkg.LibCType;
 import io.foojay.api.pkg.MajorVersion;
-import io.foojay.api.pkg.Match;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.Verification;
-import io.foojay.api.pkg.VersionNumber;
-import io.foojay.api.scopes.Scope;
-import io.foojay.api.util.Comparison;
 import io.foojay.api.util.Constants;
 
 import java.util.ArrayList;

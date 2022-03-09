@@ -20,20 +20,20 @@
 package io.foojay.api.util;
 
 
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.scopes.BasicScope;
+import eu.hansolo.jdktools.scopes.BuildScope;
+import eu.hansolo.jdktools.scopes.DownloadScope;
+import eu.hansolo.jdktools.scopes.QualityScope;
+import eu.hansolo.jdktools.scopes.Scope;
+import eu.hansolo.jdktools.scopes.UsageScope;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.scopes.BuildScope;
-import io.foojay.api.scopes.DownloadScope;
 import io.foojay.api.scopes.IDEScope;
-import io.foojay.api.scopes.BasicScope;
-import io.foojay.api.scopes.QualityScope;
-import io.foojay.api.scopes.Scope;
-import io.foojay.api.scopes.UsageScope;
 
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -54,11 +54,13 @@ public class Constants {
     public static final String            EPHEMERAL_IDS_COLLECTION               = "ephemeralIds";
     public static final String            SHEDLOCK_COLLECTION                    = "shedLock";
     public static final String            STATE_COLLECTION                       = "state";
+    public static final String            UPDATER_STATE_COLLECTION               = "updaterState";
     public static final String            SENTINEL_COLLECTION                    = "sentinel";
     public static final String            MAJOR_VERSIONS_COLLECTION              = "majorVersions";
 
     public static final String            ENDPOINT_PACKAGES                      = "packages";
     public static final String            ENDPOINT_EPHEMERAL_IDS                 = "ephemeral_ids";
+    public static final String            ENDPOINT_IDS                           = "ids";
     public static final String            SWAGGER_UI_URL                         = "https://api.foojay.io/swagger-ui/";
     public static final String            RELEASE_DETAILS_URL                    = "https://foojay.io/java-";
 
@@ -77,6 +79,7 @@ public class Constants {
 
     public static final String            API_VERSION_V1                         = "1.0";
     public static final String            API_VERSION_V2                         = "2.0";
+    public static final String            API_VERSION_V3                         = "3.0";
 
     public static final String            BASE_URL                               = null == Config.INSTANCE.getFoojayApiBaseUrl() ? "https://api.foojay.io/disco" : Config.INSTANCE.getFoojayApiBaseUrl();
 
@@ -101,10 +104,13 @@ public class Constants {
     public static final long              UPLOAD_TIMEOUT_IN_MINUTES              = 10;
     public static final long              SYNCHRONIZING_TIMEOUT_IN_MINUTES       = 15;
 
-    public static final long              ONE_HOUR_IN_SECONDS                    = 3_600;
-    public static final long              ONE_DAY_IN_SECONDS                     = 86_400;
-    public static final long              ONE_WEEK_IN_SECONDS                    = 604_800;
-    public static final long              ONE_MONTH_IN_SECONDS                   = 2_419_200;
+    public static final boolean           ALL_PKGS                               = false;
+    public static final boolean           ONLY_NEW_PKGS                          = true;
+
+    public static final long              SECONDS_PER_HOUR                       = 3_600;
+    public static final long              SECONDS_PER_DAY                        = 86_400;
+    public static final long              SECONDS_PER_WEEK                       = 604_800;
+    public static final long              SECONDS_PER_MONTH                      = 2_592_000;
 
     public static final Pattern           POSITIVE_INTEGER_PATTERN               = Pattern.compile("\\d+");
 
@@ -225,6 +231,7 @@ public class Constants {
         put("Alpine-Linux", OperatingSystem.ALPINE_LINUX);
         put("alpine_linux", OperatingSystem.ALPINE_LINUX);
         put("Alpine_Linux", OperatingSystem.ALPINE_LINUX);
+        put("alpine", OperatingSystem.ALPINE_LINUX);
         put("linux-musl", OperatingSystem.ALPINE_LINUX);
         put("Linux-MUSL", OperatingSystem.ALPINE_LINUX);
         put("Linux-Musl", OperatingSystem.ALPINE_LINUX);

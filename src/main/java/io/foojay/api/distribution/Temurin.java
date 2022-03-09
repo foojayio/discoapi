@@ -23,21 +23,21 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.MajorVersion;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.GithubTokenPool;
 import io.foojay.api.util.Helper;
@@ -57,26 +57,26 @@ import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.Architecture.AARCH64;
-import static io.foojay.api.pkg.Architecture.ARM;
-import static io.foojay.api.pkg.Architecture.MIPS;
-import static io.foojay.api.pkg.Architecture.PPC64;
-import static io.foojay.api.pkg.Architecture.PPC64LE;
-import static io.foojay.api.pkg.Architecture.SPARCV9;
-import static io.foojay.api.pkg.Architecture.X64;
-import static io.foojay.api.pkg.Architecture.X86;
-import static io.foojay.api.pkg.ArchiveType.getFromFileName;
-import static io.foojay.api.pkg.OperatingSystem.AIX;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.OperatingSystem.MACOS;
-import static io.foojay.api.pkg.OperatingSystem.SOLARIS;
-import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.PackageType.JRE;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
-import static io.foojay.api.pkg.TermOfSupport.MTS;
-import static io.foojay.api.pkg.TermOfSupport.STS;
+import static eu.hansolo.jdktools.Architecture.AARCH64;
+import static eu.hansolo.jdktools.Architecture.ARM;
+import static eu.hansolo.jdktools.Architecture.MIPS;
+import static eu.hansolo.jdktools.Architecture.PPC64;
+import static eu.hansolo.jdktools.Architecture.PPC64LE;
+import static eu.hansolo.jdktools.Architecture.SPARCV9;
+import static eu.hansolo.jdktools.Architecture.X64;
+import static eu.hansolo.jdktools.Architecture.X86;
+import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
+import static eu.hansolo.jdktools.OperatingSystem.AIX;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX;
+import static eu.hansolo.jdktools.OperatingSystem.MACOS;
+import static eu.hansolo.jdktools.OperatingSystem.SOLARIS;
+import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.PackageType.JRE;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.TermOfSupport.MTS;
+import static eu.hansolo.jdktools.TermOfSupport.STS;
 
 
 public class Temurin implements Distribution {
@@ -95,11 +95,11 @@ public class Temurin implements Distribution {
     private static final String        BITNESS_PARAM          = "";
 
     // Mappings for url parameters
-    private static final Map<Architecture, String>    ARCHITECTURE_MAP       = Map.of(AARCH64, "aarch64", ARM, "arm", MIPS, "mips", PPC64, "ppc64", PPC64LE, "ppc64le", SPARCV9, "sparcv9", X64, "x64", X86, "x32");
-    private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP   = Map.of(LINUX, "linux", MACOS, "mac", WINDOWS, "windows", SOLARIS, "solaris", AIX, "aix");
-    private static final Map<PackageType, String>     PACKAGE_TYPE_MAP       = Map.of(JDK, "jdk", JRE, "jre");
-    private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP     = Map.of(EA, "ea", GA, "ga");
-    public  static final List<Integer>                NOT_SUPPORTED_VERSIONS = List.of(6, 7, 9, 10, 12, 13, 14, 15);
+    private static final Map<Architecture, String>    ARCHITECTURE_MAP         = Map.of(AARCH64, "aarch64", ARM, "arm", MIPS, "mips", PPC64, "ppc64", PPC64LE, "ppc64le", SPARCV9, "sparcv9", X64, "x64", X86, "x32");
+    private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP     = Map.of(LINUX, "linux", MACOS, "mac", WINDOWS, "windows", SOLARIS, "solaris", AIX, "aix");
+    private static final Map<PackageType, String>     PACKAGE_TYPE_MAP         = Map.of(JDK, "jdk", JRE, "jre");
+    private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP       = Map.of(EA, "ea", GA, "ga");
+    public  static final List<Integer>                NOT_SUPPORTED_VERSIONS   = List.of(6, 7, 9, 10, 12, 13, 14, 15);
 
     // JSON fields
     private static final String        FIELD_BINARIES         = "binaries";
@@ -163,14 +163,14 @@ public class Temurin implements Distribution {
         return List.of("temurin", "Temurin", "TEMURIN");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.TEMURIN.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString))))
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString))))
                                              .stream()
-                                             .sorted(Comparator.comparing(SemVer::getVersionNumber).reversed())
+                                             .sorted(Comparator.comparing(Semver::getVersionNumber).reversed())
                                              .collect(Collectors.toList());
     }
 
@@ -185,7 +185,7 @@ public class Temurin implements Distribution {
         queryBuilder.append(versionNumber.getFeature().getAsInt()).append("/");
 
         if (null == RELEASE_STATUS_MAP.get(releaseStatus)) {
-            final ReleaseStatus rs = versionNumber.getMajorVersion().isEarlyAccessOnly() ? ReleaseStatus.EA : ReleaseStatus.GA;
+            final ReleaseStatus rs = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).isEarlyAccessOnly() ? ReleaseStatus.EA : ReleaseStatus.GA;
             queryBuilder.append(RELEASE_STATUS_MAP.get(rs));
         } else {
             queryBuilder.append(RELEASE_STATUS_MAP.get(releaseStatus));
@@ -230,7 +230,7 @@ public class Temurin implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
@@ -240,11 +240,11 @@ public class Temurin implements Distribution {
         for (int i = 0 ; i < binaries.size() ; i++) {
             JsonObject    binariesObj    = binaries.get(i).getAsJsonObject();
             JsonObject    versionDataObj = jsonObj.get(FIELD_VERSION_DATA).getAsJsonObject();
-            VersionNumber vNumber        = SemVer.fromText(versionDataObj.get(FIELD_SEMVER).getAsString()).getSemVer1().getVersionNumber();
+            VersionNumber vNumber        = Semver.fromText(versionDataObj.get(FIELD_SEMVER).getAsString()).getSemver1().getVersionNumber();
             if (latest) {
                 if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }
             }
-            VersionNumber dNumber = SemVer.fromText(versionDataObj.get(FIELD_SEMVER).getAsString()).getSemVer1().getVersionNumber();
+            VersionNumber dNumber = Semver.fromText(versionDataObj.get(FIELD_SEMVER).getAsString()).getSemver1().getVersionNumber();
 
             Architecture arc = Constants.ARCHITECTURE_LOOKUP.entrySet()
                                                             .stream()
@@ -306,13 +306,6 @@ public class Temurin implements Distribution {
                 installerPkg.setReleaseStatus(ReleaseStatus.NONE == releaseStatus ? GA : releaseStatus);
                 Helper.setTermOfSupport(versionNumber, installerPkg);
                 ArchiveType ext = getFromFileName(installerName);
-                if(ArchiveType.NONE == archiveType || ext == archiveType) {
-                    installerPkg.setArchiveType(ext);
-                    installerPkg.setFileName(installerName);
-                    installerPkg.setDirectDownloadUri(installerDownloadLink);
-                    installerPkg.setFreeUseInProduction(Boolean.TRUE);
-                    pkgs.add(installerPkg);
-                }
                 if (installerObj.has(FIELD_SIGNATURE_LINK)) {
                     String signatureLink = installerObj.get(FIELD_SIGNATURE_LINK).getAsString();
                     installerPkg.setSignatureUri(signatureLink.isEmpty() ? "" : signatureLink);
@@ -327,7 +320,18 @@ public class Temurin implements Distribution {
                     installerPkg.setChecksumUri(checksumLink.isEmpty()  ? ""                 : checksumLink);
                     installerPkg.setChecksumType(checksumLink.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
                 }
-
+                installerPkg.setSize(Helper.getFileSize(installerDownloadLink));
+                if(ArchiveType.NONE == archiveType || ext == archiveType) {
+                    installerPkg.setArchiveType(ext);
+                    installerPkg.setFileName(installerName);
+                    installerPkg.setDirectDownloadUri(installerDownloadLink);
+                    installerPkg.setFreeUseInProduction(Boolean.TRUE);
+                    if (onlyNewPkgs) {
+                        if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(installerName)).filter(p -> p.getDirectDownloadUri().equals(installerDownloadLink)).count() == 0) {
+                            pkgs.add(installerPkg);
+                        }
+                    }
+                }
             }
 
             JsonElement packageElement = binariesObj.get(FIELD_PACKAGE);
@@ -354,6 +358,10 @@ public class Temurin implements Distribution {
                 if (PackageType.NONE == pkgTypeFound) {
                     LOGGER.debug("PackageType not found in Temurin json object");
                     continue;
+                }
+
+                if (onlyNewPkgs) {
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(packageName)).filter(p -> p.getDirectDownloadUri().equals(packageDownloadLink)).count() > 0) { continue; }
                 }
 
                 Pkg packagePkg = new Pkg();
@@ -389,13 +397,14 @@ public class Temurin implements Distribution {
                     packagePkg.setChecksumUri(checksumLink.isEmpty()  ? ""                 : checksumLink);
                     packagePkg.setChecksumType(checksumLink.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
                 }
+                packagePkg.setSize(Helper.getFileSize(packageDownloadLink));
             }
         }
 
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs() {
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         try {
             for (int i = 8 ; i <= MajorVersion.getLatest(true).getAsInt() ; i++) {
@@ -410,7 +419,7 @@ public class Temurin implements Distribution {
                         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
                         if (element instanceof JsonArray) {
                             JsonArray jsonArray = element.getAsJsonArray();
-                            pkgs.addAll(getAllPkgsFromJson(jsonArray, i));
+                            pkgs.addAll(getAllPkgsFromJson(jsonArray, i, onlyNewPkgs));
                         }
                     } else {
                         // Problem with url request
@@ -426,7 +435,7 @@ public class Temurin implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final int featureVersion) {
+    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final int featureVersion, final boolean onlyNewPkgs) {
         List<Pkg>              pkgs            = new ArrayList<>();
         Optional<MajorVersion> majorVersionOpt = CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> majorVersion.getAsInt() == featureVersion).findFirst();
         if (majorVersionOpt.isPresent()) {
@@ -464,10 +473,14 @@ public class Temurin implements Distribution {
                         releaseStatus = EA;
                     } else {
                         versionNumber = VersionNumber.fromText(filenameParts[4] + (filenameParts.length == 6 ? ("+b" + filenameParts[5]) : ""));
-                        majorVersion  = versionNumber.getMajorVersion();
+                        majorVersion  = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
                         releaseStatus = (filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA;
                     }
                     String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+
+                    if (onlyNewPkgs) {
+                        if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                    }
 
                     PackageType packageType = PackageType.fromText(filenameParts[0]);
 
@@ -525,6 +538,7 @@ public class Temurin implements Distribution {
                     pkg.setPackageType(packageType);
                     pkg.setOperatingSystem(operatingSystem);
                     pkg.setFreeUseInProduction(Boolean.TRUE);
+                    pkg.setSize(Helper.getFileSize(downloadLink));
 
                     if (isEarlyAccessOnly) {
                         if (publishedAt.isAfter(lastPublishedAt)) { pkgs.add(pkg); }

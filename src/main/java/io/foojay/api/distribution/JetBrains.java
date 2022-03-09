@@ -20,22 +20,22 @@
 package io.foojay.api.distribution;
 
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.LibCType;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
-import io.foojay.api.pkg.LibCType;
 import io.foojay.api.pkg.MajorVersion;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
@@ -53,13 +53,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.ArchiveType.getFromFileName;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.OperatingSystem.MACOS;
-import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX;
+import static eu.hansolo.jdktools.OperatingSystem.MACOS;
+import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
 public class JetBrains implements Distribution {
@@ -130,12 +130,12 @@ public class JetBrains implements Distribution {
         return List.of("jetbrains", "JetBrains", "JETBRAINS");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.JETBRAINS.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
 
@@ -150,12 +150,12 @@ public class JetBrains implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType bundleType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs() {
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         List<String> downloadLinks = new ArrayList<>();
@@ -196,6 +196,10 @@ public class JetBrains implements Distribution {
             String   filename         = Helper.getFileNameFromText(strippedDownloadLink);
             String   strippedFilename = filename.replaceFirst("jbrsdk-", "").replaceAll("(\\.tar\\.gz|\\.zip)", "");
             String[] filenameParts    = strippedFilename.split("-");
+
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+            }
 
             Pkg pkg = new Pkg();
 
@@ -249,13 +253,15 @@ public class JetBrains implements Distribution {
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
 
+            pkg.setSize(Helper.getFileSize(downloadLink));
+
             pkgs.add(pkg);
         }
 
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromString(final String bodyText) {
+    public List<Pkg> getAllPkgsFromString(final String bodyText, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         JBRSDK_MATCHER.reset(bodyText);
         while(JBRSDK_MATCHER.find()) {
@@ -266,6 +272,10 @@ public class JetBrains implements Distribution {
                 String   downloadLink     = JBRSDK_MATCHER.group(2);
 
                 if (null == filename || filename.isEmpty() || filename.endsWith("checksum")) { continue; }
+
+                if (onlyNewPkgs) {
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                }
 
                 Pkg pkg = new Pkg();
 
@@ -319,13 +329,15 @@ public class JetBrains implements Distribution {
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
 
+                pkg.setSize(Helper.getFileSize(downloadLink));
+
                 pkgs.add(pkg);
             }
         }
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromHtml(final String html) {
+    public List<Pkg> getAllPkgsFromHtml(final String html, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
 
@@ -334,13 +346,17 @@ public class JetBrains implements Distribution {
             final String filename = Helper.getFileNameFromText(href);
             if (null == filename || !filename.startsWith("jbrsdk")) { continue; }
 
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(href)).count() > 0) { continue; }
+            }
+
             final String        withoutPrefix = filename.replace("jbrsdk-", "");
             final String        withoutSuffix = withoutPrefix.replace(".tar.gz", "");
             final String[]      filenameParts = withoutSuffix.split("-");
             final String        versionString = filenameParts[0].replaceAll("_", "\\.") + (filenameParts.length == 4 ? "+" + filenameParts[3] : "");
-            final SemVer        semver        = SemVer.fromText(filenameParts[0].replaceAll("_", "\\.") +(filenameParts.length == 4 ? "+" + filenameParts[3] : "")).getSemVer1();
+            final Semver        semver        = Semver.fromText(filenameParts[0].replaceAll("_", "\\.") + (filenameParts.length == 4 ? "+" + filenameParts[3] : "")).getSemver1();
             final VersionNumber versionNumber = VersionNumber.fromText(versionString);
-            final MajorVersion  majorVersion  = versionNumber.getMajorVersion();
+            final MajorVersion  majorVersion  =new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
             final PackageType   packageType   = JDK;
 
             OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
@@ -393,6 +409,7 @@ public class JetBrains implements Distribution {
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkg.setSize(Helper.getFileSize(href));
             pkgs.add(pkg);
         }
         return pkgs;

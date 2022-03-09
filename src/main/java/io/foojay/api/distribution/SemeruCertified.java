@@ -22,21 +22,21 @@ package io.foojay.api.distribution;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.MajorVersion;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
@@ -51,8 +51,8 @@ import java.util.Optional;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
 public class SemeruCertified implements Distribution {
@@ -113,14 +113,14 @@ public class SemeruCertified implements Distribution {
         return List.of("semeru_certified", "SEMERU_CERTIFIED", "Semeru_Certified", "Semeru_certified", "semeru certified", "SEMERU CERTIFIED", "Semeru Certified", "Semeru certified");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.SEMERU_CERTIFIED.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString))))
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString))))
                                              .stream()
-                                             .sorted(Comparator.comparing(SemVer::getVersionNumber).reversed())
+                                             .sorted(Comparator.comparing(Semver::getVersionNumber).reversed())
                                              .collect(Collectors.toList());
     }
 
@@ -140,13 +140,13 @@ public class SemeruCertified implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs() {
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         try {
             try {
@@ -154,7 +154,7 @@ public class SemeruCertified implements Distribution {
                 if (null == response) { return pkgs; }
                 final String htmlAllJDKs  = response.body();
                 if (!htmlAllJDKs.isEmpty()) {
-                    pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs));
+                    pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs, onlyNewPkgs));
                 }
             } catch (Exception e) {
                 LOGGER.error("Error fetching all packages from {}. {}", getName(), e);
@@ -165,7 +165,7 @@ public class SemeruCertified implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray) {
+    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         for (int i = 0; i < jsonArray.size(); i++) {
@@ -203,9 +203,13 @@ public class SemeruCertified implements Distribution {
                 final String[] filenameParts = withoutSuffix.split("_");
 
                 final VersionNumber versionNumber = VersionNumber.fromText(filenameParts[2] + (filenameParts.length == 6 ? ("+b" + filenameParts[3]) : ""));
-                final MajorVersion  majorVersion  = versionNumber.getMajorVersion();
+                final MajorVersion  majorVersion  = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
 
                 String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+
+                if (onlyNewPkgs) {
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                }
 
                 OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
                                                                                    .filter(entry -> withoutSuffix.contains(entry.getKey()))
@@ -255,6 +259,7 @@ public class SemeruCertified implements Distribution {
                 pkg.setPackageType(packageType);
                 pkg.setOperatingSystem(operatingSystem);
                 pkg.setFreeUseInProduction(Boolean.TRUE);
+                pkg.setSize(Helper.getFileSize(downloadLink));
                 pkgs.add(pkg);
             }
         }
@@ -290,7 +295,7 @@ public class SemeruCertified implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromHtml(final String html) {
+    public List<Pkg> getAllPkgsFromHtml(final String html, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
         List<String> downloadLinks = new ArrayList<>(Helper.getDownloadLinkFromString(html));
@@ -301,6 +306,10 @@ public class SemeruCertified implements Distribution {
             if (null == filename || filename.isEmpty() || filename.endsWith("txt") || filename.contains("debugimage") || filename.contains("testimage") || filename.endsWith("json") || filename.endsWith("bin")) { continue; }
             if (filename.contains("-debug-")) { continue; }
             if (null == filename || !filename.startsWith("ibm-semeru-certified")) { continue; }
+
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+            }
 
             final String withoutPrefix    = filename.replaceAll("ibm-semeru-certified-", "");
             final String withoutLeadingNo = withoutPrefix.replaceAll("^[0-9]+-", "");
@@ -322,7 +331,7 @@ public class SemeruCertified implements Distribution {
             final String[] filenameParts = withoutSuffix.split("_");
 
             final VersionNumber versionNumber = VersionNumber.fromText(filenameParts[2] + (filenameParts.length == 6 ? ("+b" + filenameParts[3]) : ""));
-            final MajorVersion  majorVersion  = versionNumber.getMajorVersion();
+            final MajorVersion  majorVersion  = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
 
             OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
                                                                                .filter(entry -> withoutSuffix.contains(entry.getKey()))
@@ -373,6 +382,7 @@ public class SemeruCertified implements Distribution {
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.FALSE);
             if (signatureUris.contains(downloadLink + ".sig")) { pkg.setSignatureUri(downloadLink + ".sig"); }
+            pkg.setSize(Helper.getFileSize(downloadLink));
             pkgs.add(pkg);
         }
 

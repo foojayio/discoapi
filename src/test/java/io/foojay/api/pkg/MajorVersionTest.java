@@ -19,6 +19,7 @@
 
 package io.foojay.api.pkg;
 
+import eu.hansolo.jdktools.TermOfSupport;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,16 @@ public class MajorVersionTest {
         MajorVersion majorVersion13 = new MajorVersion(13);
         MajorVersion majorVersion14 = new MajorVersion(14);
         MajorVersion majorVersion15 = new MajorVersion(15);
+        MajorVersion majorVersion16 = new MajorVersion(16);
+        MajorVersion majorVersion17 = new MajorVersion(17);
+        MajorVersion majorVersion18 = new MajorVersion(18);
+        MajorVersion majorVersion19 = new MajorVersion(19);
+        MajorVersion majorVersion20 = new MajorVersion(20);
+        MajorVersion majorVersion21 = new MajorVersion(21);
+        MajorVersion majorVersion22 = new MajorVersion(22);
+        MajorVersion majorVersion23 = new MajorVersion(23);
+        MajorVersion majorVersion24 = new MajorVersion(24);
+        MajorVersion majorVersion25 = new MajorVersion(25);
 
         assert (TermOfSupport.LTS == majorVersion1.getTermOfSupport());
         assert (TermOfSupport.LTS == majorVersion2.getTermOfSupport());
@@ -64,6 +75,16 @@ public class MajorVersionTest {
         assert (TermOfSupport.MTS == majorVersion13.getTermOfSupport());
         assert (TermOfSupport.STS == majorVersion14.getTermOfSupport());
         assert (TermOfSupport.MTS == majorVersion15.getTermOfSupport());
+        assert (TermOfSupport.STS == majorVersion16.getTermOfSupport());
+        assert (TermOfSupport.LTS == majorVersion17.getTermOfSupport());
+        assert (TermOfSupport.STS == majorVersion18.getTermOfSupport());
+        assert (TermOfSupport.MTS == majorVersion19.getTermOfSupport());
+        assert (TermOfSupport.STS == majorVersion20.getTermOfSupport());
+        assert (TermOfSupport.LTS == majorVersion21.getTermOfSupport());
+        assert (TermOfSupport.STS == majorVersion22.getTermOfSupport());
+        assert (TermOfSupport.MTS == majorVersion23.getTermOfSupport());
+        assert (TermOfSupport.STS == majorVersion24.getTermOfSupport());
+        assert (TermOfSupport.LTS == majorVersion25.getTermOfSupport());
     }
 
     @Test

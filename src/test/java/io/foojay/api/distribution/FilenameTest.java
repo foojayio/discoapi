@@ -19,14 +19,14 @@
 
 package io.foojay.api.distribution;
 
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.junit.jupiter.api.Test;

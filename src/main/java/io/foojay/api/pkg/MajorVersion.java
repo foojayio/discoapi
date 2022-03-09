@@ -21,9 +21,14 @@ package io.foojay.api.pkg;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Match;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.scopes.BuildScope;
+import eu.hansolo.jdktools.scopes.Scope;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.scopes.BuildScope;
-import io.foojay.api.scopes.Scope;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 
@@ -258,7 +263,7 @@ public class MajorVersion {
     }
 
     // Versions
-    public List<SemVer> getVersions(final List<Scope> scopes, final Match match) {
+    public List<Semver> getVersions(final List<Scope> scopes, final Match match) {
         final Match scopeMatch = (null == match || Match.NONE == match || Match.NOT_FOUND == match) ? Match.ANY : match;
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
@@ -266,24 +271,24 @@ public class MajorVersion {
                                              .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
                                              .filter(pkg -> ReleaseStatus.GA == pkg.getReleaseStatus())
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
-    public List<SemVer> getVersions() {
+    public List<Semver> getVersions() {
         return getVersions(BuildScope.BUILD_OF_OPEN_JDK);
     }
-    public List<SemVer> getVersions(final BuildScope scope) {
+    public List<Semver> getVersions(final BuildScope scope) {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> scope == BuildScope.BUILD_OF_OPEN_JDK ? Distro.getDistributionsBasedOnOpenJDK().contains(pkg.getDistribution().getDistro()) : Distro.getDistributionsBasedOnGraalVm().contains(pkg.getDistribution().getDistro()))
                                              .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
                                              .filter(pkg -> ReleaseStatus.GA == pkg.getReleaseStatus())
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream()
-                                             .sorted(Comparator.comparing(SemVer::getVersionNumber).reversed())
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream()
+                                             .sorted(Comparator.comparing(Semver::getVersionNumber).reversed())
                                              .collect(Collectors.toList());
     }
 
-    public List<SemVer> getVersionsOnlyEarlyAccess(final List<Scope> scopes, final Match match) {
+    public List<Semver> getVersionsOnlyEarlyAccess(final List<Scope> scopes, final Match match) {
         final Match scopeMatch = (null == match || Match.NONE == match || Match.NOT_FOUND == match) ? Match.ANY : match;
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
@@ -291,44 +296,44 @@ public class MajorVersion {
                                              .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
                                              .filter(pkg -> ReleaseStatus.EA == pkg.getReleaseStatus())
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
-    public List<SemVer> getVersionsOnlyEarlyAccess() {
+    public List<Semver> getVersionsOnlyEarlyAccess() {
         return getVersionsOnlyEarlyAccess(BuildScope.BUILD_OF_OPEN_JDK);
     }
-    public List<SemVer> getVersionsOnlyEarlyAccess(final BuildScope scope) {
+    public List<Semver> getVersionsOnlyEarlyAccess(final BuildScope scope) {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> scope == BuildScope.BUILD_OF_OPEN_JDK ? Distro.getDistributionsBasedOnOpenJDK().contains(pkg.getDistribution().getDistro()) : Distro.getDistributionsBasedOnGraalVm().contains(pkg.getDistribution().getDistro()))
                                              .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
                                              .filter(pkg -> ReleaseStatus.EA == pkg.getReleaseStatus())
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
-    public List<SemVer> getVersionsIncludingEarlyAccess(final List<Scope> scopes, final Match match) {
+    public List<Semver> getVersionsIncludingEarlyAccess(final List<Scope> scopes, final Match match) {
         final Match scopeMatch = (null == match || Match.NONE == match || Match.NOT_FOUND == match) ? Match.ANY : match;
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Match.ANY == scopeMatch ? Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(scopes.stream().collect(toSet())::contains) : Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).containsAll(scopes))
                                              .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
-    public List<SemVer> getVersionsIncludingEarlyAccess() {
+    public List<Semver> getVersionsIncludingEarlyAccess() {
         return getVersionsIncludingEarlyAccess(BuildScope.BUILD_OF_OPEN_JDK);
     }
-    public List<SemVer> getVersionsIncludingEarlyAccess(final BuildScope scope) {
+    public List<Semver> getVersionsIncludingEarlyAccess(final BuildScope scope) {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> scope == BuildScope.BUILD_OF_OPEN_JDK ? Distro.getDistributionsBasedOnOpenJDK().contains(pkg.getDistribution().getDistro()) : Distro.getDistributionsBasedOnGraalVm().contains(pkg.getDistribution().getDistro()))
                                              .filter(pkg -> majorVersion == pkg.getVersionNumber().getFeature().getAsInt())
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
     public String toString(final boolean includingEarlyAccess, final BuildScope scope) {
-        final List<SemVer> versions = includingEarlyAccess ? getVersionsIncludingEarlyAccess(scope) : getVersions(scope);
+        final List<Semver> versions = includingEarlyAccess ? getVersionsIncludingEarlyAccess(scope) : getVersions(scope);
         final StringBuilder majorVersionMsgBuilder = new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(majorVersion).append(COMMA_NEW_LINE)
                                                                         .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.name()).append(QUOTES).append(COMMA_NEW_LINE)

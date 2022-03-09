@@ -20,24 +20,23 @@
 package io.foojay.api.distribution;
 
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.util.OutputFormat;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
-import io.foojay.api.pkg.MajorVersion;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
-import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,10 +53,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.PackageType.JRE;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.PackageType.JRE;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
 public class Corretto implements Distribution {
@@ -123,12 +122,12 @@ public class Corretto implements Distribution {
         return List.of("corretto", "CORRETTO", "Corretto");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.CORRETTO.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
 
@@ -154,7 +153,7 @@ public class Corretto implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         if (versionNumber.getMajorVersion().getAsInt() < 8) { return pkgs; }
@@ -188,6 +187,10 @@ public class Corretto implements Distribution {
 
             String filename = Helper.getFileNameFromText(url);
 
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(url)).count() > 0) { continue; }
+            }
+
             String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
 
             pkg.setDistribution(Distro.CORRETTO.get());
@@ -196,6 +199,8 @@ public class Corretto implements Distribution {
             if (signatureUrisFound.containsKey(filename)) {
                 pkg.setSignatureUri(signatureUrisFound.get(filename));
             }
+
+            pkg.setSize(Helper.getFileSize(url));
 
             ArchiveType ext = ArchiveType.getFromFileName(filename);
             if (ArchiveType.NONE != archiveType && ext != archiveType) { continue; }
@@ -305,7 +310,7 @@ public class Corretto implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs() {
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         final String gaPackageUrl = "https://docs.aws.amazon.com/corretto/latest/corretto-";
         List<Pkg> pkgs = new ArrayList<>();
         CacheManager.INSTANCE.getMajorVersions()
@@ -319,7 +324,7 @@ public class Corretto implements Distribution {
                                      if (null == response) { return; }
                                      final String htmlAllJDKs  = response.body();
                                      if (!htmlAllJDKs.isEmpty()) {
-                                         pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs));
+                                         pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs, onlyNewPkgs));
                                      }
                                  } catch (Exception e) {
                                      LOGGER.error("Error fetching all packages from {}. {}", getName(), e);
@@ -328,7 +333,7 @@ public class Corretto implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromHtml(final String html) {
+    public List<Pkg> getAllPkgsFromHtml(final String html, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
@@ -336,6 +341,10 @@ public class Corretto implements Distribution {
             if (fileHref.contains("latest_checksum")) { continue; }
 
             String filename = Helper.getFileNameFromText(fileHref.replaceAll("\"", ""));
+
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(Helper.getFileNameFromText(filename))).filter(p -> p.getDirectDownloadUri().equals(fileHref)).count() > 0) { continue; }
+            }
 
             Pkg pkg = new Pkg();
             pkg.setDistribution(Distro.CORRETTO.get());
@@ -396,6 +405,8 @@ public class Corretto implements Distribution {
             pkg.setDirectDownloadUri(fileHref);
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
+
+            pkg.setSize(Helper.getFileSize(fileHref));
 
             pkgs.add(pkg);
         }

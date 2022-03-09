@@ -22,23 +22,23 @@ package io.foojay.api.distribution;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.LibCType;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.Feature;
-import io.foojay.api.pkg.HashAlgorithm;
-import io.foojay.api.pkg.LibCType;
 import io.foojay.api.pkg.MajorVersion;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
@@ -60,16 +60,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.Architecture.AARCH64;
-import static io.foojay.api.pkg.Architecture.X64;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.OperatingSystem.LINUX_MUSL;
-import static io.foojay.api.pkg.OperatingSystem.MACOS;
-import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.PackageType.JRE;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.Architecture.AARCH64;
+import static eu.hansolo.jdktools.Architecture.X64;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX_MUSL;
+import static eu.hansolo.jdktools.OperatingSystem.MACOS;
+import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.PackageType.JRE;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
 public class OracleOpenJDK implements Distribution {
@@ -168,12 +168,12 @@ public class OracleOpenJDK implements Distribution {
                        "openjdk", "OpenJDK", "Open JDK", "OPEN_JDK", "open-jdk", "OPEN-JDK", "Oracle-OpenJDK", "oracle-openjdk", "ORACLE-OPENJDK", "oracle-open-jdk", "ORACLE-OPEN-JDK");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.ORACLE_OPEN_JDK.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
 
@@ -211,7 +211,7 @@ public class OracleOpenJDK implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         if (null == jsonObj) {
@@ -247,11 +247,11 @@ public class OracleOpenJDK implements Distribution {
             JsonArray assets = jsonObj.getAsJsonArray("assets");
             for (JsonElement element : assets) {
                 JsonObject assetJsonObj = element.getAsJsonObject();
-                String     fileName     = assetJsonObj.get("name").getAsString();
+                String     filename     = assetJsonObj.get("name").getAsString();
 
-                if (fileName.contains("debuginfo") || fileName.contains("sources") || fileName.contains("static-libs") || fileName.contains("testimage") || fileName.endsWith("sign")) { continue; }
+                if (filename.contains("debuginfo") || filename.contains("sources") || filename.contains("static-libs") || filename.contains("testimage") || filename.endsWith("sign")) { continue; }
 
-                String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
+                String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
 
                 String[] nameParts = withoutPrefix.split("_");
 
@@ -265,9 +265,13 @@ public class OracleOpenJDK implements Distribution {
 
                 String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
+                if (onlyNewPkgs) {
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                }
+
                 Pkg pkg = new Pkg();
 
-                ArchiveType ext = ArchiveType.getFromFileName(fileName);
+                ArchiveType ext = ArchiveType.getFromFileName(filename);
                 if (ArchiveType.SRC_TAR == ext || (ArchiveType.NONE != archiveType && ext != archiveType)) { continue; }
                 pkg.setArchiveType(ext);
 
@@ -275,7 +279,7 @@ public class OracleOpenJDK implements Distribution {
                 pkg.setTermOfSupport(supTerm);
 
                 pkg.setDistribution(Distro.ORACLE_OPEN_JDK.get());
-                pkg.setFileName(fileName);
+                pkg.setFileName(filename);
                 pkg.setDirectDownloadUri(downloadLink);
                 pkg.setVersionNumber(vNumber);
                 pkg.setJavaVersion(vNumber);
@@ -330,7 +334,7 @@ public class OracleOpenJDK implements Distribution {
                                                                  .map(Entry::getValue)
                                                                  .orElse(Architecture.NONE);
                 if (Architecture.NONE == arch) {
-                    LOGGER.debug("Architecture not found in {} for filename: {}", getName(), fileName);
+                    LOGGER.debug("Architecture not found in {} for filename: {}", getName(), filename);
                     continue;
                 }
 
@@ -360,12 +364,14 @@ public class OracleOpenJDK implements Distribution {
                     }
                 }
                 if (OperatingSystem.NONE == os) {
-                    LOGGER.debug("Operating System not found in {} for filename: {}", getName(), fileName);
+                    LOGGER.debug("Operating System not found in {} for filename: {}", getName(), filename);
                     continue;
                 }
                 pkg.setOperatingSystem(os);
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
+
+                pkg.setSize(Helper.getFileSize(downloadLink));
 
                 pkgs.add(pkg);
             }
@@ -374,7 +380,7 @@ public class OracleOpenJDK implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs(final JsonArray jsonArray) {
+    public List<Pkg> getAllPkgs(final JsonArray jsonArray, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         for (int i = 0; i < jsonArray.size(); i++) {
@@ -403,6 +409,10 @@ public class OracleOpenJDK implements Distribution {
                 }
 
                 String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+
+                if (onlyNewPkgs) {
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                }
 
                 Pkg pkg = new Pkg();
 
@@ -484,6 +494,8 @@ public class OracleOpenJDK implements Distribution {
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
 
+                pkg.setSize(Helper.getFileSize(downloadLink));
+
                 pkgs.add(pkg);
             }
         }
@@ -491,7 +503,7 @@ public class OracleOpenJDK implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromJavaDotNet() {
+    public List<Pkg> getAllPkgsFromJavaDotNet(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new CopyOnWriteArrayList<>();
 
         // Get packages from archive
@@ -500,7 +512,7 @@ public class OracleOpenJDK implements Distribution {
             if (null != response) {
                 String html = response.body();
                 if (!html.isEmpty()) {
-                    pkgs.addAll(extractPackagesFromHtml(html, false));
+                    pkgs.addAll(extractPackagesFromHtml(html, false, onlyNewPkgs));
                 }
             }
         } catch (Exception e) {
@@ -518,7 +530,7 @@ public class OracleOpenJDK implements Distribution {
                     String html = response.body();
                     if (!html.isEmpty()) {
                         isReleaseCandidate = html.contains("Release-Candidate");
-                        pkgs.addAll(extractPackagesFromHtml(html, isReleaseCandidate));
+                        pkgs.addAll(extractPackagesFromHtml(html, isReleaseCandidate, onlyNewPkgs));
                     }
                 }
             } catch (Exception e) {
@@ -528,11 +540,11 @@ public class OracleOpenJDK implements Distribution {
         return pkgs;
     }
 
-    public Collection<Pkg> getAllPkgs() {
+    public Collection<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         Map<String, Pkg> pkgMap = new HashMap<>();
 
         // Get all pkgs from jdk.java.not and jdk.java.net/archive
-        getAllPkgsFromJavaDotNet().forEach(pkg -> pkgMap.put(pkg.getId(), pkg));
+        getAllPkgsFromJavaDotNet(onlyNewPkgs).forEach(pkg -> pkgMap.put(pkg.getId(), pkg));
 
         // Reload openjdk properties
         try {
@@ -553,12 +565,16 @@ public class OracleOpenJDK implements Distribution {
 
         propertiesPkgs.forEach((key, value) -> {
             String downloadLink = value.toString();
-            String fileName     = Helper.getFileNameFromText(downloadLink);
+            String filename     = Helper.getFileNameFromText(downloadLink);
             boolean isMusl      = false;
+
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { return; }
+            }
 
             Pkg pkg = new Pkg();
 
-            ArchiveType ext = ArchiveType.getFromFileName(fileName);
+            ArchiveType ext = ArchiveType.getFromFileName(filename);
             pkg.setArchiveType(ext);
 
             ReleaseStatus rs = Constants.RELEASE_STATUS_LOOKUP.entrySet().stream()
@@ -570,7 +586,7 @@ public class OracleOpenJDK implements Distribution {
                 LOGGER.debug("Release Status not found in {} for downloadLink: {}", getName(), downloadLink);
             } else {
                 pkg.setDistribution(Distro.ORACLE_OPEN_JDK.get());
-                pkg.setFileName(fileName);
+                pkg.setFileName(filename);
                 pkg.setDirectDownloadUri(downloadLink);
 
                 Architecture arch;
@@ -598,7 +614,7 @@ public class OracleOpenJDK implements Distribution {
                 pkg.setArchitecture(arch);
                 pkg.setBitness(arch.getBitness());
 
-                VersionNumber versionNumber = VersionNumber.fromText(fileName);
+                VersionNumber versionNumber = VersionNumber.fromText(filename);
 
                 BUILD_NUMBER_MATCHER.reset(downloadLink);
                 while(BUILD_NUMBER_MATCHER.find()) {
@@ -625,7 +641,7 @@ public class OracleOpenJDK implements Distribution {
                 pkg.setReleaseStatus(rs);
 
                 OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                                      .filter(entry -> fileName.contains(entry.getKey()))
+                                                                      .filter(entry -> filename.contains(entry.getKey()))
                                                                       .findFirst()
                                                                       .map(Entry::getValue)
                                                                       .orElse(OperatingSystem.NONE);
@@ -636,9 +652,9 @@ public class OracleOpenJDK implements Distribution {
                     case MACOS  : pkg.setLibCType(LibCType.LIBC); break;
                     }
 
-                String[] fileNameParts = fileName.split("_");
+                String[] fileNameParts = filename.split("_");
                 if (fileNameParts.length > 1) {
-                    SemVer semVer = SemVer.fromText(fileNameParts[0].replace("openjdk", "")).getSemVer1();
+                    Semver semVer = Semver.fromText(fileNameParts[0].replace("openjdk", "")).getSemver1();
                     if (null != semVer) {
                         pkg.setReleaseStatus(semVer.getReleaseStatus());
                     }
@@ -648,6 +664,8 @@ public class OracleOpenJDK implements Distribution {
                 }
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
+
+                pkg.setSize(Helper.getFileSize(downloadLink));
 
                 if (!pkgMap.containsKey(pkg)) { pkgMap.put(pkg.getId(), pkg); }
             }
@@ -727,10 +745,12 @@ public class OracleOpenJDK implements Distribution {
 
         pkg.setFreeUseInProduction(Boolean.TRUE);
 
+        pkg.setSize(Helper.getFileSize(downloadLink));
+
         return pkg;
     }
 
-    private List<Pkg> extractPackagesFromHtml(final String html, final boolean isReleaseCandidate) {
+    private List<Pkg> extractPackagesFromHtml(final String html, final boolean isReleaseCandidate, final boolean onlyNewPkgs) {
         final List<Pkg> pkgs      = new ArrayList<>();
         List<String>    fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
         for (String href : fileHrefs) {
@@ -748,6 +768,10 @@ public class OracleOpenJDK implements Distribution {
             if (isReleaseCandidate) { releaseStatus = EA; }
             String          downloadLink    = href.replaceAll("\"", "").replace("href=", "");
             String          checksumUri     = Helper.isUriValid(downloadLink + ".sha256") ? downloadLink + ".sha256" : "";
+
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+            }
 
             BUILD_NUMBER_MATCHER.reset(downloadLink);
             while(BUILD_NUMBER_MATCHER.find()) {
@@ -789,6 +813,7 @@ public class OracleOpenJDK implements Distribution {
             }
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkg.setSize(Helper.getFileSize(downloadLink));
             pkgs.add(pkg);
         }
         return pkgs;
