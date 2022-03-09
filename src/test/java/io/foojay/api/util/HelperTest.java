@@ -171,20 +171,6 @@ public class HelperTest {
     }
 
     @Test
-    public void loadPropertiesTest() {
-        try {
-            final String OPEN_JDK_PROPERTIES = "https://github.com/foojay2020/openjdk_releases/raw/main/openjdk.properties";
-            Properties properties = new Properties();
-            properties.load(new StringReader(Helper.getTextFromUrl(OPEN_JDK_PROPERTIES)));
-            List<Pkg> pkgs = Distro.ORACLE_OPEN_JDK.get().getPkgFromJson(null, new VersionNumber(16), false, OperatingSystem.NONE,
-                                                                         Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, false, ReleaseStatus.NONE, TermOfSupport.NONE, true);
-            assert pkgs.size() == 5;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Test
     public void isPositiveIntegerTest() {
         final String numberString1 = "18";
         assert Helper.isPositiveInteger(numberString1);

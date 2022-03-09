@@ -52,16 +52,15 @@ dependencies {
     implementation("io.micronaut:micronaut-http-client")
     implementation("io.micronaut:micronaut-inject-java")
     implementation("io.micronaut.beanvalidation:micronaut-hibernate-validator")
-    implementation("com.google.code.gson:gson:2.8.9")
+    implementation("com.google.code.gson:gson:2.9.0")
     implementation("io.swagger.core.v3:swagger-annotations")
-    implementation("org.mongodb:mongodb-driver-sync:4.4.1")
+    implementation("org.mongodb:mongodb-driver-sync:4.5.0")
 
     implementation("io.micronaut.micrometer:micronaut-micrometer-core")
     implementation("io.micronaut:micronaut-management")
     implementation("io.micronaut.micrometer:micronaut-micrometer-registry-prometheus")
 
-    implementation ('eu.hansolo:jdktools:11.0.0')
-    implementation ('eu.hansolo:evt:1.6')
+    implementation ('eu.hansolo:jdktools:17.0.11')
 
     implementation ('com.hivemq:hivemq-mqtt-client:1.3.0')
 
