@@ -33,6 +33,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
@@ -172,6 +173,9 @@ public class RedHat implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from RedHat. {}", e);
         }
+
+        
+
         return pkgs;
     }
 
@@ -242,6 +246,7 @@ public class RedHat implements Distribution {
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
             pkg.setDistributionVersion(vNumber);
+            pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
 
             pkg.setTermOfSupport(Helper.getTermOfSupport(versionNumber));
 

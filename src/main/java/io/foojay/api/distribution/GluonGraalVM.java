@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021.
+ * Copyright (c) 2022.
  *
  * This file is part of DiscoAPI.
  *
@@ -19,6 +19,7 @@
 
 package io.foojay.api.distribution;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -38,21 +39,24 @@ import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
+import io.foojay.api.util.GithubTokenPool;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.TreeSet;
+import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static eu.hansolo.jdktools.ArchiveType.SRC_TAR;
 import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
 import static eu.hansolo.jdktools.OperatingSystem.LINUX;
 import static eu.hansolo.jdktools.OperatingSystem.MACOS;
@@ -61,13 +65,13 @@ import static eu.hansolo.jdktools.PackageType.JDK;
 import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
-public class GraalVMCE11 implements Distribution {
-    private static final Logger                       LOGGER                  = LoggerFactory.getLogger(GraalVMCE11.class);
+public class GluonGraalVM implements Distribution {
+    private static final Logger LOGGER = LoggerFactory.getLogger(GluonGraalVM.class);
 
-    private static final String                       GITHUB_USER             = "graalvm";
-    private static final String                       PACKAGE_URL             = "https://api.github.com/repos/" + GITHUB_USER + "/graalvm-ce-builds/releases";
-    private static final Pattern                      FILENAME_PATTERN        = Pattern.compile("^(graalvm-ce-java11)(.*)(\\.tar\\.gz|\\.zip)$");
-    private static final Matcher                      FILENAME_MATCHER        = FILENAME_PATTERN.matcher("");
+    private static final String  GITHUB_USER      = "gluonhq";
+    private static final String  PACKAGE_URL      = "https://api.github.com/repos/" + GITHUB_USER + "/graal/releases";
+    private static final Pattern FILENAME_PATTERN = Pattern.compile("^(graalvm-svm-java)(.*)(\\.zip)$");
+    private static final Matcher FILENAME_MATCHER = FILENAME_PATTERN.matcher("");
 
     // URL parameters
     private static final String                       ARCHITECTURE_PARAM      = "";
@@ -78,15 +82,15 @@ public class GraalVMCE11 implements Distribution {
     private static final String                       SUPPORT_TERM_PARAM      = "";
     private static final String                       BITNESS_PARAM           = "";
 
-    private static final HashAlgorithm                HASH_ALGORITHM          = HashAlgorithm.NONE;
-    private static final String                       HASH_URI                = "";
-    private static final SignatureType                SIGNATURE_TYPE          = SignatureType.NONE;
-    private static final HashAlgorithm                SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
-    private static final String                       SIGNATURE_URI           = "";
-    private static final String                       OFFICIAL_URI            = "https://www.graalvm.org/";
+    private static final HashAlgorithm HASH_ALGORITHM      = HashAlgorithm.NONE;
+    private static final String        HASH_URI            = "";
+    private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
+    private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
+    private static final String        SIGNATURE_URI       = "";
+    private static final String        OFFICIAL_URI        = "https://docs.gluonhq.com/#_graalvm";
 
 
-    @Override public Distro getDistro() { return Distro.GRAALVM_CE11; }
+    @Override public Distro getDistro() { return Distro.GLUON_GRAALVM; }
 
     @Override public String getName() { return getDistro().getUiString(); }
 
@@ -119,13 +123,13 @@ public class GraalVMCE11 implements Distribution {
     @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
-        return List.of("graalvm_ce11", "graalvmce11", "GraalVM CE 11", "GraalVMCE11", "GraalVM_CE11");
+        return List.of("gluon_graalvm", "GLUON_GRAALVM", "gluongraalvm", "GLUONGRAALVM", "gluon graalvm", "Gluon GraalVM", "GluonGraalVM");
     }
 
     @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
-                                             .filter(pkg -> Distro.GRAALVM_CE11.get().equals(pkg.getDistribution()))
+                                             .filter(pkg -> Distro.GLUON_GRAALVM.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
                                              .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
@@ -145,14 +149,21 @@ public class GraalVMCE11 implements Distribution {
                                               final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
-        TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
-        supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
+        TermOfSupport supTerm = TermOfSupport.STS;
 
         VersionNumber vNumber = null;
         String tag = jsonObj.get("tag_name").getAsString();
-        if (tag.contains("vm-")) {
-            tag = tag.substring(tag.lastIndexOf("vm-")).replace("vm-", "");
-            vNumber = VersionNumber.fromText(tag);
+        tag = tag.replace("gluon-", "");
+        tag = tag.replace("-Final", "");
+        tag = tag.replace("-latest", "");
+        if (tag.contains("-dev")) {
+            tag = tag.substring(0, tag.lastIndexOf("-dev"));
+        }
+
+        vNumber = VersionNumber.fromText(tag);
+        if (null == vNumber) {
+            LOGGER.error("Error parsing version number from GluonGraalVM tag {}", tag);
+            return pkgs;
         }
 
         boolean prerelease = false;
@@ -165,14 +176,14 @@ public class GraalVMCE11 implements Distribution {
         for (JsonElement element : assets) {
             JsonObject assetJsonObj = element.getAsJsonObject();
             String     filename     = assetJsonObj.get("name").getAsString();
-            if (filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_JAR) ||
-                filename.endsWith(Constants.FILE_ENDING_SHA1) || filename.endsWith(Constants.FILE_ENDING_SHA256)) { continue; }
+            if (!filename.endsWith(Constants.FILE_ENDING_ZIP)) { continue; }
 
-            FILENAME_MATCHER.reset(filename);
-            if (!FILENAME_MATCHER.matches()) { continue; }
+            //FILENAME_MATCHER.reset(filename);
+            //if (!FILENAME_MATCHER.matches()) { continue; }
 
-            String   strippedFilename = filename.replaceFirst("graalvm-ce-java11-", "").replaceAll("(\\.tar\\.gz|\\.zip)", "");
-            String[] filenameParts    = strippedFilename.split("-");
+            String   strippedFilename      = filename.replaceFirst("graalvm-svm-java([0-9]{2,3})-", "").replaceAll("(\\.zip)", "");
+            String[] filenameParts         = filename.split("-");
+            String[] strippedFilenameParts = strippedFilename.split("-");
 
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
@@ -182,12 +193,12 @@ public class GraalVMCE11 implements Distribution {
 
             Pkg pkg = new Pkg();
 
-            pkg.setDistribution(Distro.GRAALVM_CE11.get());
+            pkg.setDistribution(Distro.GLUON_GRAALVM.get());
             pkg.setFileName(filename);
             pkg.setDirectDownloadUri(downloadLink);
 
             ArchiveType ext = getFromFileName(filename);
-            if (SRC_TAR == ext || (ArchiveType.NONE != archiveType && ext != archiveType)) { continue; }
+            if (ArchiveType.NOT_FOUND == ext) { continue; }
             pkg.setArchiveType(ext);
 
             Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
@@ -195,26 +206,39 @@ public class GraalVMCE11 implements Distribution {
                                                              .findFirst()
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
+
+            // TODO: Needs to be modified as soon as aarch64 builds will be available
             if (Architecture.NONE == arch) {
-                LOGGER.debug("Architecture not found in GraalVM CE11 for filename: {}", filename);
+                arch = Architecture.X64;
+            }
+
+            if (Architecture.NONE == arch) {
+                LOGGER.debug("Architecture not found in GluonGraalVM for filename: {}", filename);
                 continue;
             }
 
             pkg.setArchitecture(arch);
             pkg.setBitness(arch.getBitness());
 
-            if (null == vNumber && filenameParts.length > 2) {
-                vNumber = VersionNumber.fromText(filenameParts[2]);
-            }
-            if (latest) {
-                if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { continue; }
-            } else {
-                //if (versionNumber.compareTo(vNumber) != 0) { continue; }
-            }
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
-            pkg.setDistributionVersion(vNumber);
-            pkg.setJdkVersion(new MajorVersion(11));
+
+            for (String part : filenameParts) {
+                if (part.startsWith("java")) {
+                    String jvmVersion = part.replace("java", "");
+                    try {
+                        pkg.setDistributionVersion(VersionNumber.fromText(jvmVersion));
+                        Integer jdkVersion = Integer.parseInt(jvmVersion);
+                        pkg.setJdkVersion(new MajorVersion(jdkVersion));
+                    } catch (Exception e) {
+                        LOGGER.error("Error parsing JDK version from filename in Gluon GraalVM {}", filename);
+                    }
+                    break;
+                }
+            }
+            if (null == pkg.getDistributionVersion() || pkg.getDistributionVersion().getFeature().isEmpty()) {
+                pkg.setDistributionVersion(vNumber);
+            }
 
             pkg.setTermOfSupport(supTerm);
 
@@ -246,7 +270,7 @@ public class GraalVMCE11 implements Distribution {
                 }
             }
             if (OperatingSystem.NONE == os) {
-                LOGGER.debug("Operating System not found in GraalVM CE11 for filename: {}", filename);
+                LOGGER.debug("Operating System not found in Gluon GraalVM for filename: {}", filename);
                 continue;
             }
             pkg.setOperatingSystem(os);
@@ -280,6 +304,40 @@ public class GraalVMCE11 implements Distribution {
             }
         }
 
+        return pkgs;
+    }
+
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
+        List<Pkg> pkgs = new ArrayList<>();
+
+        final String pkgUrl = new StringBuilder(PACKAGE_URL).append("?per_page=100").toString();
+
+        try {
+            // Get all packages from github
+            try {
+                HttpResponse<String> response = Helper.get(pkgUrl, Map.of("accept", "application/vnd.github.v3+json",
+                                                                              "authorization", GithubTokenPool.INSTANCE.next()));
+                if (response.statusCode() == 200) {
+                    String      bodyText = response.body();
+                    Gson        gson     = new Gson();
+                    JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
+                    if (element instanceof JsonArray) {
+                        JsonArray jsonArray = element.getAsJsonArray();
+                        for (JsonElement jsonElement : jsonArray) {
+                            JsonObject jsonObj = jsonElement.getAsJsonObject();
+                            pkgs.addAll(getPkgFromJson(jsonObj, null, true, null, null, null, null, null, false, null, null,onlyNewPkgs));
+                        }
+                    }
+                } else {
+                    // Problem with url request
+                    LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
+                }
+            } catch (CompletionException e) {
+                LOGGER.error("Error fetching packages for distribution {} from {}", getName(), pkgUrl);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error fetching all packages from GluonGraalVM. {}", e);
+        }
         return pkgs;
     }
 }

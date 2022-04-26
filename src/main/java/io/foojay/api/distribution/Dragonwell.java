@@ -35,6 +35,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
@@ -215,6 +216,7 @@ public class Dragonwell implements Distribution {
             pkg.setJavaVersion(vNumber);
             VersionNumber dNumber = VersionNumber.fromText(filename);
             pkg.setDistributionVersion(dNumber);
+            pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
             pkg.setTermOfSupport(supTerm);
 
@@ -278,6 +280,8 @@ public class Dragonwell implements Distribution {
                 pkg.setChecksumType(HashAlgorithm.SHA256);
             }
         }
+
+        
 
         return pkgs;
     }

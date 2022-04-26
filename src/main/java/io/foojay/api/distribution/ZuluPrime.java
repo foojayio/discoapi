@@ -31,6 +31,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
@@ -209,6 +210,7 @@ public class ZuluPrime implements Distribution {
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
             pkg.setDistributionVersion(vNumber);
+            pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
             pkg.setTermOfSupport(Helper.getTermOfSupport(vNumber.getFeature().getAsInt()));
 
@@ -336,6 +338,7 @@ public class ZuluPrime implements Distribution {
 
             VersionNumber distributionVersion = VersionNumber.fromText(filename.substring(4, filename.indexOf("-")));
             pkg.setDistributionVersion(distributionVersion);
+            pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
             pkg.setReleaseStatus(GA);
 
             pkg.setTermOfSupport(Helper.getTermOfSupport(versionNumber));

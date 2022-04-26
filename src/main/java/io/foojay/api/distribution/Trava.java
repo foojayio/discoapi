@@ -33,6 +33,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.GithubTokenPool;
@@ -214,6 +215,7 @@ public class Trava implements Distribution {
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
             pkg.setDistributionVersion(vNumber);
+            pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
             switch (packageType) {
                 case NONE:
@@ -290,6 +292,8 @@ public class Trava implements Distribution {
             pkgs.add(pkg);
         }
 
+        
+
         return pkgs;
     }
 
@@ -320,6 +324,9 @@ public class Trava implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Trava. {}", e);
         }
+
+        
+
         return pkgs;
     }
 
@@ -378,6 +385,7 @@ public class Trava implements Distribution {
                 pkg.setVersionNumber(vNumber);
                 pkg.setJavaVersion(vNumber);
                 pkg.setDistributionVersion(vNumber);
+                pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
                 pkg.setPackageType(filename.contains(Constants.JRE_POSTFIX) ? JRE : JDK);
                 pkg.setReleaseStatus(filename.contains(Constants.EA_POSTFIX) ? EA : GA);
 

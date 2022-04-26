@@ -57,6 +57,7 @@ public enum Distro implements Api {
     CORRETTO("Corretto", "corretto", new Corretto(), 720 + 4, true),
     DEBIAN("Debian", "debian", new Debian(), 2880, true),
     DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 1440 + 4, true),
+    GLUON_GRAALVM("Gluon GraalVM", "gluon_graalvm", new GluonGraalVM(), 1440 - 16, true),
     GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 2880, true),
     GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 1440 - 4, true),
     GRAALVM_CE16("Graal VM CE 16", "graalvm_ce16", new GraalVMCE16(), 2880, true),
@@ -179,6 +180,15 @@ public enum Distro implements Api {
             case "DRAGONWELL":
             case "Dragonwell":
                 return DRAGONWELL;
+            case "gluon_graalvm":
+            case "GLUON_GRAALVM":
+            case "gluongraalvm":
+            case "GLUONGRAALVM":
+            case "gluon graalvm":
+            case "GLUON GRAALVM":
+            case "Gluon GraalVM":
+            case "Gluon":
+                return GLUON_GRAALVM;
             case "graalvm_ce8":
             case "graalvmce8":
             case "GraalVM CE 8":
@@ -399,6 +409,7 @@ public enum Distro implements Api {
                      .filter(distro -> Distro.GRAALVM_CE8  != distro)
                      .filter(distro -> Distro.LIBERICA_NATIVE != distro)
                      .filter(distro -> Distro.MANDREL      != distro)
+                     .filter(distro -> Distro.GLUON_GRAALVM   != distro)
                      .collect(Collectors.toList());
     }
 
@@ -417,6 +428,10 @@ public enum Distro implements Api {
     public static long getNumberOfPkgsForDistro(final Distro distro) {
         return CacheManager.INSTANCE.pkgCache.getPkgs().parallelStream().filter(pkg -> pkg.getDistribution().getDistro() == distro).count();
     }
+
+    public static boolean isBasedOnOpenJDK(final Distro distro) { return getDistributionsBasedOnOpenJDK().contains(distro); }
+
+    public static boolean isBasedOnGraalVM(final Distro distro) { return getDistributionsBasedOnGraalVm().contains(distro); }
 
 
     public String toString(final OutputFormat outputFormat) {

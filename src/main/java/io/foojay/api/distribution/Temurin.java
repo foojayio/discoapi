@@ -298,6 +298,7 @@ public class Temurin implements Distribution {
                 installerPkg.setVersionNumber(vNumber);
                 installerPkg.setJavaVersion(vNumber);
                 installerPkg.setDistributionVersion(vNumber);
+                installerPkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
                 installerPkg.setTermOfSupport(supTerm);
                 installerPkg.setPackageType(pkgTypeFound);
                 installerPkg.setArchitecture(arc);
@@ -369,6 +370,7 @@ public class Temurin implements Distribution {
                 packagePkg.setVersionNumber(vNumber);
                 packagePkg.setJavaVersion(vNumber);
                 packagePkg.setDistributionVersion(dNumber);
+                packagePkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
                 packagePkg.setTermOfSupport(supTerm);
                 packagePkg.setPackageType(pkgTypeFound);
                 packagePkg.setArchitecture(arc);
@@ -401,6 +403,8 @@ public class Temurin implements Distribution {
             }
         }
 
+        
+
         return pkgs;
     }
 
@@ -432,6 +436,9 @@ public class Temurin implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Temurin. {}", e);
         }
+
+        
+
         return pkgs;
     }
 
@@ -529,6 +536,7 @@ public class Temurin implements Distribution {
                     pkg.setVersionNumber(versionNumber);
                     pkg.setJavaVersion(versionNumber);
                     pkg.setDistributionVersion(versionNumber);
+                    pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
                     pkg.setDirectDownloadUri(downloadLink);
                     pkg.setFileName(filename);
                     pkg.setArchiveType(archiveType);
@@ -549,6 +557,9 @@ public class Temurin implements Distribution {
                 lastPublishedAt = publishedAt;
             }
         }
+
+        
+
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
     }

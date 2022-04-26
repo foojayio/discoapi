@@ -284,6 +284,7 @@ public class OracleOpenJDK implements Distribution {
                 pkg.setVersionNumber(vNumber);
                 pkg.setJavaVersion(vNumber);
                 pkg.setDistributionVersion(vNumber);
+                pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
 
                 PackageType packageTypeFound = Constants.PACKAGE_TYPE_LOOKUP.entrySet()
@@ -377,6 +378,8 @@ public class OracleOpenJDK implements Distribution {
             }
         }
 
+        
+
         return pkgs;
     }
 
@@ -430,6 +433,7 @@ public class OracleOpenJDK implements Distribution {
                 pkg.setVersionNumber(vNumber);
                 pkg.setJavaVersion(vNumber);
                 pkg.setDistributionVersion(vNumber);
+                pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
                 ReleaseStatus releaseStatus = Constants.RELEASE_STATUS_LOOKUP.entrySet()
                                                                              .stream()
@@ -500,6 +504,8 @@ public class OracleOpenJDK implements Distribution {
             }
         }
 
+        
+
         return pkgs;
     }
 
@@ -537,6 +543,9 @@ public class OracleOpenJDK implements Distribution {
                 LOGGER.debug("Error fetching packages from {} url {}. {}", getName(), jdkUrl, e.getMessage());
             }
         }
+
+        
+
         return pkgs;
     }
 
@@ -633,6 +642,7 @@ public class OracleOpenJDK implements Distribution {
                 pkg.setVersionNumber(versionNumber);
                 pkg.setJavaVersion(versionNumber);
                 pkg.setDistributionVersion(versionNumber);
+                pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
 
                 Helper.setTermOfSupport(versionNumber, pkg);
 
@@ -671,7 +681,10 @@ public class OracleOpenJDK implements Distribution {
             }
         });
 
-        return pkgMap.values();
+        List<Pkg> pkgs = new ArrayList<>(pkgMap.values());
+        
+
+        return pkgs;
     }
 
     private Pkg getPkgForOperatingSystem(final VersionNumber versionNumber, final OperatingSystem operatingSystem,
@@ -735,6 +748,7 @@ public class OracleOpenJDK implements Distribution {
         pkg.setVersionNumber(vNumber);
         pkg.setJavaVersion(vNumber);
         pkg.setDistributionVersion(vNumber);
+        pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
         Helper.setTermOfSupport(versionNumber, pkg);
 
@@ -792,6 +806,7 @@ public class OracleOpenJDK implements Distribution {
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
             pkg.setDistributionVersion(versionNumber);
+            pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
             pkg.setPackageType(PackageType.JDK);
             pkg.setArchitecture(architecture);
             pkg.setBitness(bitness);
@@ -816,6 +831,9 @@ public class OracleOpenJDK implements Distribution {
             pkg.setSize(Helper.getFileSize(downloadLink));
             pkgs.add(pkg);
         }
+
+        
+
         return pkgs;
     }
 }

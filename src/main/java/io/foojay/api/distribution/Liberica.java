@@ -34,6 +34,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
@@ -315,6 +316,7 @@ public class Liberica implements Distribution {
         pkg.setVersionNumber(vNumber);
         pkg.setJavaVersion(vNumber);
         pkg.setDistributionVersion(dNumber);
+        pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
         switch (bundleType) {
             case JDK:
@@ -388,6 +390,9 @@ public class Liberica implements Distribution {
         pkg.setSize(Helper.getFileSize(downloadLink));
 
         pkgs.add(pkg);
+
+        
+
         return pkgs;
     }
 }

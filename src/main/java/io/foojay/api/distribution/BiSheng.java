@@ -34,6 +34,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
@@ -160,12 +161,12 @@ public class BiSheng implements Distribution {
 
                 String[]        filenameParts       = filename.split("-");
                 PackageType     packageType         = PackageType.fromText(filenameParts[1]);
-                VersionNumber   versionNumber       = VersionNumber.fromText(filenameParts[2]);
+                VersionNumber   vNumber             = VersionNumber.fromText(filenameParts[2]);
                 OperatingSystem os                  = OperatingSystem.fromText(filenameParts[3]);
                 Architecture    architecture        = Architecture.fromText(filenameParts[4]);
-                TermOfSupport   termOfSupport       = Helper.getTermOfSupport(versionNumber);
+                TermOfSupport   termOfSupport       = Helper.getTermOfSupport(vNumber);
                 String          downloadLink        = CDN_URL + filename;
-                VersionNumber   distroVersionNumber = versionNumber;
+                VersionNumber   distroVersionNumber = vNumber;
 
                 if (onlyNewPkgs) {
                     if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
@@ -173,9 +174,10 @@ public class BiSheng implements Distribution {
 
                 Pkg pkg = new Pkg();
                 pkg.setDistribution(Distro.BISHENG.get());
-                pkg.setVersionNumber(versionNumber);
-                pkg.setJavaVersion(versionNumber);
+                pkg.setVersionNumber(vNumber);
+                pkg.setJavaVersion(vNumber);
                 pkg.setDistributionVersion(distroVersionNumber);
+                pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
                 FPU fpu;
                 if (filename.contains("32sf.")) {
@@ -247,6 +249,9 @@ public class BiSheng implements Distribution {
         } catch (Exception e) {
             LOGGER.debug("Error fetching packages from Bisheng CDN. {}", e.getMessage());
         }
+
+        
+
         return pkgs;
     }
 }

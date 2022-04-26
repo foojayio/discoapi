@@ -23,6 +23,7 @@ import com.google.gson.JsonObject;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.ArchiveType;
 import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.FPU;
 import eu.hansolo.jdktools.HashAlgorithm;
 import eu.hansolo.jdktools.OperatingSystem;
 import eu.hansolo.jdktools.PackageType;
@@ -34,6 +35,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
@@ -42,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.http.HttpResponse;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -236,6 +239,7 @@ public class Corretto implements Distribution {
             pkg.setJavaVersion(vNumber);
 
             pkg.setDistributionVersion(correttoNumber);
+            pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
             pkg.setTermOfSupport(supTerm);
 
@@ -307,6 +311,7 @@ public class Corretto implements Distribution {
             pkgs.add(pkg);
         }
 
+        
         return pkgs;
     }
 
@@ -330,6 +335,7 @@ public class Corretto implements Distribution {
                                      LOGGER.error("Error fetching all packages from {}. {}", getName(), e);
                                  }
                              });
+        
         return pkgs;
     }
 
@@ -395,6 +401,7 @@ public class Corretto implements Distribution {
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
             pkg.setDistributionVersion(vNumber);
+            pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
             pkg.setReleaseStatus(GA);
 
             pkg.setTermOfSupport(Helper.getTermOfSupport(versionNumber));
@@ -422,6 +429,8 @@ public class Corretto implements Distribution {
                 pkg.setChecksumType(HashAlgorithm.MD5);
             }
         });
+
+        
 
         return pkgs;
     }

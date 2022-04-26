@@ -153,6 +153,9 @@ public class Microsoft implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Microsoft. {}", e);
         }
+
+        
+
         return pkgs;
     }
 
@@ -233,6 +236,7 @@ public class Microsoft implements Distribution {
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
             pkg.setDistributionVersion(versionNumber);
+            pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
             pkg.setDirectDownloadUri(href);
             pkg.setFileName(filename);
             if (sigFileHrefs.contains(href.toLowerCase() + ".sig")) { pkg.setSignatureUri(href.toLowerCase() + ".sig"); }

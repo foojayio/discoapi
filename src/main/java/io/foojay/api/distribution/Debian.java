@@ -166,6 +166,9 @@ public class Debian implements Distribution {
                 LOGGER.debug("Error fetching packages from {} url {}. {}", getName(), cdnUrl, e.getMessage());
             }
         }
+
+        
+
         return pkgs;
     }
 
@@ -199,6 +202,7 @@ public class Debian implements Distribution {
                     pkg.setVersionNumber(versionNumber);
                     pkg.setJavaVersion(versionNumber);
                     pkg.setDistributionVersion(versionNumber);
+                    pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
 
                     if (PackageType.NOT_FOUND == packageType) { packageType = PackageType.JDK; }
                     pkg.setPackageType(packageType);
@@ -236,6 +240,7 @@ public class Debian implements Distribution {
         } catch (Exception e) {
             LOGGER.debug("Error fetching packages from Debian CDN. {}", e.getMessage());
         }
+
         return pkgs;
     }
 }

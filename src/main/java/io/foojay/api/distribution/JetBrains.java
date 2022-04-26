@@ -224,6 +224,7 @@ public class JetBrains implements Distribution {
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
             pkg.setDistributionVersion(vNumber);
+            pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
             pkg.setTermOfSupport(TermOfSupport.LTS);
 
@@ -257,6 +258,8 @@ public class JetBrains implements Distribution {
 
             pkgs.add(pkg);
         }
+
+        
 
         return pkgs;
     }
@@ -300,6 +303,7 @@ public class JetBrains implements Distribution {
                 pkg.setVersionNumber(vNumber);
                 pkg.setJavaVersion(vNumber);
                 pkg.setDistributionVersion(vNumber);
+                pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
                 pkg.setTermOfSupport(TermOfSupport.LTS);
 
@@ -334,6 +338,9 @@ public class JetBrains implements Distribution {
                 pkgs.add(pkg);
             }
         }
+
+        
+
         return pkgs;
     }
 
@@ -399,6 +406,7 @@ public class JetBrains implements Distribution {
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
             pkg.setDistributionVersion(versionNumber);
+            pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
             pkg.setDirectDownloadUri(href);
             pkg.setFileName(filename);
             pkg.setArchiveType(archiveType);
@@ -412,6 +420,9 @@ public class JetBrains implements Distribution {
             pkg.setSize(Helper.getFileSize(href));
             pkgs.add(pkg);
         }
+
+        
+
         return pkgs;
     }
 }

@@ -162,6 +162,9 @@ public class SemeruCertified implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Semeru Certified. {}", e);
         }
+
+        
+
         return pkgs;
     }
 
@@ -250,6 +253,7 @@ public class SemeruCertified implements Distribution {
                 pkg.setVersionNumber(versionNumber);
                 pkg.setJavaVersion(versionNumber);
                 pkg.setDistributionVersion(versionNumber);
+                pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
                 pkg.setDirectDownloadUri(downloadLink);
                 pkg.setFileName(filename);
                 pkg.setArchiveType(archiveType);
@@ -290,6 +294,8 @@ public class SemeruCertified implements Distribution {
                 }
             }
         }
+
+        
 
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
@@ -372,6 +378,7 @@ public class SemeruCertified implements Distribution {
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
             pkg.setDistributionVersion(versionNumber);
+            pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
             pkg.setDirectDownloadUri(downloadLink);
             pkg.setFileName(filename);
             pkg.setArchiveType(archiveType);
@@ -385,6 +392,8 @@ public class SemeruCertified implements Distribution {
             pkg.setSize(Helper.getFileSize(downloadLink));
             pkgs.add(pkg);
         }
+
+        
 
         return pkgs;
     }

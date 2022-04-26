@@ -35,6 +35,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
@@ -308,6 +309,7 @@ public class AOJ implements Distribution {
                 installerPkg.setVersionNumber(vNumber);
                 installerPkg.setJavaVersion(vNumber);
                 installerPkg.setDistributionVersion(vNumber);
+                installerPkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
                 installerPkg.setTermOfSupport(supTerm);
 
                 switch (packageType) {
@@ -385,6 +387,7 @@ public class AOJ implements Distribution {
                 packagePkg.setVersionNumber(vNumber);
                 packagePkg.setJavaVersion(vNumber);
                 packagePkg.setDistributionVersion(dNumber);
+                packagePkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
                 packagePkg.setTermOfSupport(supTerm);
 
                 switch (packageType) {

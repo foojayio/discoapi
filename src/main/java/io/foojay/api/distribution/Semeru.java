@@ -179,6 +179,9 @@ public class Semeru implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Semeru. {}", e);
         }
+
+        
+
         return pkgs;
     }
 
@@ -266,6 +269,7 @@ public class Semeru implements Distribution {
                 pkg.setVersionNumber(versionNumber);
                 pkg.setJavaVersion(versionNumber);
                 pkg.setDistributionVersion(versionNumber);
+                pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
                 pkg.setDirectDownloadUri(downloadLink);
                 pkg.setFileName(filename);
                 pkg.setArchiveType(archiveType);
@@ -307,6 +311,8 @@ public class Semeru implements Distribution {
                 }
             }
         }
+
+        
 
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;

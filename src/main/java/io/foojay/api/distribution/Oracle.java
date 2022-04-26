@@ -36,6 +36,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
@@ -315,6 +316,7 @@ public class Oracle implements Distribution {
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
             pkg.setDistributionVersion(versionNumber);
+            pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
             pkg.setPackageType(packageType);
             pkg.setArchitecture(architecture);
             pkg.setBitness(bitness);
@@ -399,6 +401,7 @@ public class Oracle implements Distribution {
                                                      pkg.setVersionNumber(versionNumber);
                                                      pkg.setJavaVersion(versionNumber);
                                                      pkg.setDistributionVersion(versionNumber);
+                                                     pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
                                                      pkg.setPackageType(JDK);
                                                      pkg.setArchitecture(architecture);
                                                      pkg.setBitness(architecture.getBitness());

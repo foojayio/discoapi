@@ -37,6 +37,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
@@ -93,19 +94,20 @@ public class Zulu implements Distribution {
     private static final Pattern                      FILENAME_PREFIX_VN_PATTERN = Pattern.compile("(zulu-repo-|zulu-repo_|zulu|zre)[0-9]{1,3}\\.[0-9]{1,3}(\\.|\\+)[0-9]{1,4}(\\.|-|_)([0-9]{1,3}-)?([0-9]{1,4}_[0-9]{1,4}-)?(ca-|ea-)?(fx-)?(dbg-)?(hl)?(cp(1|2|3)-)?(oem-)?(-|jre|jdk)?");
     private static final Pattern                      FEATURE_PREFIX_PATTERN     = Pattern.compile("^((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?");
     private static final Matcher                      FEATURE_PREFIX_MATCHER     = FEATURE_PREFIX_PATTERN.matcher("");
-    private static final String                       PACKAGE_URL                = "https://api.azul.com/zulu/download/community/v1.0/bundles/";
+    private static final String                       PACKAGE_URL                = "https://api.azul.com/metadata/v1/zulu/packages/";
     private static final String                       CDN_URL                    = "https://cdn.azul.com/zulu/bin/";
 
     // URL parameters
-    private static final String                       JDK_VERSION_PARAM          = "jdk_version";
+    private static final String                       JAVA_VERSION_PARAM         = "java_version";
     private static final String                       ARCHITECTURE_PARAM         = "arch";
     private static final String                       OPERATING_SYSTEM_PARAM     = "os";
-    private static final String                       ARCHIVE_TYPE_PARAM         = "ext";
-    private static final String                       PACKAGE_TYPE_PARAM         = "bundle_type";
+    private static final String                       ARCHIVE_TYPE_PARAM         = "archive_type";
+    private static final String                       PACKAGE_TYPE_PARAM         = "java_package_type";
     private static final String                       RELEASE_STATUS_PARAM       = "release_status";
     private static final String                       TERM_OF_SUPPORT_PARAM      = "support_term";
     private static final String                       BITNESS_PARAM              = "hw_bitness";
-    private static final String                       JAVAFX_PARAM               = "javafx";
+    private static final String                       JAVAFX_PARAM               = "javafx_bundled";
+    private static final String                       AVAILABILITY_TYPES_PARAM   = "CA";
     private static final String                       INCLUDE_FIELDS_PARAM       = "include_fields";
     private static final String                       SIGNATURES_PARAM           = "signatures";
     private static final String                       SHA256_PARAM               = "sha256_hash";
@@ -122,14 +124,14 @@ public class Zulu implements Distribution {
     // JSON fields
     private static final String                       FIELD_ID                   = "id";
     private static final String                       FIELD_NAME                 = "name";
-    private static final String                       FIELD_URL                  = "url";
-    private static final String                       FIELD_JDK_VERSION          = "jdk_version";
+    private static final String                       FIELD_URL                  = "download_url";
     private static final String                       FIELD_JAVA_VERSION         = "java_version";
-    private static final String                       FIELD_ZULU_VERSION         = "zulu_version";
+    private static final String                       FIELD_DISTRO_VERSION       = "distro_version";
     private static final String                       FIELD_SHA_256_HASH         = "sha256_hash";
     private static final String                       FIELD_SIGNATURES           = "signatures";
     private static final String                       FIELD_TYPE                 = "type";
     private static final String                       FIELD_OPEN_JDK_BUILD_NO    = "openjdk_build_number";
+    private static final String                       FIELD_AVAILABILITY_TYPES   = "availability_types";
 
     private static final HashAlgorithm                HASH_ALGORITHM             = HashAlgorithm.NONE;
     private static final String                       HASH_URI                   = "";
@@ -193,7 +195,7 @@ public class Zulu implements Distribution {
         int initialSize = queryBuilder.length();
 
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-        queryBuilder.append(JDK_VERSION_PARAM).append("=").append(versionNumber.getFeature().getAsInt());
+        queryBuilder.append(JAVA_VERSION_PARAM).append("=").append(versionNumber.getFeature().getAsInt());
 
         if (operatingSystem != OperatingSystem.NONE) {
             queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
@@ -239,7 +241,13 @@ public class Zulu implements Distribution {
         }
 
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+        queryBuilder.append(FIELD_AVAILABILITY_TYPES).append("=").append(AVAILABILITY_TYPES_PARAM);
+
+        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
         queryBuilder.append(INCLUDE_FIELDS_PARAM).append("=").append(SIGNATURES_PARAM).append(",").append(SHA256_PARAM);
+
+        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
+        queryBuilder.append("page_size=100");
 
         LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
         return queryBuilder.toString();
@@ -257,7 +265,7 @@ public class Zulu implements Distribution {
             if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(pkg -> pkg.getFileName().equals(filename)).filter(pkg -> pkg.getDirectDownloadUri().equals(downloadLink)).count() > 0) { return pkgs; }
         }
 
-        JsonArray jdkVersionArray = jsonObj.get(FIELD_JDK_VERSION).getAsJsonArray();
+        JsonArray jdkVersionArray = jsonObj.get(FIELD_JAVA_VERSION).getAsJsonArray();
         VersionNumber vNumber;
         if (filename.toLowerCase().startsWith("zulu1.")) {
             vNumber = new VersionNumber(jdkVersionArray.get(0).getAsInt(), jdkVersionArray.get(1).getAsInt(), jdkVersionArray.get(2).getAsInt(), 0);
@@ -271,7 +279,7 @@ public class Zulu implements Distribution {
             vNumber.setBuild(jsonObj.get(FIELD_OPEN_JDK_BUILD_NO).getAsInt());
         }
 
-        JsonArray zuluVersionArray = jsonObj.get(FIELD_ZULU_VERSION).getAsJsonArray();
+        JsonArray zuluVersionArray = jsonObj.get(FIELD_DISTRO_VERSION).getAsJsonArray();
         VersionNumber dNumber = new VersionNumber(zuluVersionArray.get(0).getAsInt(), zuluVersionArray.get(1).getAsInt(), zuluVersionArray.get(2).getAsInt(), zuluVersionArray.get(3).getAsInt());
 
         if (!latest && versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }
@@ -286,6 +294,7 @@ public class Zulu implements Distribution {
         pkg.setVersionNumber(vNumber);
         pkg.setJavaVersion(vNumber);
         pkg.setDistributionVersion(dNumber);
+        pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
         pkg.setFileName(filename);
         pkg.setDirectDownloadUri(downloadLink);
 
@@ -436,6 +445,8 @@ public class Zulu implements Distribution {
 
         pkgs.add(pkg);
 
+        
+
         return pkgs;
     }
 
@@ -475,6 +486,7 @@ public class Zulu implements Distribution {
                 pkg.setVersionNumber(versionNumber);
                 pkg.setJavaVersion(versionNumber);
                 pkg.setDistributionVersion(distroVersionNumber);
+                pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
 
                 FPU fpu;
                 if (filename.contains("32sf.")) {
@@ -552,6 +564,9 @@ public class Zulu implements Distribution {
         } catch (Exception e) {
             LOGGER.debug("Error fetching packages from Zulu CDN. {}", e.getMessage());
         }
+
+        
+
         return pkgs;
     }
 }

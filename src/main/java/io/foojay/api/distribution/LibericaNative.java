@@ -38,6 +38,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
@@ -112,6 +113,7 @@ public class LibericaNative implements Distribution {
     private static final String                       FIELD_ARCHITCTURE             = "architecture";
     private static final String                       FIELD_LATEST_LTS              = "latestLTS";
     private static final String                       FIELD_OS                      = "os";
+    private static final String                       FIELD_COMPONENTS              = "components";
     private static final String                       FIELD_LATEST_IN_ANUAL_VERSION = "latestInAnnualVersion";
     private static final String                       FIELD_DOWNLOAD_URL            = "downloadUrl";
     private static final String                       FIELD_LTS                     = "LTS";
@@ -247,7 +249,7 @@ public class LibericaNative implements Distribution {
             queryBuilder.append(ARCHIVE_TYPE_PARAM).append("=").append(ARCHIVE_TYPE_MAP.get(archiveType));
         }
 
-        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder.toString());
+        LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
 
         return queryBuilder.toString();
     }
@@ -288,6 +290,17 @@ public class LibericaNative implements Distribution {
                         pkg.setJavaFXBundled(false);
                         pkg.setTermOfSupport(LTS);
                         pkg.setPackageType(JDK);
+
+                        if (pkgJsonObj.has(FIELD_COMPONENTS)) {
+                            JsonArray components = pkgJsonObj.getAsJsonArray(FIELD_COMPONENTS);
+                            if (components.size() > 0) {
+                                JsonObject jdkVersionObj = (JsonObject) components.get(0);
+                                if (jdkVersionObj.has(FIELD_VERSION)) {
+                                    VersionNumber jdkVersion = VersionNumber.fromText(jdkVersionObj.get(FIELD_VERSION).getAsString());
+                                    pkg.setJdkVersion(new MajorVersion(jdkVersion.getFeature().getAsInt()));
+                                }
+                            }
+                        }
 
                         if (pkgJsonObj.has(FIELD_OS)) {
                             OperatingSystem operatingSystem = OperatingSystem.fromText(pkgJsonObj.get(FIELD_OS).getAsString());

@@ -224,6 +224,7 @@ public class SAPMachine implements Distribution {
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
             pkg.setDistributionVersion(vNumber);
+            pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
             switch (packageType) {
                 case NONE:
@@ -299,6 +300,8 @@ public class SAPMachine implements Distribution {
 
             pkgs.add(pkg);
         }
+
+        
 
         return pkgs;
     }
@@ -377,6 +380,7 @@ public class SAPMachine implements Distribution {
                 pkg.setVersionNumber(versionNumber);
                 pkg.setJavaVersion(versionNumber);
                 pkg.setDistributionVersion(versionNumber);
+                pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
                 pkg.setDirectDownloadUri(downloadLink);
                 pkg.setFileName(filename);
                 pkg.setArchiveType(archiveType);
@@ -419,6 +423,8 @@ public class SAPMachine implements Distribution {
                 }
             }
         }
+
+        
 
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
@@ -496,6 +502,7 @@ public class SAPMachine implements Distribution {
                                         pkg.setVersionNumber(versionNumber);
                                         pkg.setJavaVersion(versionNumber);
                                         pkg.setDistributionVersion(versionNumber);
+                                        pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
                                         pkg.setDirectDownloadUri(downloadLink);
                                         pkg.setFileName(filename);
                                         pkg.setArchiveType(ArchiveType.getFromFileName(filename));
@@ -553,6 +560,9 @@ public class SAPMachine implements Distribution {
         } catch (CompletionException | InterruptedException | IOException e) {
             LOGGER.error("Error fetching packages for distribution {} from {}", getName(), PACKAGE_JSON_URL);
         }
+
+        
+
         LOGGER.debug("Successfully fetched {} packages from sap.github.io", pkgs.size());
         return pkgs;
     }
@@ -570,6 +580,9 @@ public class SAPMachine implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from SAP Machine. {}", e);
         }
+
+        
+
         return pkgs;
     }
 
@@ -631,6 +644,7 @@ public class SAPMachine implements Distribution {
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
             pkg.setDistributionVersion(versionNumber);
+            pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
             pkg.setDirectDownloadUri(downloadLink);
             pkg.setFileName(filename);
             pkg.setArchiveType(archiveType);

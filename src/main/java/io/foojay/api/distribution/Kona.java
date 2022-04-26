@@ -37,6 +37,7 @@ import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.Feature;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.GithubTokenPool;
@@ -190,6 +191,9 @@ public class Kona implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Kona. {}", e);
         }
+
+        
+
         return pkgs;
         }
 
@@ -259,6 +263,7 @@ public class Kona implements Distribution {
                 pkg.setVersionNumber(vNumber);
                 pkg.setJavaVersion(vNumber);
                 pkg.setDistributionVersion(vNumber);
+                pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
                 pkg.setTermOfSupport(Helper.getTermOfSupport(vNumber));
                 pkg.setPackageType(JDK);
                 pkg.setReleaseStatus(filename.contains("-ea") ? ReleaseStatus.EA : ReleaseStatus.GA);
@@ -325,6 +330,8 @@ public class Kona implements Distribution {
                 }
             }
         }
+
+        
 
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;

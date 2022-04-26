@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -56,7 +57,7 @@ import static java.util.stream.Collectors.toSet;
  * Maintainance information is taken from: https://www.oracle.com/java/technologies/java-se-support-roadmap.html
  */
 
-public class MajorVersion {
+public class MajorVersion implements Comparable<MajorVersion> {
     public  static final String        FIELD_MAJOR_VERSION     = "major_version";
     public  static final String        FIELD_TERM_OF_SUPPORT   = "term_of_support";
     public  static final String        FIELD_MAINTAINED        = "maintained";
@@ -353,6 +354,21 @@ public class MajorVersion {
 
         return majorVersionMsgBuilder.append(CURLY_BRACKET_CLOSE)
                                      .toString();
+    }
+
+    @Override public int compareTo(final MajorVersion other) {
+        return Integer.compare(majorVersion, other.majorVersion);
+    }
+
+    @Override public boolean equals(final Object o) {
+        if (this == o) { return true; }
+        if (o == null || getClass() != o.getClass()) { return false; }
+        MajorVersion that = (MajorVersion) o;
+        return majorVersion == that.majorVersion;
+    }
+
+    @Override public int hashCode() {
+        return Objects.hash(majorVersion, termOfSupport, maintained, scope);
     }
 
     @Override public String toString() {

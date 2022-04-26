@@ -35,6 +35,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
@@ -64,7 +65,7 @@ public class Mandrel implements Distribution {
 
     private static final String        GITHUB_USER             = "graalvm";
     private static final String        PACKAGE_URL             = "https://api.github.com/repos/" + GITHUB_USER + "/mandrel/releases";
-    private static final Pattern       FILENAME_PATTERN        = Pattern.compile("^(mandrel-java11)(.*)(Final\\.tar\\.gz|\\.zip)$");
+    private static final Pattern       FILENAME_PATTERN        = Pattern.compile("^(mandrel-java)([0-9]{2,3})(.*)(Final\\.tar\\.gz|\\.zip)$");
     private static final Matcher       FILENAME_MATCHER        = FILENAME_PATTERN.matcher("");
 
     // URL parameters
@@ -169,8 +170,9 @@ public class Mandrel implements Distribution {
             FILENAME_MATCHER.reset(filename);
             if (!FILENAME_MATCHER.matches()) { continue; }
 
+            String[] filenameParts         = filename.split("-");
             String   strippedFilename = filename.replaceFirst("mandrel-java[0-9]+-", "").replaceAll("\\.Final.*", "");
-            String[] filenameParts    = strippedFilename.split("-");
+            String[] strippedFilenameParts = strippedFilename.split("-");
 
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
@@ -201,8 +203,8 @@ public class Mandrel implements Distribution {
             pkg.setArchitecture(arch);
             pkg.setBitness(arch.getBitness());
 
-            if (null == vNumber && filenameParts.length > 2) {
-                vNumber = VersionNumber.fromText(filenameParts[2]);
+            if (null == vNumber && strippedFilenameParts.length > 2) {
+                vNumber = VersionNumber.fromText(strippedFilenameParts[2]);
             }
             if (latest) {
                 if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { continue; }
@@ -212,6 +214,16 @@ public class Mandrel implements Distribution {
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
             pkg.setDistributionVersion(vNumber);
+
+            if (filenameParts.length > 1) {
+                String part = filenameParts[1].replace("java", "");
+                try {
+                    int jdkVersion = Integer.parseInt(part);
+                    pkg.setJdkVersion(new MajorVersion(jdkVersion));
+                } catch (Exception e) {
+                    LOGGER.error("Error parsing jdk version from filename in Mandrel {}", filename);
+                }
+            }
 
             pkg.setTermOfSupport(supTerm);
 
