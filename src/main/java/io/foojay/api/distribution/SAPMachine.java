@@ -56,6 +56,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
@@ -198,7 +199,7 @@ public class SAPMachine implements Distribution {
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
             }
 
             Pkg pkg = new Pkg();
@@ -301,7 +302,7 @@ public class SAPMachine implements Distribution {
             pkgs.add(pkg);
         }
 
-        
+
 
         return pkgs;
     }
@@ -325,7 +326,7 @@ public class SAPMachine implements Distribution {
                 final String        downloadLink  = assetJsonObj.get("browser_download_url").getAsString();
 
                 if (onlyNewPkgs) {
-                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
                 }
 
                 OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
@@ -415,7 +416,7 @@ public class SAPMachine implements Distribution {
                 }
 
                 final String  downloadLink = assetJsonObj.get("browser_download_url").getAsString();
-                Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFileName().contains(nameToMatch)).findFirst();
+                Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFilename().contains(nameToMatch)).findFirst();
                 if (optPkg.isPresent()) {
                     Pkg pkg = optPkg.get();
                     pkg.setChecksumUri(downloadLink);
@@ -424,7 +425,7 @@ public class SAPMachine implements Distribution {
             }
         }
 
-        
+
 
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
@@ -494,7 +495,7 @@ public class SAPMachine implements Distribution {
                                         final String filename     = Helper.getFileNameFromText(downloadLink);
                                         if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) { continue; }
                                         if (onlyNewPkgs) {
-                                            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                                            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
                                         }
                                         Pkg          pkg          = new Pkg();
                                         pkg.setDistribution(Distro.SAP_MACHINE.get());
@@ -561,7 +562,7 @@ public class SAPMachine implements Distribution {
             LOGGER.error("Error fetching packages for distribution {} from {}", getName(), PACKAGE_JSON_URL);
         }
 
-        
+
 
         LOGGER.debug("Successfully fetched {} packages from sap.github.io", pkgs.size());
         return pkgs;
@@ -600,6 +601,8 @@ public class SAPMachine implements Distribution {
             final MajorVersion    majorVersion    = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
             final PackageType     packageType     = withoutPrefix.startsWith("jdk") ? JDK : JRE;
 
+            ArchiveType archiveType = ArchiveType.getFromFileName(filename);
+
             OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
                                                                                .stream()
                                                                                .filter(entry -> withoutPrefix.contains(entry.getKey()))
@@ -607,8 +610,27 @@ public class SAPMachine implements Distribution {
                                                                                .map(Entry::getValue)
                                                                                .orElse(OperatingSystem.NOT_FOUND);
             if (OperatingSystem.NOT_FOUND == operatingSystem) {
+                switch (archiveType) {
+                    case DEB, RPM      -> operatingSystem = OperatingSystem.LINUX;
+                    case CAB, MSI, EXE -> operatingSystem = OperatingSystem.WINDOWS;
+                    case DMG, PKG      -> operatingSystem = OperatingSystem.MACOS;
+                    default            -> operatingSystem = OperatingSystem.NOT_FOUND;
+                }
+
+                if (OperatingSystem.NOT_FOUND == operatingSystem) {
                 LOGGER.debug("Operating System not found in SAP Machine for filename: {}", filename);
                 continue;
+            }
+            }
+
+            if (OperatingSystem.MACOS == operatingSystem) {
+                switch(archiveType) {
+                    case DEB:
+                    case RPM: operatingSystem = OperatingSystem.LINUX; break;
+                    case CAB:
+                    case MSI:
+                    case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
+                }
             }
 
             final Architecture architecture = Constants.ARCHITECTURE_LOOKUP.entrySet()
@@ -622,19 +644,9 @@ public class SAPMachine implements Distribution {
                 continue;
             }
 
-            ArchiveType archiveType = ArchiveType.getFromFileName(filename);
-            if (OperatingSystem.MACOS == operatingSystem) {
-                switch(archiveType) {
-                    case DEB:
-                    case RPM: operatingSystem = OperatingSystem.LINUX; break;
-                    case CAB:
-                    case MSI:
-                    case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
-                }
-            }
             final String downloadLink = "https://github.com" + href;
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
             }
 
             Pkg pkg = new Pkg();

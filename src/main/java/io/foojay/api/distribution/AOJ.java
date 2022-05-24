@@ -346,7 +346,7 @@ public class AOJ implements Distribution {
                     installerPkg.setSize(Helper.getFileSize(installerDownloadLink));
 
                     if (onlyNewPkgs) {
-                        if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(installerName)).filter(p -> p.getDirectDownloadUri().equals(installerDownloadLink)).count() == 0) {
+                        if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(installerName)).filter(p -> p.getDirectDownloadUri().equals(installerDownloadLink)).count() == 0) {
                             pkgs.add(installerPkg);
                         }
                     }
@@ -379,7 +379,7 @@ public class AOJ implements Distribution {
                 String withoutPrefix = packageName.replace("OpenJDK" + vNumber.getFeature().getAsInt() + "U", "");
 
                 if (onlyNewPkgs) {
-                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(packageName)).filter(p -> p.getDirectDownloadUri().equals(packageDownloadLink)).count() > 0) { continue; }
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(packageName)).filter(p -> p.getDirectDownloadUri().equals(packageDownloadLink)).count() > 0) { continue; }
                 }
 
                 Pkg packagePkg = new Pkg();

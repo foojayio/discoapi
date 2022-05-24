@@ -217,7 +217,7 @@ public class OpenLogic implements Distribution {
             String filename = Helper.getFileNameFromText(fileHref.replaceAll("\"", ""));
 
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(fileHref)).count() > 0) { continue; }
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(fileHref)).count() > 0) { continue; }
             }
 
             Pkg pkg = new Pkg();

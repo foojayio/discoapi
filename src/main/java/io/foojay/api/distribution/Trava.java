@@ -174,7 +174,7 @@ public class Trava implements Distribution {
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
             }
 
             VersionNumber vNumber = new VersionNumber();
@@ -346,7 +346,7 @@ public class Trava implements Distribution {
                 String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
                 if (onlyNewPkgs) {
-                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
                 }
 
                 VersionNumber vNumber = new VersionNumber();

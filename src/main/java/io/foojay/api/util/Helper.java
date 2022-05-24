@@ -20,10 +20,8 @@
 package io.foojay.api.util;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.stream.JsonReader;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.ArchiveType;
 import eu.hansolo.jdktools.OperatingSystem;
@@ -40,14 +38,12 @@ import eu.hansolo.jdktools.util.OutputFormat;
 import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.MongoDbManager;
 import io.foojay.api.distribution.Zulu;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.scopes.IDEScope;
 import io.foojay.api.scopes.YamlScopes;
-import io.foojay.api.util.Records.DownloadInfo;
 import io.micronaut.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +54,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
@@ -67,7 +62,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
@@ -75,8 +69,6 @@ import java.security.NoSuchAlgorithmException;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -90,8 +82,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.function.Function;
-import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -498,7 +488,7 @@ public class Helper {
                                                                   .filter(p -> p.getReleaseStatus()   == pkg.getReleaseStatus())
                                                                   .filter(p -> p.getTermOfSupport()   == pkg.getTermOfSupport())
                                                                   .filter(p -> p.isJavaFXBundled()    == pkg.isJavaFXBundled())
-                                                                  .filter(p -> !p.getFileName().equals(pkg.getFileName()))
+                                                                  .filter(p -> !p.getFilename().equals(pkg.getFilename()))
                                                                   .collect(Collectors.toList());
         return differentBuilds;
     }

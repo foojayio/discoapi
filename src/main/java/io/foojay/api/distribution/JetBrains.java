@@ -198,7 +198,7 @@ public class JetBrains implements Distribution {
             String[] filenameParts    = strippedFilename.split("-");
 
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
             }
 
             Pkg pkg = new Pkg();
@@ -277,7 +277,7 @@ public class JetBrains implements Distribution {
                 if (null == filename || filename.isEmpty() || filename.endsWith("checksum")) { continue; }
 
                 if (onlyNewPkgs) {
-                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
                 }
 
                 Pkg pkg = new Pkg();
@@ -354,7 +354,7 @@ public class JetBrains implements Distribution {
             if (null == filename || !filename.startsWith("jbrsdk")) { continue; }
 
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(href)).count() > 0) { continue; }
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(href)).count() > 0) { continue; }
             }
 
             final String        withoutPrefix = filename.replace("jbrsdk-", "");

@@ -31,7 +31,6 @@ import eu.hansolo.jdktools.ReleaseStatus;
 import eu.hansolo.jdktools.SignatureType;
 import eu.hansolo.jdktools.TermOfSupport;
 import eu.hansolo.jdktools.scopes.BuildScope;
-import eu.hansolo.jdktools.util.OutputFormat;
 import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
@@ -391,7 +390,7 @@ public class Oracle implements Distribution {
                                                  final String checksumUri     = fileDownloadUri + ".sha256";
 
                                                  if (onlyNewPkgs) {
-                                                     if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(fileDownloadUri)).count() > 0) { return; }
+                                                     if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(fileDownloadUri)).count() > 0) { return; }
                                                  }
 
                                                  if (Helper.isUriValid(fileDownloadUri)) {

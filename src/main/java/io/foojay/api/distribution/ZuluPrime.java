@@ -190,7 +190,7 @@ public class ZuluPrime implements Distribution {
             pkg.setDirectDownloadUri(downloadLink);
 
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
             }
 
             ArchiveType ext = getFromFileName(filename);
@@ -285,7 +285,7 @@ public class ZuluPrime implements Distribution {
             String filename = Helper.getFileNameFromText(fileHref.replaceAll("\"", ""));
 
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(fileHref)).count() > 0) { continue; }
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(fileHref)).count() > 0) { continue; }
             }
 
             String withoutPrefix = zingPattern.matcher(filename).replaceAll("");

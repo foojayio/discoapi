@@ -419,7 +419,7 @@ public enum MongoDbManager {
             .filter(pkg -> !pkg.getLibCType().getApiString().isEmpty())
             .filter(pkg -> !pkg.getPackageType().getApiString().isEmpty())
             .filter(pkg -> !pkg.getReleaseStatus().getApiString().isEmpty())
-            .filter(pkg -> !pkg.getFileName().isEmpty())
+            .filter(pkg -> !pkg.getFilename().isEmpty())
             .forEach(pkg -> {
                 try {
                     long count = collection.countDocuments(new BsonDocument(FIELD_PACKAGE_ID, new BsonString(pkg.getId())));
@@ -471,7 +471,7 @@ public enum MongoDbManager {
             .filter(pkg -> !pkg.getLibCType().getApiString().isEmpty())
             .filter(pkg -> !pkg.getPackageType().getApiString().isEmpty())
             .filter(pkg -> !pkg.getReleaseStatus().getApiString().isEmpty())
-            .filter(pkg -> !pkg.getFileName().isEmpty())
+            .filter(pkg -> !pkg.getFilename().isEmpty())
             .forEach(pkg -> {
             try {
                 Document document = Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1));
@@ -516,7 +516,7 @@ public enum MongoDbManager {
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         for (Pkg pkg : pkgs) {
             try {
-                Bson deleteFilter = eq(FIELD_FILENAME, pkg.getFileName());
+                Bson deleteFilter = eq(FIELD_FILENAME, pkg.getFilename());
                 collection.deleteOne(deleteFilter);
             } catch (JsonParseException e) {
                 LOGGER.error("Error when deleting package {}. {}", pkg.getId(), e.getMessage());

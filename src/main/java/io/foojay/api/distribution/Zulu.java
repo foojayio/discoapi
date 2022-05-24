@@ -262,7 +262,7 @@ public class Zulu implements Distribution {
         String downloadLink = jsonObj.get(FIELD_URL).getAsString();
 
         if (onlyNewPkgs) {
-            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(pkg -> pkg.getFileName().equals(filename)).filter(pkg -> pkg.getDirectDownloadUri().equals(downloadLink)).count() > 0) { return pkgs; }
+            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(pkg -> pkg.getFilename().equals(filename)).filter(pkg -> pkg.getDirectDownloadUri().equals(downloadLink)).count() > 0) { return pkgs; }
         }
 
         JsonArray jdkVersionArray = jsonObj.get(FIELD_JAVA_VERSION).getAsJsonArray();
@@ -478,7 +478,7 @@ public class Zulu implements Distribution {
                 VersionNumber   distroVersionNumber            = VersionNumber.fromText(reducedToDistroVersionFilename);
 
                 if (onlyNewPkgs) {
-                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(pkg -> pkg.getFileName().equals(filename)).filter(pkg -> pkg.getDirectDownloadUri().equals(downloadLink)).count() > 0) { return pkgs; }
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(pkg -> pkg.getFilename().equals(filename)).filter(pkg -> pkg.getDirectDownloadUri().equals(downloadLink)).count() > 0) { return pkgs; }
                 }
 
                 Pkg pkg = new Pkg();

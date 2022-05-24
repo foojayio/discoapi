@@ -23,7 +23,6 @@ import com.google.gson.JsonObject;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.ArchiveType;
 import eu.hansolo.jdktools.Bitness;
-import eu.hansolo.jdktools.FPU;
 import eu.hansolo.jdktools.HashAlgorithm;
 import eu.hansolo.jdktools.OperatingSystem;
 import eu.hansolo.jdktools.PackageType;
@@ -44,7 +43,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.http.HttpResponse;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -191,7 +189,7 @@ public class Corretto implements Distribution {
             String filename = Helper.getFileNameFromText(url);
 
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(url)).count() > 0) { continue; }
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(url)).count() > 0) { continue; }
             }
 
             String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
@@ -349,7 +347,7 @@ public class Corretto implements Distribution {
             String filename = Helper.getFileNameFromText(fileHref.replaceAll("\"", ""));
 
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(Helper.getFileNameFromText(filename))).filter(p -> p.getDirectDownloadUri().equals(fileHref)).count() > 0) { continue; }
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(Helper.getFileNameFromText(filename))).filter(p -> p.getDirectDownloadUri().equals(fileHref)).count() > 0) { continue; }
             }
 
             Pkg pkg = new Pkg();

@@ -171,7 +171,7 @@ public class Microsoft implements Distribution {
             if (filename.contains("debugsymbols") || filename.startsWith("jdk") || filename.contains("sources")) { continue; }
 
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(href)).count() > 0) { continue; }
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(href)).count() > 0) { continue; }
             }
 
             final String          withoutPrefix   = filename.replace("microsoft-", "");

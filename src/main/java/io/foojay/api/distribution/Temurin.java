@@ -124,7 +124,7 @@ public class Temurin implements Distribution {
     private static final SignatureType SIGNATURE_TYPE         = SignatureType.NONE;
     private static final HashAlgorithm SIGNATURE_ALGORITHM    = HashAlgorithm.NONE;
     private static final String        SIGNATURE_URI          = "";
-    private static final String        OFFICIAL_URI           = "https://adoptium.net/";
+    private static final String        OFFICIAL_URI           = "https://adoptium.net/temurin/releases";
 
 
     @Override public Distro getDistro() { return Distro.TEMURIN; }
@@ -328,7 +328,7 @@ public class Temurin implements Distribution {
                     installerPkg.setDirectDownloadUri(installerDownloadLink);
                     installerPkg.setFreeUseInProduction(Boolean.TRUE);
                     if (onlyNewPkgs) {
-                        if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(installerName)).filter(p -> p.getDirectDownloadUri().equals(installerDownloadLink)).count() == 0) {
+                        if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(installerName)).filter(p -> p.getDirectDownloadUri().equals(installerDownloadLink)).count() == 0) {
                             pkgs.add(installerPkg);
                         }
                     }
@@ -362,7 +362,7 @@ public class Temurin implements Distribution {
                 }
 
                 if (onlyNewPkgs) {
-                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(packageName)).filter(p -> p.getDirectDownloadUri().equals(packageDownloadLink)).count() > 0) { continue; }
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(packageName)).filter(p -> p.getDirectDownloadUri().equals(packageDownloadLink)).count() > 0) { continue; }
                 }
 
                 Pkg packagePkg = new Pkg();
@@ -486,7 +486,7 @@ public class Temurin implements Distribution {
                     String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
                     if (onlyNewPkgs) {
-                        if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                        if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
                     }
 
                     PackageType packageType = PackageType.fromText(filenameParts[0]);

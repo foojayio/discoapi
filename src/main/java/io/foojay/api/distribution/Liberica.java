@@ -52,19 +52,10 @@ import java.util.stream.Collectors;
 import static eu.hansolo.jdktools.Architecture.AARCH64;
 import static eu.hansolo.jdktools.Architecture.AMD64;
 import static eu.hansolo.jdktools.Architecture.ARM;
-import static eu.hansolo.jdktools.Architecture.ARMEL;
-import static eu.hansolo.jdktools.Architecture.ARMHF;
-import static eu.hansolo.jdktools.Architecture.I386;
-import static eu.hansolo.jdktools.Architecture.MIPS;
-import static eu.hansolo.jdktools.Architecture.MIPSEL;
 import static eu.hansolo.jdktools.Architecture.PPC;
-import static eu.hansolo.jdktools.Architecture.PPC64LE;
-import static eu.hansolo.jdktools.Architecture.S390X;
 import static eu.hansolo.jdktools.Architecture.SPARC;
-import static eu.hansolo.jdktools.Architecture.SPARCV9;
 import static eu.hansolo.jdktools.Architecture.X64;
 import static eu.hansolo.jdktools.Architecture.X86;
-import static eu.hansolo.jdktools.ArchiveType.CAB;
 import static eu.hansolo.jdktools.ArchiveType.DEB;
 import static eu.hansolo.jdktools.ArchiveType.DMG;
 import static eu.hansolo.jdktools.ArchiveType.MSI;
@@ -73,14 +64,11 @@ import static eu.hansolo.jdktools.ArchiveType.RPM;
 import static eu.hansolo.jdktools.ArchiveType.SRC_TAR;
 import static eu.hansolo.jdktools.ArchiveType.TAR_GZ;
 import static eu.hansolo.jdktools.ArchiveType.ZIP;
-import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
 import static eu.hansolo.jdktools.Bitness.BIT_32;
 import static eu.hansolo.jdktools.Bitness.BIT_64;
-import static eu.hansolo.jdktools.OperatingSystem.ALPINE_LINUX;
 import static eu.hansolo.jdktools.OperatingSystem.LINUX;
 import static eu.hansolo.jdktools.OperatingSystem.LINUX_MUSL;
 import static eu.hansolo.jdktools.OperatingSystem.MACOS;
-import static eu.hansolo.jdktools.OperatingSystem.QNX;
 import static eu.hansolo.jdktools.OperatingSystem.SOLARIS;
 import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
 import static eu.hansolo.jdktools.PackageType.JDK;
@@ -280,7 +268,7 @@ public class Liberica implements Distribution {
         Integer       buildVersion  = jsonObj.get(FIELD_BUILD_VERSION).getAsInt();
 
         if (onlyNewPkgs) {
-            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { return pkgs; }
+            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { return pkgs; }
         }
 
         dNumber.setBuild(buildVersion);

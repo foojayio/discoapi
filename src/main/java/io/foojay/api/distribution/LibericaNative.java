@@ -25,12 +25,12 @@ import eu.hansolo.jdktools.ArchiveType;
 import eu.hansolo.jdktools.Bitness;
 import eu.hansolo.jdktools.FPU;
 import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.LibCType;
 import eu.hansolo.jdktools.OperatingSystem;
 import eu.hansolo.jdktools.PackageType;
 import eu.hansolo.jdktools.ReleaseStatus;
 import eu.hansolo.jdktools.SignatureType;
 import eu.hansolo.jdktools.TermOfSupport;
-import eu.hansolo.jdktools.util.OutputFormat;
 import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import com.google.gson.JsonArray;
@@ -53,21 +53,11 @@ import java.util.Map;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static eu.hansolo.jdktools.Architecture.AMD64;
+import static eu.hansolo.jdktools.Architecture.AARCH64;
 import static eu.hansolo.jdktools.Architecture.ARM;
-import static eu.hansolo.jdktools.Architecture.ARMEL;
-import static eu.hansolo.jdktools.Architecture.ARMHF;
-import static eu.hansolo.jdktools.Architecture.I386;
-import static eu.hansolo.jdktools.Architecture.MIPS;
-import static eu.hansolo.jdktools.Architecture.MIPSEL;
-import static eu.hansolo.jdktools.Architecture.PPC;
-import static eu.hansolo.jdktools.Architecture.PPC64LE;
-import static eu.hansolo.jdktools.Architecture.S390X;
-import static eu.hansolo.jdktools.Architecture.SPARCV9;
 import static eu.hansolo.jdktools.Architecture.X64;
 import static eu.hansolo.jdktools.Architecture.X86;
 import static eu.hansolo.jdktools.ArchiveType.APK;
-import static eu.hansolo.jdktools.ArchiveType.CAB;
 import static eu.hansolo.jdktools.ArchiveType.DEB;
 import static eu.hansolo.jdktools.ArchiveType.DMG;
 import static eu.hansolo.jdktools.ArchiveType.MSI;
@@ -76,23 +66,16 @@ import static eu.hansolo.jdktools.ArchiveType.RPM;
 import static eu.hansolo.jdktools.ArchiveType.SRC_TAR;
 import static eu.hansolo.jdktools.ArchiveType.TAR_GZ;
 import static eu.hansolo.jdktools.ArchiveType.ZIP;
-import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
 import static eu.hansolo.jdktools.Bitness.BIT_32;
 import static eu.hansolo.jdktools.Bitness.BIT_64;
-import static eu.hansolo.jdktools.OperatingSystem.ALPINE_LINUX;
 import static eu.hansolo.jdktools.OperatingSystem.LINUX;
 import static eu.hansolo.jdktools.OperatingSystem.LINUX_MUSL;
 import static eu.hansolo.jdktools.OperatingSystem.MACOS;
-import static eu.hansolo.jdktools.OperatingSystem.QNX;
-import static eu.hansolo.jdktools.OperatingSystem.SOLARIS;
 import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
 import static eu.hansolo.jdktools.PackageType.JDK;
-import static eu.hansolo.jdktools.PackageType.JRE;
 import static eu.hansolo.jdktools.ReleaseStatus.EA;
 import static eu.hansolo.jdktools.ReleaseStatus.GA;
 import static eu.hansolo.jdktools.TermOfSupport.LTS;
-import static eu.hansolo.jdktools.TermOfSupport.MTS;
-import static eu.hansolo.jdktools.TermOfSupport.STS;
 
 
 public class LibericaNative implements Distribution {
@@ -110,7 +93,7 @@ public class LibericaNative implements Distribution {
     private static final String                       BITNESS_PARAM                 = "";
 
     private static final String                       FIELD_BITNESS                 = "bitness";
-    private static final String                       FIELD_ARCHITCTURE             = "architecture";
+    private static final String                       FIELD_ARCHITECTURE            = "architecture";
     private static final String                       FIELD_LATEST_LTS              = "latestLTS";
     private static final String                       FIELD_OS                      = "os";
     private static final String                       FIELD_COMPONENTS              = "components";
@@ -198,23 +181,6 @@ public class LibericaNative implements Distribution {
 
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
         queryBuilder.append("version-feature=").append(versionNumber.getFeature().getAsInt());
-
-        /*
-        if (versionNumber.getInterim().isPresent()) {
-            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-            queryBuilder.append("version-interim=").append(versionNumber.getInterim().getAsInt());
-        }
-
-        if (versionNumber.getUpdate().isPresent()) {
-            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-            queryBuilder.append("version-update=").append(versionNumber.getUpdate().getAsInt());
-        }
-
-        if (latest) {
-            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-            queryBuilder.append("version-modifier=").append("latest");
-        }
-        */
 
         if (bitness != Bitness.NONE) {
             queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
@@ -314,13 +280,31 @@ public class LibericaNative implements Distribution {
                             continue;
                         }
 
-                        if (pkgJsonObj.has(FIELD_ARCHITCTURE)) {
-                            Architecture architecture = Architecture.fromText(pkgJsonObj.get(FIELD_ARCHITCTURE).getAsString());
+                        Bitness bitness = pkgJsonObj.has(FIELD_BITNESS) ? Bitness.fromInt(pkgJsonObj.get(FIELD_BITNESS).getAsInt()) : Bitness.NOT_FOUND;
+                        if (pkgJsonObj.has(FIELD_ARCHITECTURE)) {
+                            Architecture architecture = Architecture.fromText(pkgJsonObj.get(FIELD_ARCHITECTURE).getAsString());
                             if (Architecture.NOT_FOUND == architecture) {
                                 continue;
                             } else {
+                                if (Bitness.NOT_FOUND != bitness) {
+                                    switch(bitness) {
+                                        case BIT_32 -> {
+
+                                        }
+                                        case BIT_64 -> {
+                                            if (Architecture.X64.getSynonyms().contains(architecture)) {
+                                                architecture = X64;
+                                            } else if (Architecture.AARCH64.getSynonyms().contains(architecture)) {
+                                                architecture = AARCH64;
+                                            }
+                                        }
+                                        default -> {
+                                            bitness = architecture.getBitness();
+                                        }
+                                    }
+                                }
                                 pkg.setArchitecture(architecture);
-                                pkg.setBitness(architecture.getBitness());
+                                pkg.setBitness(bitness);
                             }
                         } else {
                             continue;
@@ -371,6 +355,37 @@ public class LibericaNative implements Distribution {
                             continue;
                         }
 
+                        String   filenameWithoutPreset = filename.replace("bellsoft-liberica-vm-openjdk", "");
+                        String[] withoutPresetParts    = filenameWithoutPreset.split("-");
+                        if (withoutPresetParts.length == 4) {
+                            MajorVersion    jv = new MajorVersion(VersionNumber.fromText(withoutPresetParts[0]).getFeature().getAsInt());
+                            VersionNumber   vn = VersionNumber.fromText(withoutPresetParts[1]);
+                            OperatingSystem os = OperatingSystem.fromText(withoutPresetParts[2]);
+                            ArchiveType     at = Helper.getFileEnding(filename);
+                            Architecture    ar = Architecture.fromText(withoutPresetParts[3].replace("." + at.getUiString(), ""));
+
+                            pkg.setJdkVersion(jv);
+                            pkg.setVersionNumber(vn);
+                            pkg.setOperatingSystem(os);
+                            pkg.setArchiveType(at);
+                            pkg.setArchitecture(ar);
+                        } else if (withoutPresetParts.length == 5) {
+                            MajorVersion    jv = new MajorVersion(VersionNumber.fromText(withoutPresetParts[0]).getFeature().getAsInt());
+                            VersionNumber   vn = VersionNumber.fromText(withoutPresetParts[1]);
+                            OperatingSystem os = OperatingSystem.fromText(withoutPresetParts[2]);
+                            ArchiveType     at = Helper.getFileEnding(filename);
+                            Architecture    ar = Architecture.fromText(withoutPresetParts[3]);
+                            LibCType        lt = LibCType.fromText(withoutPresetParts[4].replace("." + at.getUiString(), ""));
+                            pkg.setJdkVersion(jv);
+                            pkg.setVersionNumber(vn);
+                            pkg.setOperatingSystem(os);
+                            pkg.setArchiveType(at);
+                            pkg.setArchitecture(ar);
+                            pkg.setLibCType(lt);
+                        } else {
+                            continue;
+                        }
+
                         if (pkgJsonObj.has(FIELD_DOWNLOAD_URL)) {
                             downloadLink = pkgJsonObj.get(FIELD_DOWNLOAD_URL).getAsString();
                             if (null == downloadLink || downloadLink.isEmpty()) {
@@ -384,7 +399,7 @@ public class LibericaNative implements Distribution {
                         }
 
                         if (onlyNewPkgs) {
-                            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
                         }
 
                         if (pkgJsonObj.has(FIELD_SHA1)) {

@@ -227,7 +227,7 @@ public class Semeru implements Distribution {
                 String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
                 if (onlyNewPkgs) {
-                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFileName().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
                 }
 
                 OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
@@ -303,7 +303,7 @@ public class Semeru implements Distribution {
                 }
 
                 final String  downloadLink = assetJsonObj.get("browser_download_url").getAsString();
-                Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFileName().contains(nameToMatch)).findFirst();
+                Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFilename().contains(nameToMatch)).findFirst();
                 if (optPkg.isPresent()) {
                     Pkg pkg = optPkg.get();
                     pkg.setChecksumUri(downloadLink);

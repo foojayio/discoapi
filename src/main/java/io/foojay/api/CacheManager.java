@@ -80,6 +80,7 @@ public enum CacheManager {
         put(16, true);
         put(17, true);
         put(18, true);
+        put(19, true);
     }};
     public final         AtomicBoolean                syncWithDatabaseInProgress  = new AtomicBoolean(false);
     public final         AtomicLong                   msToFillCacheWithPkgsFromDB = new AtomicLong(-1);
