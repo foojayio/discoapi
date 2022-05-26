@@ -23,20 +23,21 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.GithubTokenPool;
 import io.foojay.api.util.Helper;
@@ -49,16 +50,17 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.PackageType.JRE;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.PackageType.JRE;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
 public class OJDKBuild implements Distribution {
@@ -129,14 +131,14 @@ public class OJDKBuild implements Distribution {
         return List.of("ojdk_build", "OJDK_BUILD", "OJDK Build", "ojdk build", "ojdkbuild", "OJDKBuild");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.OJDK_BUILD.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString))))
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString))))
                                              .stream()
-                                             .sorted(Comparator.comparing(SemVer::getVersionNumber).reversed())
+                                             .sorted(Comparator.comparing(Semver::getVersionNumber).reversed())
                                              .collect(Collectors.toList());
     }
 
@@ -155,7 +157,7 @@ public class OJDKBuild implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         TermOfSupport supTerm = null;
@@ -171,11 +173,11 @@ public class OJDKBuild implements Distribution {
         JsonArray assets = jsonObj.getAsJsonArray("assets");
         for (JsonElement element : assets) {
             JsonObject assetJsonObj = element.getAsJsonObject();
-            String     fileName     = assetJsonObj.get("name").getAsString();
+            String     filename     = assetJsonObj.get("name").getAsString();
 
-            if (fileName.endsWith("txt") || fileName.endsWith("symbols.tar.gz")) { continue; }
+            if (filename.endsWith("txt") || filename.endsWith("symbols.tar.gz")) { continue; }
 
-            String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(fileName).replaceAll("");
+            String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
 
             VersionNumber vNumber = VersionNumber.fromText(withoutPrefix);
             if (latest) {
@@ -186,15 +188,19 @@ public class OJDKBuild implements Distribution {
 
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+            }
+
             Pkg pkg = new Pkg();
 
             ArchiveType ext = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
-                                                           .filter(entry -> fileName.endsWith(entry.getKey()))
+                                                           .filter(entry -> filename.endsWith(entry.getKey()))
                                                            .findFirst()
                                                            .map(Entry::getValue)
                                                            .orElse(ArchiveType.NONE);
             if (ArchiveType.NONE == ext) {
-                LOGGER.debug("Archive Type not found in OJDKBuild for filename: {}", fileName);
+                LOGGER.debug("Archive Type not found in OJDKBuild for filename: {}", filename);
                 return pkgs;
             }
 
@@ -204,11 +210,12 @@ public class OJDKBuild implements Distribution {
             pkg.setTermOfSupport(supTerm);
 
             pkg.setDistribution(Distro.OJDK_BUILD.get());
-            pkg.setFileName(fileName);
+            pkg.setFileName(filename);
             pkg.setDirectDownloadUri(downloadLink);
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
             pkg.setDistributionVersion(vNumber);
+            pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
             switch (packageType) {
                 case NONE:
@@ -245,7 +252,7 @@ public class OJDKBuild implements Distribution {
                                                              .orElse(Architecture.NONE);
 
             if (Architecture.NONE == arch) {
-                LOGGER.debug("Architecture not found in OJDKBuild for filename: {}", fileName);
+                LOGGER.debug("Architecture not found in OJDKBuild for filename: {}", filename);
                 return pkgs;
             }
 
@@ -275,20 +282,24 @@ public class OJDKBuild implements Distribution {
                 }
             }
             if (OperatingSystem.NONE == os) {
-                LOGGER.debug("Operating System not found in OJDKBuild for filename: {}", fileName);
+                LOGGER.debug("Operating System not found in OJDKBuild for filename: {}", filename);
                 continue;
             }
             pkg.setOperatingSystem(os);
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
 
+            pkg.setSize(Helper.getFileSize(downloadLink));
+
             pkgs.add(pkg);
         }
+
+        
 
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs() {
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         try {
             for (String packageUrl : PACKAGE_URLS) {
@@ -302,7 +313,7 @@ public class OJDKBuild implements Distribution {
                         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
                         if (element instanceof JsonArray) {
                             JsonArray jsonArray = element.getAsJsonArray();
-                            pkgs.addAll(getAllPkgsFromJson(jsonArray));
+                            pkgs.addAll(getAllPkgsFromJson(jsonArray, onlyNewPkgs));
                         }
                     } else {
                         // Problem with url request
@@ -315,10 +326,13 @@ public class OJDKBuild implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from OJDKBuild. {}", e);
         }
+
+        
+
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray) {
+    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         for (int i = 0; i < jsonArray.size(); i++) {
@@ -338,6 +352,10 @@ public class OJDKBuild implements Distribution {
                 vNumber.setPatch(0); // no support for patches yet
 
                 String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+
+                if (onlyNewPkgs) {
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                }
 
                 Pkg pkg = new Pkg();
 
@@ -367,6 +385,7 @@ public class OJDKBuild implements Distribution {
                 pkg.setVersionNumber(vNumber);
                 pkg.setJavaVersion(vNumber);
                 pkg.setDistributionVersion(numberFound);
+                pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
                 pkg.setPackageType(filename.contains(Constants.JRE_POSTFIX) ? JRE : JDK);
                 pkg.setReleaseStatus(withoutPrefix.contains(Constants.EA_POSTFIX) ? EA : GA);
 
@@ -413,7 +432,35 @@ public class OJDKBuild implements Distribution {
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
 
+                pkg.setSize(Helper.getFileSize(downloadLink));
+
                 pkgs.add(pkg);
+            }
+        }
+
+        // Fetch checksums
+        for (int i = 0 ; i < jsonArray.size(); i++) {
+            JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
+            JsonArray  assets  = jsonObj.getAsJsonArray("assets");
+            for (JsonElement element : assets) {
+                JsonObject assetJsonObj = element.getAsJsonObject();
+                String     filename     = assetJsonObj.get("name").getAsString();
+
+                if (null == filename || filename.isEmpty() || !filename.endsWith(Constants.FILE_ENDING_SHA256)) { continue; }
+                String nameToMatch;
+                if (filename.endsWith("." + Constants.FILE_ENDING_SHA256)) {
+                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256, "");
+                } else {
+                    continue;
+                }
+
+                final String  downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+                Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFilename().contains(nameToMatch)).findFirst();
+                if (optPkg.isPresent()) {
+                    Pkg pkg = optPkg.get();
+                    pkg.setChecksumUri(downloadLink);
+                    pkg.setChecksumType(HashAlgorithm.SHA256);
+                }
             }
         }
 

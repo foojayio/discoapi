@@ -23,21 +23,21 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.MajorVersion;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
@@ -55,24 +55,26 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.Architecture.AARCH64;
-import static io.foojay.api.pkg.Architecture.PPC64;
-import static io.foojay.api.pkg.Architecture.PPC64LE;
-import static io.foojay.api.pkg.Architecture.X64;
-import static io.foojay.api.pkg.Bitness.BIT_64;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.OperatingSystem.MACOS;
-import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.PackageType.JRE;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.Architecture.AARCH64;
+import static eu.hansolo.jdktools.Architecture.PPC64;
+import static eu.hansolo.jdktools.Architecture.PPC64LE;
+import static eu.hansolo.jdktools.Architecture.X64;
+import static eu.hansolo.jdktools.Bitness.BIT_64;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX;
+import static eu.hansolo.jdktools.OperatingSystem.MACOS;
+import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.PackageType.JRE;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
 public class SAPMachine implements Distribution {
@@ -142,12 +144,12 @@ public class SAPMachine implements Distribution {
         return List.of("sap_machine", "sapmachine", "SAPMACHINE", "SAP_MACHINE", "SAPMachine", "SAP Machine", "sap-machine", "SAP-Machine", "SAP-MACHINE");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.SAP_MACHINE.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
 
@@ -165,7 +167,7 @@ public class SAPMachine implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         TermOfSupport supTerm = null;
@@ -196,6 +198,10 @@ public class SAPMachine implements Distribution {
 
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+            }
+
             Pkg pkg = new Pkg();
 
             ArchiveType ext = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
@@ -219,6 +225,7 @@ public class SAPMachine implements Distribution {
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
             pkg.setDistributionVersion(vNumber);
+            pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
             switch (packageType) {
                 case NONE:
@@ -290,19 +297,22 @@ public class SAPMachine implements Distribution {
             }
             pkg.setOperatingSystem(os);
             pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkg.setSize(Helper.getFileSize(downloadLink));
 
             pkgs.add(pkg);
         }
 
+
+
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray) {
+    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         for (int i = 0; i < jsonArray.size(); i++) {
             JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
-            JsonArray assets = jsonObj.getAsJsonArray("assets");
+            JsonArray  assets  = jsonObj.getAsJsonArray("assets");
             for (JsonElement element : assets) {
                 JsonObject assetJsonObj = element.getAsJsonObject();
                 String     filename     = assetJsonObj.get("name").getAsString();
@@ -311,9 +321,13 @@ public class SAPMachine implements Distribution {
 
                 final String        withoutPrefix = filename.replace("sapmachine-", "");
                 final VersionNumber versionNumber = VersionNumber.fromText(withoutPrefix);
-                final MajorVersion  majorVersion  = versionNumber.getMajorVersion();
+                final MajorVersion  majorVersion  = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
                 final PackageType   packageType   = withoutPrefix.startsWith("jdk") ? JDK : JRE;
                 final String        downloadLink  = assetJsonObj.get("browser_download_url").getAsString();
+
+                if (onlyNewPkgs) {
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                }
 
                 OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
                                                                                    .stream()
@@ -367,6 +381,7 @@ public class SAPMachine implements Distribution {
                 pkg.setVersionNumber(versionNumber);
                 pkg.setJavaVersion(versionNumber);
                 pkg.setDistributionVersion(versionNumber);
+                pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
                 pkg.setDirectDownloadUri(downloadLink);
                 pkg.setFileName(filename);
                 pkg.setArchiveType(archiveType);
@@ -376,16 +391,47 @@ public class SAPMachine implements Distribution {
                 pkg.setPackageType(packageType);
                 pkg.setOperatingSystem(operatingSystem);
                 pkg.setFreeUseInProduction(Boolean.TRUE);
+                pkg.setSize(Helper.getFileSize(downloadLink));
 
                 pkgs.add(pkg);
             }
         }
 
+        // Fetch checksums
+        for (int i = 0 ; i < jsonArray.size(); i++) {
+            JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
+            JsonArray  assets  = jsonObj.getAsJsonArray("assets");
+            for (JsonElement element : assets) {
+                JsonObject assetJsonObj = element.getAsJsonObject();
+                String     filename     = assetJsonObj.get("name").getAsString();
+
+                if (null == filename || filename.isEmpty() || (!filename.endsWith(Constants.FILE_ENDING_SHA256_TXT) && !filename.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT))) { continue; }
+                String nameToMatch;
+                if (filename.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT)) {
+                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256_DMG_TXT, "");
+                } else if (filename.endsWith(Constants.FILE_ENDING_SHA256_TXT)) {
+                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256_TXT, "");
+                } else {
+                    continue;
+                }
+
+                final String  downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+                Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFilename().contains(nameToMatch)).findFirst();
+                if (optPkg.isPresent()) {
+                    Pkg pkg = optPkg.get();
+                    pkg.setChecksumUri(downloadLink);
+                    pkg.setChecksumType(HashAlgorithm.SHA256);
+                }
+            }
+        }
+
+
+
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromJsonUrl() {
+    public List<Pkg> getAllPkgsFromJsonUrl(final boolean onlyNewPkgs) {
         List<Pkg>   pkgs      = new ArrayList<>();
         HttpClient  clientSAP = HttpClient.newBuilder()
                                           .followRedirects(Redirect.NEVER)
@@ -448,12 +494,16 @@ public class SAPMachine implements Distribution {
                                         final String downloadLink = imageTypeObj.get(os).getAsString();
                                         final String filename     = Helper.getFileNameFromText(downloadLink);
                                         if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) { continue; }
+                                        if (onlyNewPkgs) {
+                                            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                                        }
                                         Pkg          pkg          = new Pkg();
                                         pkg.setDistribution(Distro.SAP_MACHINE.get());
                                         pkg.setBitness(BIT_64);
                                         pkg.setVersionNumber(versionNumber);
                                         pkg.setJavaVersion(versionNumber);
                                         pkg.setDistributionVersion(versionNumber);
+                                        pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
                                         pkg.setDirectDownloadUri(downloadLink);
                                         pkg.setFileName(filename);
                                         pkg.setArchiveType(ArchiveType.getFromFileName(filename));
@@ -496,6 +546,7 @@ public class SAPMachine implements Distribution {
                                                 pkg.setArchitecture(AARCH64);
                                                 break;
                                         }
+                                        pkg.setSize(Helper.getFileSize(downloadLink));
                                         pkgs.add(pkg);
                                     }
                                 }
@@ -510,11 +561,14 @@ public class SAPMachine implements Distribution {
         } catch (CompletionException | InterruptedException | IOException e) {
             LOGGER.error("Error fetching packages for distribution {} from {}", getName(), PACKAGE_JSON_URL);
         }
+
+
+
         LOGGER.debug("Successfully fetched {} packages from sap.github.io", pkgs.size());
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs() {
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         try {
             for (String packageUrl : PACKAGE_URLS) {
@@ -522,15 +576,18 @@ public class SAPMachine implements Distribution {
                 if (null == response) { return pkgs; }
                 final String html = response.body();
                 if (html.isEmpty()) { return pkgs; }
-                pkgs.addAll(getAllPkgsFromHtml(html));
+                pkgs.addAll(getAllPkgsFromHtml(html, onlyNewPkgs));
             }
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from SAP Machine. {}", e);
         }
+
+        
+
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromHtml(final String html) {
+    public List<Pkg> getAllPkgsFromHtml(final String html, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
 
@@ -541,8 +598,10 @@ public class SAPMachine implements Distribution {
 
             final String          withoutPrefix   = filename.replace("sapmachine-", "");
             final VersionNumber   versionNumber   = VersionNumber.fromText(withoutPrefix);
-            final MajorVersion    majorVersion    = versionNumber.getMajorVersion();
+            final MajorVersion    majorVersion    = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
             final PackageType     packageType     = withoutPrefix.startsWith("jdk") ? JDK : JRE;
+
+            ArchiveType archiveType = ArchiveType.getFromFileName(filename);
 
             OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
                                                                                .stream()
@@ -551,8 +610,27 @@ public class SAPMachine implements Distribution {
                                                                                .map(Entry::getValue)
                                                                                .orElse(OperatingSystem.NOT_FOUND);
             if (OperatingSystem.NOT_FOUND == operatingSystem) {
+                switch (archiveType) {
+                    case DEB, RPM      -> operatingSystem = OperatingSystem.LINUX;
+                    case CAB, MSI, EXE -> operatingSystem = OperatingSystem.WINDOWS;
+                    case DMG, PKG      -> operatingSystem = OperatingSystem.MACOS;
+                    default            -> operatingSystem = OperatingSystem.NOT_FOUND;
+                }
+
+                if (OperatingSystem.NOT_FOUND == operatingSystem) {
                 LOGGER.debug("Operating System not found in SAP Machine for filename: {}", filename);
                 continue;
+            }
+            }
+
+            if (OperatingSystem.MACOS == operatingSystem) {
+                switch(archiveType) {
+                    case DEB:
+                    case RPM: operatingSystem = OperatingSystem.LINUX; break;
+                    case CAB:
+                    case MSI:
+                    case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
+                }
             }
 
             final Architecture architecture = Constants.ARCHITECTURE_LOOKUP.entrySet()
@@ -566,15 +644,9 @@ public class SAPMachine implements Distribution {
                 continue;
             }
 
-            ArchiveType archiveType = ArchiveType.getFromFileName(filename);
-            if (OperatingSystem.MACOS == operatingSystem) {
-                switch(archiveType) {
-                    case DEB:
-                    case RPM: operatingSystem = OperatingSystem.LINUX; break;
-                    case CAB:
-                    case MSI:
-                    case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
-                }
+            final String downloadLink = "https://github.com" + href;
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
             }
 
             Pkg pkg = new Pkg();
@@ -584,7 +656,8 @@ public class SAPMachine implements Distribution {
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
             pkg.setDistributionVersion(versionNumber);
-            pkg.setDirectDownloadUri("https://github.com" + href);
+            pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
+            pkg.setDirectDownloadUri(downloadLink);
             pkg.setFileName(filename);
             pkg.setArchiveType(archiveType);
             pkg.setJavaFXBundled(false);
@@ -593,6 +666,7 @@ public class SAPMachine implements Distribution {
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkg.setSize(Helper.getFileSize(pkg.getDirectDownloadUri()));
             pkgs.add(pkg);
         }
 

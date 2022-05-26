@@ -19,6 +19,8 @@
 
 package io.foojay.api.scopes;
 
+import eu.hansolo.jdktools.scopes.ScopeConfig;
+
 import java.util.Map;
 
 

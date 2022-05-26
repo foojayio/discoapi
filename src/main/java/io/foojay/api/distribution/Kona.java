@@ -23,20 +23,22 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.Feature;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.GithubTokenPool;
 import io.foojay.api.util.Helper;
@@ -49,15 +51,16 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.ArchiveType.getFromFileName;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.OperatingSystem.MACOS;
-import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
-import static io.foojay.api.pkg.PackageType.JDK;
+import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX;
+import static eu.hansolo.jdktools.OperatingSystem.MACOS;
+import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
+import static eu.hansolo.jdktools.PackageType.JDK;
 
 
 public class Kona implements Distribution {
@@ -119,12 +122,12 @@ public class Kona implements Distribution {
         return List.of("kona", "KONA", "Kona");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.KONA.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
 
@@ -136,13 +139,8 @@ public class Kona implements Distribution {
         queryBuilder.append(PACKAGE_URL);
 
         switch(versionNumber.getFeature().getAsInt()) {
-            case 8:
-            case 11:
-            case 17:
-                queryBuilder.append("-").append(versionNumber.getFeature().getAsInt()).append("/releases").append("?per_page=100");
-                break;
-            default:
-                return "";
+            case 8, 11, 17 -> queryBuilder.append("-").append(versionNumber.getFeature().getAsInt()).append("/releases").append("?per_page=100");
+            default        -> { return ""; }
         }
 
         LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
@@ -151,24 +149,19 @@ public class Kona implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
             return pkgs;
         }
 
-    public List<Pkg> getAllPkgs() {
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         final List<String> packageUrls = new ArrayList<>();
 
         CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> majorVersion.getAsInt() > 7).forEach(majorVersion -> {
             switch(majorVersion.getAsInt()) {
-                case 8:
-                case 11:
-                case 17:
-                case 18:
-                    packageUrls.add(new StringBuilder(PACKAGE_URL).append("-").append(majorVersion.getAsInt()).append("/releases").append("?per_page=100").toString());
-                    break;
+                case 8, 11, 17 -> packageUrls.add(new StringBuilder(PACKAGE_URL).append("-").append(majorVersion.getAsInt()).append("/releases").append("?per_page=100").toString());
         }
         });
 
@@ -184,7 +177,7 @@ public class Kona implements Distribution {
                         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
                         if (element instanceof JsonArray) {
                             JsonArray jsonArray = element.getAsJsonArray();
-                            pkgs.addAll(getAllPkgsFromJson(jsonArray));
+                            pkgs.addAll(getAllPkgsFromJson(jsonArray, onlyNewPkgs));
                         }
                     } else {
                         // Problem with url request
@@ -197,97 +190,147 @@ public class Kona implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Kona. {}", e);
         }
+
+        
+
         return pkgs;
         }
 
-    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray) {
+    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         for (int i = 0; i < jsonArray.size(); i++) {
             JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
-        JsonArray assets = jsonObj.getAsJsonArray("assets");
-        for (JsonElement element : assets) {
-            JsonObject assetJsonObj = element.getAsJsonObject();
+            JsonArray assets = jsonObj.getAsJsonArray("assets");
+            for (JsonElement element : assets) {
+                JsonObject assetJsonObj = element.getAsJsonObject();
                 String     filename     = assetJsonObj.get("name").getAsString();
 
                 if (null == filename || filename.isEmpty() || filename.endsWith("txt") || filename.endsWith("debuginfo.zip") || filename.endsWith("sha256")) { continue; }
                 if (filename.contains("-debug-")) { continue; }
                 if (filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_JAR) || filename.endsWith(Constants.FILE_ENDING_MD5) || filename.contains("javadoc")) { continue; }
 
-            String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+                String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
-            Pkg pkg = new Pkg();
-            pkg.setDistribution(Distro.KONA.get());
+                if (onlyNewPkgs) {
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                }
+
+                Pkg pkg = new Pkg();
+                pkg.setDistribution(Distro.KONA.get());
                 pkg.setFileName(filename);
-            pkg.setDirectDownloadUri(downloadLink);
+                pkg.setDirectDownloadUri(downloadLink);
 
                 ArchiveType ext = getFromFileName(filename);
                 pkg.setArchiveType(ext);
 
-            Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
                                                                  .filter(entry -> filename.contains(entry.getKey()))
-                                                             .findFirst()
-                                                             .map(Entry::getValue)
-                                                             .orElse(Architecture.NONE);
+                                                                 .findFirst()
+                                                                 .map(Entry::getValue)
+                                                                 .orElse(Architecture.NONE);
                 if (Architecture.NONE == arch) { continue; }
-            pkg.setArchitecture(arch);
-            pkg.setBitness(arch.getBitness());
+                pkg.setArchitecture(arch);
+                pkg.setBitness(arch.getBitness());
 
                 VersionNumber vNumber = null;
-                String        n       = filename.replaceAll("TencentKona", "");
+                String        n       = filename.replace("TencentKona", "");
                 if (n.startsWith("-")) { n = n.substring(1); }
-                if (n.startsWith("11")) {
+                if (n.startsWith("17")) {
+                    n = n.replace("_signed", "");
+                    n = n.replace("_notarized", "");
+                    n = n.replace("_64", "");
                     n = n.substring(0, n.indexOf("_"));
-                    if (n.endsWith("-jdk")) { n = n.replaceAll("-jdk", ""); }
+                    if (n.endsWith("-jdk")) { n = n.replace("-jdk", ""); }
+                    vNumber = VersionNumber.fromText(n);
+                } else if (n.startsWith("11")) {
+                    n = n.replace("_signed", "");
+                    n = n.replace("_notarized", "");
+                    n = n.replace("_64", "");
+                    n = n.substring(0, n.indexOf("_"));
+                    if (n.endsWith("-jdk")) { n = n.replace("-jdk", ""); }
                     vNumber = VersionNumber.fromText(n);
                 } else if (n.startsWith("8")) {
-                    n = n.replaceAll(ext.getFileEndings().get(0), "");
+                    n = n.replace(ext.getFileEndings().get(0), "");
+                    n = n.replace("_signed", "");
+                    n = n.replace("_notarized", "");
+                    n = n.replace("_64", "");
                     String[] parts = n.split("_");
-                    if (!parts[parts.length - 1].equals("64")) {
                         vNumber = VersionNumber.fromText(parts[parts.length - 1]);
                     }
-            }
                 if (null == vNumber) { continue; }
 
-            pkg.setVersionNumber(vNumber);
-            pkg.setJavaVersion(vNumber);
-                VersionNumber dNumber = VersionNumber.fromText(filename);
-            pkg.setDistributionVersion(dNumber);
+                pkg.setVersionNumber(vNumber);
+                pkg.setJavaVersion(vNumber);
+                pkg.setDistributionVersion(vNumber);
+                pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
                 pkg.setTermOfSupport(Helper.getTermOfSupport(vNumber));
-            pkg.setPackageType(JDK);
-                pkg.setReleaseStatus(ReleaseStatus.GA);
+                pkg.setPackageType(JDK);
+                pkg.setReleaseStatus(filename.contains("-ea") ? ReleaseStatus.EA : ReleaseStatus.GA);
 
-            OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
+                if (filename.contains("_fiber")) { pkg.setFeatures(List.of(Feature.KONA_FIBER)); }
+
+                OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
                                                                       .filter(entry -> filename.contains(entry.getKey()))
-                                                                  .findFirst()
-                                                                  .map(Entry::getValue)
-                                                                  .orElse(OperatingSystem.NONE);
+                                                                      .findFirst()
+                                                                      .map(Entry::getValue)
+                                                                      .orElse(OperatingSystem.NONE);
 
-            if (OperatingSystem.NONE == os) {
-                switch (pkg.getArchiveType()) {
-                    case DEB:
-                    case RPM:
-                        case TGZ:
-                    case TAR_GZ:
-                        os = LINUX;
-                        break;
-                    case MSI:
-                    case ZIP:
-                        os = WINDOWS;
-                        break;
-                    case DMG:
-                    case PKG:
-                        os = MACOS;
-                        break;
+                if (OperatingSystem.NONE == os) {
+                    switch (pkg.getArchiveType()) {
+                        case DEB:
+                        case RPM:
+                            case TGZ:
+                        case TAR_GZ:
+                            os = LINUX;
+                            break;
+                        case MSI:
+                        case ZIP:
+                            os = WINDOWS;
+                            break;
+                        case DMG:
+                        case PKG:
+                            os = MACOS;
+                            break;
+                    }
+                }
+                if (OperatingSystem.NONE == os) { continue; }
+                pkg.setOperatingSystem(os);
+
+                pkg.setFreeUseInProduction(Boolean.TRUE);
+
+                pkg.setSize(Helper.getFileSize(downloadLink));
+
+                pkgs.add(pkg);
+            }
+        }
+
+        // Fetch checksums
+        for (int i = 0 ; i < jsonArray.size(); i++) {
+            JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
+            JsonArray  assets  = jsonObj.getAsJsonArray("assets");
+            for (JsonElement element : assets) {
+                JsonObject assetJsonObj = element.getAsJsonObject();
+                String     filename     = assetJsonObj.get("name").getAsString();
+
+                if (null == filename || filename.isEmpty() || !filename.endsWith(Constants.FILE_ENDING_MD5)) { continue; }
+                String nameToMatch;
+                if (filename.endsWith(Constants.FILE_ENDING_MD5)) {
+                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_MD5, "");
+                } else {
+                    continue;
+                }
+
+                final String  downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+                Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFilename().contains(nameToMatch)).findFirst();
+                if (optPkg.isPresent()) {
+                    Pkg pkg = optPkg.get();
+                    pkg.setChecksumUri(downloadLink);
+                    pkg.setChecksumType(HashAlgorithm.MD5);
                 }
             }
-                if (OperatingSystem.NONE == os) { continue; }
-            pkg.setOperatingSystem(os);
-
-            pkg.setFreeUseInProduction(Boolean.TRUE);
-
-            pkgs.add(pkg);
         }
-        }
+
+        
 
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;

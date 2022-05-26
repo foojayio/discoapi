@@ -19,7 +19,8 @@
 
 package io.foojay.api.pkg;
 
-import io.foojay.api.util.OutputFormat;
+import eu.hansolo.jdktools.Api;
+import eu.hansolo.jdktools.util.OutputFormat;
 
 import java.util.Arrays;
 import java.util.List;
@@ -34,11 +35,12 @@ import static io.foojay.api.util.Constants.NEW_LINE;
 import static io.foojay.api.util.Constants.QUOTES;
 
 
-public enum Feature implements ApiFeature {
+public enum Feature implements Api {
     LOOM("Loom", "loom"),
     PANAMA("Panama", "panama"),
     LANAI("Lanai", "lanai"),
     VALHALLA("Valhalla", "valhalla"),
+    KONA_FIBER("KonaFiber", "kona_fiber"),
     NONE("-", ""),
     NOT_FOUND("", "");
 
@@ -104,6 +106,15 @@ public enum Feature implements ApiFeature {
             case "VALHALLA":
             case "Valhalla":
                 return VALHALLA;
+            case "kona_fiber":
+            case "KONA_FIBER":
+            case "Kona Fiber":
+            case "KONA FIBER":
+            case "Kona_Fiber":
+            case "KonaFiber":
+            case "konafiber":
+            case "KONAFIBER":
+                return KONA_FIBER;
             default:
                 return NOT_FOUND;
         }

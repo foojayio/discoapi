@@ -17,22 +17,22 @@
 package io.foojay.api.distribution;
 
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.FPU;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.FPU;
-import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.MajorVersion;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,27 +48,27 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.Architecture.AMD64;
-import static io.foojay.api.pkg.Architecture.ARM;
-import static io.foojay.api.pkg.Architecture.ARMEL;
-import static io.foojay.api.pkg.Architecture.ARMHF;
-import static io.foojay.api.pkg.Architecture.I386;
-import static io.foojay.api.pkg.Architecture.MIPS;
-import static io.foojay.api.pkg.Architecture.MIPSEL;
-import static io.foojay.api.pkg.Architecture.PPC;
-import static io.foojay.api.pkg.Architecture.PPC64LE;
-import static io.foojay.api.pkg.Architecture.S390X;
-import static io.foojay.api.pkg.ArchiveType.DEB;
-import static io.foojay.api.pkg.Bitness.BIT_32;
-import static io.foojay.api.pkg.Bitness.BIT_64;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.PackageType.JRE;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
-import static io.foojay.api.pkg.TermOfSupport.LTS;
-import static io.foojay.api.pkg.TermOfSupport.MTS;
-import static io.foojay.api.pkg.TermOfSupport.STS;
+import static eu.hansolo.jdktools.Architecture.AMD64;
+import static eu.hansolo.jdktools.Architecture.ARM;
+import static eu.hansolo.jdktools.Architecture.ARMEL;
+import static eu.hansolo.jdktools.Architecture.ARMHF;
+import static eu.hansolo.jdktools.Architecture.I386;
+import static eu.hansolo.jdktools.Architecture.MIPS;
+import static eu.hansolo.jdktools.Architecture.MIPSEL;
+import static eu.hansolo.jdktools.Architecture.PPC;
+import static eu.hansolo.jdktools.Architecture.PPC64LE;
+import static eu.hansolo.jdktools.Architecture.S390X;
+import static eu.hansolo.jdktools.ArchiveType.DEB;
+import static eu.hansolo.jdktools.Bitness.BIT_32;
+import static eu.hansolo.jdktools.Bitness.BIT_64;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.PackageType.JRE;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.TermOfSupport.LTS;
+import static eu.hansolo.jdktools.TermOfSupport.MTS;
+import static eu.hansolo.jdktools.TermOfSupport.STS;
 
 
 public class Debian implements Distribution {
@@ -137,12 +137,12 @@ public class Debian implements Distribution {
 
     @Override public List<String> getSynonyms() { return List.of("debian", "DEBIAN", "Debian"); }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.DEBIAN.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
     @Override public String getUrlForAvailablePkgs(final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem, final Architecture architecture, final Bitness bitness, final ArchiveType archiveType,
@@ -151,7 +151,7 @@ public class Debian implements Distribution {
     }
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem, final Architecture architecture, final Bitness bitness,
-                                    final ArchiveType archiveType, final PackageType packageType, final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                    final ArchiveType archiveType, final PackageType packageType, final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         return new ArrayList<>();
     }
 
@@ -166,6 +166,9 @@ public class Debian implements Distribution {
                 LOGGER.debug("Error fetching packages from {} url {}. {}", getName(), cdnUrl, e.getMessage());
             }
         }
+
+        
+
         return pkgs;
     }
 
@@ -199,6 +202,7 @@ public class Debian implements Distribution {
                     pkg.setVersionNumber(versionNumber);
                     pkg.setJavaVersion(versionNumber);
                     pkg.setDistributionVersion(versionNumber);
+                    pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
 
                     if (PackageType.NOT_FOUND == packageType) { packageType = PackageType.JDK; }
                     pkg.setPackageType(packageType);
@@ -236,6 +240,7 @@ public class Debian implements Distribution {
         } catch (Exception e) {
             LOGGER.debug("Error fetching packages from Debian CDN. {}", e.getMessage());
         }
+
         return pkgs;
     }
 }

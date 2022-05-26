@@ -22,20 +22,21 @@ package io.foojay.api.distribution;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
@@ -45,15 +46,16 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.ArchiveType.SRC_TAR;
-import static io.foojay.api.pkg.ArchiveType.getFromFileName;
-import static io.foojay.api.pkg.OperatingSystem.LINUX;
-import static io.foojay.api.pkg.OperatingSystem.MACOS;
-import static io.foojay.api.pkg.OperatingSystem.WINDOWS;
-import static io.foojay.api.pkg.PackageType.JDK;
+import static eu.hansolo.jdktools.ArchiveType.SRC_TAR;
+import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX;
+import static eu.hansolo.jdktools.OperatingSystem.MACOS;
+import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
+import static eu.hansolo.jdktools.PackageType.JDK;
 
 
 public class Dragonwell implements Distribution {
@@ -115,12 +117,12 @@ public class Dragonwell implements Distribution {
         return List.of("dragonwell", "DRAGONWELL", "Dragonwell");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.DRAGONWELL.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
 
@@ -141,7 +143,7 @@ public class Dragonwell implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
@@ -166,37 +168,34 @@ public class Dragonwell implements Distribution {
             vNumber = VersionNumber.fromText(tag);
         }
 
-        // TODO: Looks like for 17 Alibaba uses prerelease: true even if the pgks are GA
-        VersionNumber JDK17_0_0_0 = new VersionNumber(17,0, 0, 0);
-        VersionNumber JDK17_0_1_0 = new VersionNumber(17, 0, 1, 0);
-        if (JDK17_0_0_0.isLargerOrEqualThan(versionNumber) && JDK17_0_1_0.isSmallerOrEqualThan(versionNumber)) {
-            boolean prerelease = false;
             if (jsonObj.has("prerelease")) {
-                prerelease = jsonObj.get("prerelease").getAsBoolean();
-            }
-            if (prerelease) { return pkgs; }
+            if (jsonObj.get("prerelease").getAsBoolean()) { return pkgs; }
         }
 
         JsonArray assets = jsonObj.getAsJsonArray("assets");
         for (JsonElement element : assets) {
             JsonObject assetJsonObj = element.getAsJsonObject();
-            String     fileName     = assetJsonObj.get("name").getAsString();
-            if (fileName.endsWith(Constants.FILE_ENDING_TXT) || fileName.endsWith(Constants.FILE_ENDING_JAR) || fileName.endsWith(Constants.FILE_ENDING_SOURCE_TAR_GZ)) { continue; }
+            String     filename     = assetJsonObj.get("name").getAsString();
+            if (filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_JAR) || filename.endsWith(Constants.FILE_ENDING_SOURCE_TAR_GZ)) { continue; }
 
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+            }
+
             Pkg pkg = new Pkg();
 
-            ArchiveType ext = getFromFileName(fileName);
+            ArchiveType ext = getFromFileName(filename);
             if (SRC_TAR == ext || (ArchiveType.NONE != archiveType && ext != archiveType)) { continue; }
             pkg.setArchiveType(ext);
 
             pkg.setDistribution(Distro.DRAGONWELL.get());
-            pkg.setFileName(fileName);
+            pkg.setFileName(filename);
             pkg.setDirectDownloadUri(downloadLink);
 
             Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                             .filter(entry -> fileName.contains(entry.getKey()))
+                                                             .filter(entry -> filename.contains(entry.getKey()))
                                                              .findFirst()
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
@@ -215,8 +214,9 @@ public class Dragonwell implements Distribution {
             }
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
-            VersionNumber dNumber = VersionNumber.fromText(fileName);
+            VersionNumber dNumber = VersionNumber.fromText(filename);
             pkg.setDistributionVersion(dNumber);
+            pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
             pkg.setTermOfSupport(supTerm);
 
@@ -225,7 +225,7 @@ public class Dragonwell implements Distribution {
             pkg.setReleaseStatus(rs);
 
             OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                                  .filter(entry -> fileName.contains(entry.getKey()))
+                                                                  .filter(entry -> filename.contains(entry.getKey()))
                                                                   .findFirst()
                                                                   .map(Entry::getValue)
                                                                   .orElse(OperatingSystem.NONE);
@@ -252,8 +252,36 @@ public class Dragonwell implements Distribution {
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
 
+            pkg.setSize(Helper.getFileSize(downloadLink));
+
             pkgs.add(pkg);
         }
+
+        // Fetch checksums
+        for (JsonElement element : assets) {
+            JsonObject assetJsonObj = element.getAsJsonObject();
+            String     filename     = assetJsonObj.get("name").getAsString();
+
+            if (null == filename || filename.isEmpty() || (!filename.endsWith(Constants.FILE_ENDING_SHA256_TXT) && !filename.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT))) { continue; }
+            String nameToMatch;
+            if (filename.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT)) {
+                nameToMatch = filename.replaceAll(Constants.FILE_ENDING_SHA256_DMG_TXT, "");
+            } else if (filename.endsWith(Constants.FILE_ENDING_SHA256_TXT)) {
+                nameToMatch = filename.replaceAll(Constants.FILE_ENDING_SHA256_TXT, "");
+            } else {
+                continue;
+            }
+
+            final String  downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+            Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFilename().contains(nameToMatch)).findFirst();
+            if (optPkg.isPresent()) {
+                Pkg pkg = optPkg.get();
+                pkg.setChecksumUri(downloadLink);
+                pkg.setChecksumType(HashAlgorithm.SHA256);
+            }
+        }
+
+        
 
         return pkgs;
     }

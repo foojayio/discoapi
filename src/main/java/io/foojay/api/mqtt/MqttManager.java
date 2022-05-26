@@ -26,8 +26,6 @@ import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient;
 import com.hivemq.client.mqtt.mqtt5.message.publish.Mqtt5PublishResult;
 import com.hivemq.client.mqtt.mqtt5.message.publish.Mqtt5WillPublish;
 import com.hivemq.client.mqtt.mqtt5.message.subscribe.suback.Mqtt5SubAck;
-import eu.hansolo.properties.BooleanProperty;
-import eu.hansolo.properties.ReadOnlyBooleanProperty;
 import io.foojay.api.util.Config;
 import io.foojay.api.util.Constants;
 import org.slf4j.Logger;
@@ -36,6 +34,8 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.hivemq.client.mqtt.MqttGlobalPublishFilter.ALL;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -48,22 +48,16 @@ public class MqttManager {
     private static final String                TESTING_ENVIRONMENT    = "testing";
     private static final boolean               GHOST                  = !Config.INSTANCE.getFoojayApiEnvironment().equals(PRODUCTION_ENVIRONMENT) && !Config.INSTANCE.getFoojayApiEnvironment().equals(STAGING_ENVIRONMENT) && !Config.INSTANCE.getFoojayApiEnvironment().equals(TESTING_ENVIRONMENT);
     private              Mqtt5AsyncClient      asyncClient;
-    private              BooleanProperty       connected;
+    private              AtomicBoolean         connected;
     private              List<MqttEvtObserver> observers;
 
 
     // ******************** Constructors **************************************
     public MqttManager() {
-        this.connected = new BooleanProperty(MqttManager.this, "connected", false);
+        this.connected = new AtomicBoolean(Boolean.FALSE);
         this.observers = new CopyOnWriteArrayList<>();
         try {
-            asyncClient = MqttClient.builder()
-                                    .useMqttVersion5()
-                                    .serverHost(Config.INSTANCE.getFoojayMqttBroker())
-                                    .serverPort(Config.INSTANCE.getFoojayMqttPort())
-                                    .sslWithDefaultConfig()
-                                    .automaticReconnectWithDefaultConfig()
-                                    .buildAsync();
+            asyncClient = createAsyncClient();
         init();
         } catch (NullPointerException e) {
             LOGGER.error("Error connecting to MQTT broker {} on port {}. {}", Config.INSTANCE.getFoojayMqttBroker(), Config.INSTANCE.getFoojayMqttPort(), e.getMessage());
@@ -78,11 +72,22 @@ public class MqttManager {
 
     // ******************** Methods *******************************************
     public boolean isConnected() { return connected.get(); }
-    public ReadOnlyBooleanProperty connectedProperty() { return connected; }
 
+    /**
+     * @param topic The Topic the message should be published to
+     * @param msg   String that contains the message content
+     * @return CompletableFuture containing the result of the publish
+     */
     public CompletableFuture<Mqtt5PublishResult> publish(final String topic, final String msg) {
-        return publish(topic, MqttQos.AT_LEAST_ONCE, false, msg);
+        return publish(topic, MqttQos.EXACTLY_ONCE, false, msg);
     }
+    /**
+     * @param topic  The Topic the message should be published to
+     * @param qos    QOS 0 == AT_MOST_ONCE, QOS 1 == AT_LEAST_ONCE, QOS 2 == EXACTLY_ONCE
+     * @param retain Message will be stored on broker
+     * @param msg    String that contains the message content
+     * @return CompletableFuture containing the result of the publish
+     */
     public CompletableFuture<Mqtt5PublishResult> publish(final String topic, final MqttQos qos, final boolean retain, final String msg) {
         if (GHOST) { return new CompletableFuture<>(); }
         if (null == asyncClient || !asyncClient.getState().isConnected()) { connect(true); }
@@ -96,6 +101,7 @@ public class MqttManager {
                               if (throwable != null) {
                                   // Handle failure to publish
                                   LOGGER.error("Error sending mqtt msg to {} with content {}, error {}", topic, msg, throwable.getMessage());
+                                  asyncClient.disconnect();
                               } else {
                                   // Handle successful publish, e.g. logging or incrementing a metric
                               }
@@ -126,19 +132,13 @@ public class MqttManager {
         if (GHOST) { return; }
         if (null == asyncClient) {
             try {
-                asyncClient = MqttClient.builder()
-                                        .useMqttVersion5()
-                                        .serverHost(Config.INSTANCE.getFoojayMqttBroker())
-                                        .serverPort(Config.INSTANCE.getFoojayMqttPort())
-                                        .sslWithDefaultConfig()
-                                        .automaticReconnectWithDefaultConfig()
-                                        .buildAsync();
-            } catch (NullPointerException e) {
+                asyncClient = createAsyncClient();
+            } catch (Exception e) {
                 LOGGER.error("Error connecting to MQTT broker {} on port {}. {}", Config.INSTANCE.getFoojayMqttBroker(), Config.INSTANCE.getFoojayMqttPort(), e.getMessage());
             }
         }
 
-        if (!asyncClient.getState().isConnected() && MqttClientState.CONNECTING != asyncClient.getState()) {
+        if (!asyncClient.getState().isConnectedOrReconnect() && MqttClientState.CONNECTING != asyncClient.getState() && MqttClientState.CONNECTING_RECONNECT != asyncClient.getState()) {
             asyncClient.connectWith()
                        .cleanStart(cleanStart)
                        .sessionExpiryInterval(0)
@@ -164,11 +164,26 @@ public class MqttManager {
                            connected.set(null == throwable);
                        });
         }
-        asyncClient.toAsync().publishes(ALL, publish -> {
+        asyncClient.publishes(ALL, publish -> {
             if (publish.getPayload().isPresent()) {
                 fireMqttEvent(new MqttEvt(publish.getTopic().toString(), UTF_8.decode(publish.getPayload().get()).toString()));
             }
         });
+    }
+
+
+    private Mqtt5AsyncClient createAsyncClient() {
+        Mqtt5AsyncClient asyncClient = MqttClient.builder()
+                                                 .useMqttVersion5()
+                                                 .serverHost(Config.INSTANCE.getFoojayMqttBroker())
+                                                 .serverPort(Config.INSTANCE.getFoojayMqttPort())
+                                                 .sslWithDefaultConfig()
+                                                 .addDisconnectedListener(context -> {
+                                                     context.getReconnector().reconnect(true).delay(10, TimeUnit.SECONDS);
+                                                     LOGGER.debug("Try to reconnect because of: {}", context.getCause().getMessage());
+                                                 })
+                                                 .buildAsync();
+        return asyncClient;
     }
 
 

@@ -20,21 +20,23 @@
 package io.foojay.api.distribution;
 
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.FPU;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.scopes.BuildScope;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.FPU;
-import io.foojay.api.pkg.HashAlgorithm;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
@@ -51,9 +53,9 @@ import java.util.Properties;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
 public class Oracle implements Distribution {
@@ -118,12 +120,12 @@ public class Oracle implements Distribution {
         return List.of("oracle", "Oracle", "ORACLE");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.ORACLE.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
 
@@ -147,7 +149,7 @@ public class Oracle implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         if (null == jsonObj) {
@@ -157,7 +159,7 @@ public class Oracle implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs() {
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         // Load jdk properties
@@ -198,7 +200,7 @@ public class Oracle implements Distribution {
         }
 
         // Load all packages from MajorVersion 17 and above
-        pkgs.addAll(getAllPkgsFrom17AndAbove());
+        pkgs.addAll(getAllPkgsFrom17AndAbove(onlyNewPkgs));
 
         return pkgs;
     }
@@ -313,6 +315,7 @@ public class Oracle implements Distribution {
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
             pkg.setDistributionVersion(versionNumber);
+            pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
             pkg.setPackageType(packageType);
             pkg.setArchitecture(architecture);
             pkg.setBitness(bitness);
@@ -344,7 +347,7 @@ public class Oracle implements Distribution {
         return pkgs;
                 }
 
-    public List<Pkg> getAllPkgsFrom17AndAbove() {
+    public List<Pkg> getAllPkgsFrom17AndAbove(final boolean onlyNewPkgs) {
         final List<Pkg>                                                  pkgs             = new ArrayList<>();
         final String                                                     baseUrl          = "https://download.oracle.com/java/";
         final List<OperatingSystem>                                      operatingSystems = List.of(OperatingSystem.LINUX, OperatingSystem.MACOS, OperatingSystem.WINDOWS);
@@ -358,7 +361,7 @@ public class Oracle implements Distribution {
                              .stream()
                              .filter(majorVersion -> majorVersion.getAsInt() >= 17)
                              .forEach(majorVersion -> {
-                                 final List<SemVer> versions = majorVersion.getVersions();
+                                 final List<Semver> versions = majorVersion.getVersions(BuildScope.BUILD_OF_OPEN_JDK);
                                  versions.stream().map(semver -> new VersionNumber(semver.getFeature(), semver.getInterim(), semver.getUpdate(), semver.getPatch())).collect(Collectors.toSet()).forEach(version -> {
                                      final int           featureVersion = version.getFeature().getAsInt();
                                      final int           update         = version.getUpdate().getAsInt();
@@ -384,6 +387,11 @@ public class Oracle implements Distribution {
                                                  uriBuilder.append(architecture.getApiString()).append("_").append("bin").append(".").append(archiveType.getApiString());
                                                  final String fileDownloadUri = uriBuilder.toString();
                                                  final String filename        = fileDownloadUri.substring(fileDownloadUri.lastIndexOf("/") + 1);
+                                                 final String checksumUri     = fileDownloadUri + ".sha256";
+
+                                                 if (onlyNewPkgs) {
+                                                     if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(fileDownloadUri)).count() > 0) { return; }
+                                                 }
 
                                                  if (Helper.isUriValid(fileDownloadUri)) {
                                                      // Create pkg
@@ -392,6 +400,7 @@ public class Oracle implements Distribution {
                                                      pkg.setVersionNumber(versionNumber);
                                                      pkg.setJavaVersion(versionNumber);
                                                      pkg.setDistributionVersion(versionNumber);
+                                                     pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
                                                      pkg.setPackageType(JDK);
                                                      pkg.setArchitecture(architecture);
                                                      pkg.setBitness(architecture.getBitness());
@@ -404,7 +413,11 @@ public class Oracle implements Distribution {
                                                      pkg.setDirectlyDownloadable(true);
                                                      pkg.setFreeUseInProduction(Boolean.TRUE);
                                                      pkg.setDirectDownloadUri(fileDownloadUri);
-
+                                                     if (Helper.isUriValid(checksumUri)) {
+                                                         pkg.setChecksumUri(checksumUri);
+                                                         pkg.setChecksumType(HashAlgorithm.SHA256);
+                                                     }
+                                                     pkg.setSize(Helper.getFileSize(fileDownloadUri));
                                                      if (filename.contains("hflt")) {
                                                          pkg.setFPU(FPU.HARD_FLOAT);
                                                      }

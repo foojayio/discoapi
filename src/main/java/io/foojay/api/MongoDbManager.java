@@ -31,16 +31,14 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.UpdateOptions;
+import eu.hansolo.jdktools.util.OutputFormat;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.requester.Requester;
 import io.foojay.api.util.Config;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.EphemeralIdCache;
 import io.foojay.api.util.Helper;
-import io.foojay.api.util.Helper.DownloadInfo;
-import io.foojay.api.util.OutputFormat;
 import io.foojay.api.util.State;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
@@ -65,7 +63,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.logging.Level;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.mongodb.client.model.Filters.and;
@@ -73,7 +70,6 @@ import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.gte;
 import static com.mongodb.client.model.Filters.in;
 import static com.mongodb.client.model.Filters.lte;
-import static com.mongodb.client.model.Filters.regex;
 import static com.mongodb.client.model.Updates.combine;
 import static com.mongodb.client.model.Updates.set;
 import static io.foojay.api.pkg.Pkg.FIELD_DISTRIBUTION;
@@ -127,7 +123,7 @@ public enum MongoDbManager {
     }
 
 
-    public void init() {
+    public boolean init() {
         if (null == Config.INSTANCE.getFoojayMongoDbUser() ||
             null == Config.INSTANCE.getFoojayMongoDbPassword() ||
             null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
@@ -161,13 +157,17 @@ public enum MongoDbManager {
                 LOGGER.debug("Error connecting to mongodb at {}:{}. {}", Config.INSTANCE.getFoojayMongoDbUrl(), Config.INSTANCE.getFoojayMongoDbPort(), e.getMessage());
             }
         }
+        return connected;
     }
 
-    public boolean isConnected() { return connected; }
 
-    public void connect() {
-        if (connected) { return; }
-        init();
+    /**
+     * Returns true if connected
+     * @return true if connected
+     */
+    public boolean connect() {
+        if (connected) { return true; }
+        return init();
     }
 
     public MongoDatabase getDatabase() {
@@ -215,7 +215,7 @@ public enum MongoDbManager {
             return State.IDLE;
         } else {
             final State   state     = State.valueOf(document.getString(FIELD_STATE));
-            final Instant timestamp = Instant.ofEpochSecond(document.getLong(FIELD_TIMESTAMP));
+            final Instant timestamp = Instant.ofEpochSecond(((Number) document.get(FIELD_TIMESTAMP)).longValue());
             final long    minutes   = Duration.between(timestamp, Instant.now()).toMinutes();
             switch(state) {
                 case UPDATING:
@@ -239,7 +239,7 @@ public enum MongoDbManager {
                     } else {
                         return state;
                     }
-                case SYNCRONIZING:
+                case SYNCHRONIZING:
                     if (minutes > Constants.SYNCHRONIZING_TIMEOUT_IN_MINUTES) {
                         collection.updateOne(eq(FIELD_TYPE, FIELD_STATE), combine(set(FIELD_TYPE, FIELD_STATE), set(FIELD_STATE, State.IDLE.name()), set(FIELD_TIMESTAMP, now.getEpochSecond())), new UpdateOptions().upsert(true));
                         return State.IDLE;
@@ -419,13 +419,13 @@ public enum MongoDbManager {
             .filter(pkg -> !pkg.getLibCType().getApiString().isEmpty())
             .filter(pkg -> !pkg.getPackageType().getApiString().isEmpty())
             .filter(pkg -> !pkg.getReleaseStatus().getApiString().isEmpty())
-            .filter(pkg -> !pkg.getFileName().isEmpty())
+            .filter(pkg -> !pkg.getFilename().isEmpty())
             .forEach(pkg -> {
                 try {
                     long count = collection.countDocuments(new BsonDocument(FIELD_PACKAGE_ID, new BsonString(pkg.getId())));
                         if (count == 0) { documents.add(Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1))); }
                 } catch (JsonParseException e) {
-                    LOGGER.error("Error parsing json when adding package {}. {}", pkg.getId(), e.getMessage());
+                    LOGGER.error("Error parsing json when adding package {}. {}", pkg.getId(), e);
                 }
             });
 
@@ -434,11 +434,11 @@ public enum MongoDbManager {
     }
 
     /**
-     * Adds the given list of packages to the packages collection where existing packages will be updated
+     * Upsert the given list of packages to the packages collection where existing packages will be updated
      * @param pkgs
      * @return true when packages have been added successfully
      */
-    public boolean addNewPkgs(final Collection<Pkg> pkgs) {
+    public boolean upsertPkgs(final Collection<Pkg> pkgs) {
         connect();
         if (!connected) {
             LOGGER.debug("MongoDB not connected, no packages added");
@@ -471,7 +471,7 @@ public enum MongoDbManager {
             .filter(pkg -> !pkg.getLibCType().getApiString().isEmpty())
             .filter(pkg -> !pkg.getPackageType().getApiString().isEmpty())
             .filter(pkg -> !pkg.getReleaseStatus().getApiString().isEmpty())
-            .filter(pkg -> !pkg.getFileName().isEmpty())
+            .filter(pkg -> !pkg.getFilename().isEmpty())
             .forEach(pkg -> {
             try {
                 Document document = Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1));
@@ -516,7 +516,7 @@ public enum MongoDbManager {
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         for (Pkg pkg : pkgs) {
             try {
-                Bson deleteFilter = eq(FIELD_FILENAME, pkg.getFileName());
+                Bson deleteFilter = eq(FIELD_FILENAME, pkg.getFilename());
                 collection.deleteOne(deleteFilter);
             } catch (JsonParseException e) {
                 LOGGER.error("Error when deleting package {}. {}", pkg.getId(), e.getMessage());
@@ -585,7 +585,7 @@ public enum MongoDbManager {
         if (!collectionExists(database, Constants.DOWNLOADS_COLLECTION)) { database.createCollection(Constants.DOWNLOADS_COLLECTION); }
 
         final Map<String, Long>  downloads        = new ConcurrentHashMap<>();
-        final Consumer<Document> downloadConsumer = document -> downloads.put(document.getString(FIELD_PACKAGE_ID), document.getLong(FIELD_DOWNLOADS));
+        final Consumer<Document> downloadConsumer = document -> downloads.put(document.getString(FIELD_PACKAGE_ID), ((Number) document.get(FIELD_DOWNLOADS)).longValue());
 
         final MongoCollection<Document> collection = database.getCollection(Constants.DOWNLOADS_COLLECTION);
         collection.find().forEach(downloadConsumer);
@@ -638,58 +638,6 @@ public enum MongoDbManager {
         }
 
         return msgBuilder.toString();
-    }
-
-    /**
-     * Get a list of downloads for a specific requester for a given timeframe
-     * @param requester the useragent you are interested int e.g. jbang, sdkman etc.
-     * @param from start point in epochseconds
-     * @param to end point in epochseconds
-     * @return a list of downloads for a specific requester for a given timeframe
-     */
-    public List<DownloadInfo> getPkgDownloadsForRequester(final Requester requester, final Long from, final Long to) {
-        Long start = null == from ? Instant.MIN.getEpochSecond() : from;
-        Long end   = null == to   ? Instant.MAX.getEpochSecond() : to;
-        if (null != from && null != to) {
-            if (from > to) { start = Instant.MIN.getEpochSecond(); }
-            if (to < from) { end   = Instant.MAX.getEpochSecond(); }
-        }
-
-        List<DownloadInfo> downloads = new ArrayList<>();
-
-        connect();
-        if (!connected) {
-            LOGGER.debug("MongoDB not connected, return empty map of downloads");
-            return downloads;
-        }
-        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
-            LOGGER.debug("Cannot return downloads because FOOJAY_MONGODB_DATABASE environment variable was not set.");
-            return downloads;
-        }
-        if (null == database) {
-            LOGGER.error("Database is not set.");
-            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
-        }
-        if (null == Constants.DOWNLOADS_COLLECTION) {
-            LOGGER.error("Constants.DOWNLOADS_USER_AGENT_COLLECTION not set.");
-            return downloads;
-        }
-        if (!collectionExists(database, Constants.DOWNLOADS_USER_AGENT_COLLECTION)) { database.createCollection(Constants.DOWNLOADS_USER_AGENT_COLLECTION); }
-
-        final MongoCollection<Document> collection = database.getCollection(Constants.DOWNLOADS_USER_AGENT_COLLECTION);
-
-        final Consumer<Document> downloadConsumer = document -> {
-            final String  pkgId       = document.getString(FIELD_ID);
-            final String  userAgent   = document.getString(FIELD_USER_AGENT);
-            final String  countryCode = document.getString(FIELD_COUNTRY_CODE);
-            final Instant timestamp   = Instant.ofEpochSecond(document.getLong(FIELD_TIMESTAMP));
-            downloads.add(new DownloadInfo(pkgId, userAgent, countryCode, timestamp));
-        };
-
-        Pattern pattern = Pattern.compile(".*" + Pattern.quote(requester.getApiString()) + ".*", Pattern.CASE_INSENSITIVE);
-        collection.find(and(regex(FIELD_USER_AGENT, pattern),gte(FIELD_TIMESTAMP, start), lte(FIELD_TIMESTAMP, end))).forEach(downloadConsumer);
-
-        return downloads;
     }
 
     /**
@@ -829,9 +777,9 @@ public enum MongoDbManager {
         dayDoc.put(day, distributionsDoc);
 
         collection.updateOne(eq(FIELD_DAY, day), combine(set(FIELD_DISTRIBUTIONS, distributionsDoc)), new UpdateOptions().upsert(true));
-
-        LOGGER.debug("Successfully updated downloads for distro {} at {}", distro.getApiString(), day);
+        LOGGER.debug("Successfully added download to distro {} to database", distro.getName());
     }
+
     public String getDownloadsPerDay(final Set<ZonedDateTime> days) {
         if (days.isEmpty()) {
             days.add(ZonedDateTime.of(2021, 9, 6, 12, 0, 0, 0, ZoneId.systemDefault()));
@@ -919,7 +867,7 @@ public enum MongoDbManager {
 
         final MongoCollection<Document> collection = database.getCollection(Constants.DISTRO_UPDATES_COLLECTION);
 
-        collection.find().forEach(document -> updateMap.put(Distro.fromText(document.getString(FIELD_DISTRO)), Instant.ofEpochSecond(document.getLong(FIELD_TIMESTAMP))));
+        collection.find().forEach(document -> updateMap.put(Distro.fromText(document.getString(FIELD_DISTRO)), Instant.ofEpochSecond(((Number) document.get(FIELD_TIMESTAMP)).longValue())));
         return updateMap;
     }
 
@@ -949,7 +897,7 @@ public enum MongoDbManager {
         if (null == document) {
             return Instant.ofEpochSecond(0);
         } else {
-            return Instant.ofEpochSecond(document.getLong(FIELD_TIMESTAMP));
+            return Instant.ofEpochSecond(((Number) document.get(FIELD_TIMESTAMP)).longValue());
         }
     }
     public void setLastUpdateForDistro(final Distro distro) {
@@ -1097,7 +1045,7 @@ public enum MongoDbManager {
             return new ArrayList<>();
         }
         if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
-            LOGGER.debug("Cannot return packages because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            LOGGER.debug("Cannot return major versions because FOOJAY_MONGODB_DATABASE environment variable was not set.");
             return new ArrayList<>();
         }
         if (null == database) {
@@ -1162,7 +1110,7 @@ public enum MongoDbManager {
         if (null == lastEphemeralIdUpdateDocument) {
             doUpdate = true;
         } else {
-            final Instant timestamp = Instant.ofEpochSecond(lastEphemeralIdUpdateDocument.getLong(FIELD_TIMESTAMP));
+            final Instant timestamp = Instant.ofEpochSecond(((Number) lastEphemeralIdUpdateDocument.get(FIELD_TIMESTAMP)).longValue());
             doUpdate = (Duration.between(timestamp, now).toMinutes() > 10);
         }
 
@@ -1277,7 +1225,7 @@ public enum MongoDbManager {
         if (null == document) {
             return Instant.ofEpochSecond(0);
         } else {
-            return Instant.ofEpochSecond(document.getLong(FIELD_REMOVED_AT));
+            return Instant.ofEpochSecond(((Number) document.get(FIELD_REMOVED_AT)).longValue());
         }
     }
 

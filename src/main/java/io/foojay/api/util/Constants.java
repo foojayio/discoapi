@@ -20,20 +20,20 @@
 package io.foojay.api.util;
 
 
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.scopes.BasicScope;
+import eu.hansolo.jdktools.scopes.BuildScope;
+import eu.hansolo.jdktools.scopes.DownloadScope;
+import eu.hansolo.jdktools.scopes.QualityScope;
+import eu.hansolo.jdktools.scopes.Scope;
+import eu.hansolo.jdktools.scopes.UsageScope;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.scopes.BuildScope;
-import io.foojay.api.scopes.DownloadScope;
 import io.foojay.api.scopes.IDEScope;
-import io.foojay.api.scopes.BasicScope;
-import io.foojay.api.scopes.QualityScope;
-import io.foojay.api.scopes.Scope;
-import io.foojay.api.scopes.UsageScope;
 
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -54,12 +54,15 @@ public class Constants {
     public static final String            EPHEMERAL_IDS_COLLECTION               = "ephemeralIds";
     public static final String            SHEDLOCK_COLLECTION                    = "shedLock";
     public static final String            STATE_COLLECTION                       = "state";
+    public static final String            UPDATER_STATE_COLLECTION               = "updaterState";
     public static final String            SENTINEL_COLLECTION                    = "sentinel";
     public static final String            MAJOR_VERSIONS_COLLECTION              = "majorVersions";
 
     public static final String            ENDPOINT_PACKAGES                      = "packages";
     public static final String            ENDPOINT_EPHEMERAL_IDS                 = "ephemeral_ids";
+    public static final String            ENDPOINT_IDS                           = "ids";
     public static final String            SWAGGER_UI_URL                         = "https://api.foojay.io/swagger-ui/";
+    public static final String            RELEASE_DETAILS_URL                    = "https://foojay.io/java-";
 
     public static final String            SQUARE_BRACKET_OPEN                    = "[";
     public static final String            SQUARE_BRACKET_CLOSE                   = "]";
@@ -76,6 +79,7 @@ public class Constants {
 
     public static final String            API_VERSION_V1                         = "1.0";
     public static final String            API_VERSION_V2                         = "2.0";
+    public static final String            API_VERSION_V3                         = "3.0";
 
     public static final String            BASE_URL                               = null == Config.INSTANCE.getFoojayApiBaseUrl() ? "https://api.foojay.io/disco" : Config.INSTANCE.getFoojayApiBaseUrl();
 
@@ -100,10 +104,13 @@ public class Constants {
     public static final long              UPLOAD_TIMEOUT_IN_MINUTES              = 10;
     public static final long              SYNCHRONIZING_TIMEOUT_IN_MINUTES       = 15;
 
-    public static final long              ONE_HOUR_IN_SECONDS                    = 3_600;
-    public static final long              ONE_DAY_IN_SECONDS                     = 86_400;
-    public static final long              ONE_WEEK_IN_SECONDS                    = 604_800;
-    public static final long              ONE_MONTH_IN_SECONDS                   = 2_419_200;
+    public static final boolean           ALL_PKGS                               = false;
+    public static final boolean           ONLY_NEW_PKGS                          = true;
+
+    public static final long              SECONDS_PER_HOUR                       = 3_600;
+    public static final long              SECONDS_PER_DAY                        = 86_400;
+    public static final long              SECONDS_PER_WEEK                       = 604_800;
+    public static final long              SECONDS_PER_MONTH                      = 2_592_000;
 
     public static final Pattern           POSITIVE_INTEGER_PATTERN               = Pattern.compile("\\d+");
 
@@ -131,20 +138,23 @@ public class Constants {
     public static final String            FILE_ENDING_SYMBOLS_TAR_GZ             = "symbols.tar.gz";
     public static final String            FILE_ENDING_SIG                        = "sig";
     public static final String            FILE_ENDING_SOURCE_TAR_GZ              = "source.tar.gz";
+    public static final String            FILE_ENDING_SHA256_TXT                 = "sha256.txt";
+    public static final String            FILE_ENDING_SHA256_DMG_TXT             = "sha256.dmg.txt";
+    public static final String            FILE_ENDING_ZIP                        = "zip";
 
     public static final String            RESULT                                 = "result";
     public static final String            MESSAGE                                = "message";
 
     public static final String            SENTINEL_PKG_ID                        = "a2a505f4d8956eb730c1ef285b23c269"; //https://cdn.azul.com/zulu/bin/zulu6.2.0.9-ca-jdk6.0.42-linux.x86_64.rpm
 
-    public static final DateTimeFormatter DTF                                    = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
+    public static final DateTimeFormatter DTF                                    = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     public static final Map<String, String> PARAMETER_LOOKUP = new HashMap<>() {{
         put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, armel, armhf, arm64, ia64, mips, mipsel, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
         put(Pkg.FIELD_ARCHIVE_TYPE, "apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tgz, tar.Z, zip");
         put(Pkg.FIELD_BITNESS, "32, 64");
         put(Pkg.FIELD_FPU, "hard_float, soft_float, unknown");
-        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, bisheng, corretto, debian, dragonwell, graalvm_ce8, graalvm_ce11, graalvm_ce16, graalvm_ce17, jetbrains, kona, liberica, liberica_native, mandrel, microsoft, ojdk_build, openlogic, oracle, oracle_open_jdk, redhat, sap_machine, semeru, semeru_certified, temurin, trava, zulu, zulu_prime");
+        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, bisheng, corretto, debian, dragonwell, gluon_graalvm, graalvm_ce8, graalvm_ce11, graalvm_ce16, graalvm_ce17, jetbrains, kona, liberica, liberica_native, mandrel, microsoft, ojdk_build, openlogic, oracle, oracle_open_jdk, redhat, sap_machine, semeru, semeru_certified, temurin, trava, zulu, zulu_prime");
         put(Pkg.FIELD_OPERATING_SYSTEM, "aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows");
         put(Pkg.FIELD_LIB_C_TYPE, "c_std_lib, glibc, libc, musl");
         put(Pkg.FIELD_PACKAGE_TYPE, "jdk, jre");
@@ -222,6 +232,7 @@ public class Constants {
         put("Alpine-Linux", OperatingSystem.ALPINE_LINUX);
         put("alpine_linux", OperatingSystem.ALPINE_LINUX);
         put("Alpine_Linux", OperatingSystem.ALPINE_LINUX);
+        put("alpine", OperatingSystem.ALPINE_LINUX);
         put("linux-musl", OperatingSystem.ALPINE_LINUX);
         put("Linux-MUSL", OperatingSystem.ALPINE_LINUX);
         put("Linux-Musl", OperatingSystem.ALPINE_LINUX);
@@ -316,18 +327,19 @@ public class Constants {
         put(Distro.GRAALVM_CE17, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_GRAALVM, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
         put(Distro.LIBERICA_NATIVE, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_GRAALVM, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
         put(Distro.MANDREL, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_GRAALVM, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
+        put(Distro.GLUON_GRAALVM, List.of(BasicScope.PUBLIC, BuildScope.BUILD_OF_GRAALVM, DownloadScope.DIRECTLY, UsageScope.FREE_TO_USE_IN_PRODUCTION));
     }};
 
     public static final ConcurrentHashMap<Scope, List<Distro>> REVERSE_SCOPE_LOOKUP = new ConcurrentHashMap<>() {{
-        put(BasicScope.PUBLIC, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.BISHENG, Distro.CORRETTO, Distro.DEBIAN, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.JETBRAINS, Distro.KONA, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.SEMERU, Distro.SEMERU_CERTIFIED, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU, Distro.ZULU_PRIME));
-        put(DownloadScope.DIRECTLY, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.BISHENG, Distro.CORRETTO, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.JETBRAINS, Distro.KONA, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.SAP_MACHINE, Distro.SEMERU, Distro.SEMERU_CERTIFIED, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU, Distro.ZULU_PRIME));
+        put(BasicScope.PUBLIC, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.BISHENG, Distro.CORRETTO, Distro.DEBIAN, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.JETBRAINS, Distro.KONA, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.GLUON_GRAALVM, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.SEMERU, Distro.SEMERU_CERTIFIED, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU, Distro.ZULU_PRIME));
+        put(DownloadScope.DIRECTLY, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.BISHENG, Distro.CORRETTO, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.JETBRAINS, Distro.KONA, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.GLUON_GRAALVM, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.SAP_MACHINE, Distro.SEMERU, Distro.SEMERU_CERTIFIED, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU, Distro.ZULU_PRIME));
         put(DownloadScope.NOT_DIRECTLY, List.of(Distro.DEBIAN, Distro.ORACLE, Distro.RED_HAT));
         put(BuildScope.BUILD_OF_OPEN_JDK, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.BISHENG, Distro.CORRETTO, Distro.DEBIAN, Distro.DRAGONWELL, Distro.JETBRAINS, Distro.KONA, Distro.LIBERICA, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.SEMERU, Distro.SEMERU_CERTIFIED, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU, Distro.ZULU_PRIME));
-        put(BuildScope.BUILD_OF_GRAALVM, List.of(Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.LIBERICA_NATIVE, Distro.MANDREL));
+        put(BuildScope.BUILD_OF_GRAALVM, List.of(Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.GLUON_GRAALVM));
         put(IDEScope.VISUAL_STUDIO_CODE, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.CORRETTO, Distro.DRAGONWELL, Distro.KONA, Distro.LIBERICA, Distro.MICROSOFT, Distro.ORACLE, Distro.ORACLE_OPEN_JDK, Distro.RED_HAT, Distro.SAP_MACHINE, Distro.TEMURIN, Distro.SEMERU, Distro.SEMERU_CERTIFIED, Distro.ZULU));
-        put(UsageScope.FREE_TO_USE_IN_PRODUCTION, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.BISHENG, Distro.CORRETTO, Distro.DEBIAN, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.JETBRAINS, Distro.KONA, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE_OPEN_JDK, Distro.SAP_MACHINE, Distro.SEMERU, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU));
+        put(UsageScope.FREE_TO_USE_IN_PRODUCTION, List.of(Distro.AOJ, Distro.AOJ_OPENJ9, Distro.BISHENG, Distro.CORRETTO, Distro.DEBIAN, Distro.DRAGONWELL, Distro.GRAALVM_CE8, Distro.GRAALVM_CE11, Distro.GRAALVM_CE16, Distro.GRAALVM_CE17, Distro.JETBRAINS, Distro.KONA, Distro.LIBERICA, Distro.LIBERICA_NATIVE, Distro.MANDREL, Distro.GLUON_GRAALVM, Distro.MICROSOFT, Distro.OJDK_BUILD, Distro.OPEN_LOGIC, Distro.ORACLE_OPEN_JDK, Distro.SAP_MACHINE, Distro.SEMERU, Distro.TEMURIN, Distro.TRAVA, Distro.ZULU));
         put(UsageScope.LICENSE_NEEDED_FOR_PRODUCTION, List.of(Distro.ORACLE, Distro.RED_HAT, Distro.SEMERU_CERTIFIED, Distro.ZULU_PRIME));
-        put(QualityScope.TCK_TESTED, List.of());
-        put(QualityScope.AQAVIT_CERTIFIED, List.of());
+        put(QualityScope.TCK_TESTED, List.of()); // Zulu, Semeru Certified, Oracle, Oracle OpenJDK
+        put(QualityScope.AQAVIT_CERTIFIED, List.of()); // Zulu, Temurin, Microsoft, Semeru, Semeru Certified
     }};
 }

@@ -20,20 +20,19 @@
 package io.foojay.api.distribution;
 
 import com.google.gson.JsonObject;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.PackageType;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
-import io.foojay.api.scopes.Scope;
 
 import java.util.List;
 
@@ -74,7 +73,7 @@ public interface Distribution {
 
     List<String> getSynonyms();
 
-    List<SemVer> getVersions();
+    List<Semver> getVersions();
 
     String getUrlForAvailablePkgs(VersionNumber versionNumber, boolean latest, OperatingSystem operatingSystem,
                                   Architecture architecture, Bitness bitness,
@@ -83,5 +82,5 @@ public interface Distribution {
 
     List<Pkg> getPkgFromJson(JsonObject jsonObj, VersionNumber versionNumber, boolean latest, OperatingSystem operatingSystem,
                              Architecture architecture, Bitness bitness, ArchiveType archiveType, PackageType packageType,
-                             Boolean javafxBundled, ReleaseStatus releaseStatus, TermOfSupport termOfSupport);
+                             Boolean javafxBundled, ReleaseStatus releaseStatus, TermOfSupport termOfSupport, boolean onlyNewPkgs);
 }

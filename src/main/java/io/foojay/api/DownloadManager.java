@@ -38,7 +38,7 @@ public enum DownloadManager {
 
     public void preloadDownloads() {
         Map<String, Long> downloadsFromMongoDb = new HashMap<>();
-        if (MongoDbManager.INSTANCE.isConnected()) {
+        if (MongoDbManager.INSTANCE.connect()) {
             downloadsFromMongoDb = MongoDbManager.INSTANCE.getDowloads();
             LOGGER.debug("Successfully loaded downloads from mongodb.");
         }

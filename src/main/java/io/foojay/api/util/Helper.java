@@ -20,58 +20,29 @@
 package io.foojay.api.util;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.stream.JsonReader;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.scopes.BasicScope;
+import eu.hansolo.jdktools.scopes.BuildScope;
+import eu.hansolo.jdktools.scopes.DownloadScope;
+import eu.hansolo.jdktools.scopes.QualityScope;
+import eu.hansolo.jdktools.scopes.Scope;
+import eu.hansolo.jdktools.scopes.SignatureScope;
+import eu.hansolo.jdktools.scopes.UsageScope;
+import eu.hansolo.jdktools.util.OutputFormat;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.MongoDbManager;
-import io.foojay.api.distribution.AOJ;
-import io.foojay.api.distribution.AOJ_OPENJ9;
-import io.foojay.api.distribution.BiSheng;
-import io.foojay.api.distribution.Corretto;
-import io.foojay.api.distribution.Debian;
-import io.foojay.api.distribution.Distribution;
-import io.foojay.api.distribution.JetBrains;
-import io.foojay.api.distribution.Kona;
-import io.foojay.api.distribution.LibericaNative;
-import io.foojay.api.distribution.Microsoft;
-import io.foojay.api.distribution.OJDKBuild;
-import io.foojay.api.distribution.OpenLogic;
-import io.foojay.api.distribution.Oracle;
-import io.foojay.api.distribution.OracleOpenJDK;
-import io.foojay.api.distribution.RedHat;
-import io.foojay.api.distribution.SAPMachine;
-import io.foojay.api.distribution.Semeru;
-import io.foojay.api.distribution.SemeruCertified;
-import io.foojay.api.distribution.Temurin;
-import io.foojay.api.distribution.Trava;
 import io.foojay.api.distribution.Zulu;
-import io.foojay.api.distribution.ZuluPrime;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.MajorVersion;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
-import io.foojay.api.requester.JBang;
-import io.foojay.api.requester.Requester;
-import io.foojay.api.scopes.BasicScope;
-import io.foojay.api.scopes.BuildScope;
-import io.foojay.api.scopes.DownloadScope;
 import io.foojay.api.scopes.IDEScope;
-import io.foojay.api.scopes.QualityScope;
-import io.foojay.api.scopes.Scope;
-import io.foojay.api.scopes.SignatureScope;
-import io.foojay.api.scopes.UsageScope;
 import io.foojay.api.scopes.YamlScopes;
 import io.micronaut.http.HttpHeaders;
 import org.slf4j.Logger;
@@ -79,12 +50,10 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
@@ -93,20 +62,15 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -116,24 +80,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
-import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.zip.CRC32;
-import java.util.zip.Checksum;
 
-import static io.foojay.api.util.Constants.API_VERSION_V1;
-import static io.foojay.api.util.Constants.API_VERSION_V2;
 import static io.foojay.api.util.Constants.COLON;
 import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
@@ -147,459 +99,31 @@ import static io.foojay.api.util.Constants.RESULT;
 import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
 import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.toCollection;
 
 
 public class Helper {
     private static final Logger     LOGGER                                 = LoggerFactory.getLogger(Helper.class);
     public  static final Pattern    FILE_URL_PATTERN                       = Pattern.compile("(JDK|JRE)(\\s+\\|\\s?\\[[a-zA-Z0-9\\-\\._]+\\]\\()(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz(?!\\.sig)|\\.deb|\\.rpm|\\.cab|\\.7z))");
-    public  static final Pattern    FILE_URL_MD5_PATTERN                   = Pattern.compile("(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\\)\\h+\\|\\h+`([0-9a-z]{32})`");
     public  static final Pattern    CORRETTO_SIG_URI_PATTERN               = Pattern.compile("((\\[Download\\])\\(?(https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)(\\.zip\\.sig|\\.tar\\.gz\\.sig)))\\)");
-    public  static final Pattern    DRAGONWELL_11_FILE_NAME_SHA256_PATTERN = Pattern.compile("(OpenJDK[0-9]+U[a-z0-9_\\-\\.]+)(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z)(\\s+\\(Experimental ONLY\\))?\\h+\\|\\h+([0-9a-z]{64})");
-    public  static final Pattern    DRAGONWELL_8_FILE_NAME_SHA256_PATTERN  = Pattern.compile("(\\()?(Alibaba_Dragonwell[0-9\\.A-Za-z_\\-]+)(\\)=\\s+)?|([\\\\r\\\\n]+)?([a-z0-9]{64})");
     public  static final Pattern    HREF_FILE_PATTERN                      = Pattern.compile("href=\"([^\"]*(\\.zip|\\.msi|\\.pkg|\\.dmg|\\.tar\\.gz|\\.deb|\\.rpm|\\.cab|\\.7z))\"");
     public  static final Pattern    DOWNLOAD_LINK_PATTERN                  = Pattern.compile("downloadLink:\\s'(.*)'");
+    public  static final Pattern    SIG_PATTERN                            = Pattern.compile("sig:\\s'(.*)'");
     public  static final Pattern    HREF_SIG_FILE_PATTERN                  = Pattern.compile("href=\"([^\"]*(\\.sig))\"");
+    public  static final Pattern    HREF_SHA256_FILE_PATTERN               = Pattern.compile("href=\"([^\"]*(\\.sha256sum.txt))\"");
     public  static final Pattern    HREF_DOWNLOAD_PATTERN                  = Pattern.compile("(\\>)(\\s|\\h?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(\\<)");
     private static final Pattern    JBANG_HEADER_PATTERN                   = Pattern.compile("(JBang)\\/([0-9]+\\.[0-9]+\\.[0-9]+(\\.[0-9]+)?)\\s+\\(([0-9A-Za-z\\s]+)\\/([a-zA-Z0-9_\\.\\-]+)\\/([a-z0-9A-Z_\\s]+)\\)\\s(Java\\/([0-9]+(\\.[0-9]+)?(\\.[0-9]+)?([_0-9]+)?))\\/(.*)");
-    private static final Pattern    CPU_MEM_PATTERN                        = Pattern.compile("([0-9]+\\.[0-9]+)\\s+([0-9]+\\.[0-9]+)");
-    private static final Matcher    CPU_MEM_MATCHER                        = CPU_MEM_PATTERN.matcher("");
     private static final Matcher    JBANG_HEADER_MATCHER                   = JBANG_HEADER_PATTERN.matcher("");
     private static final Matcher    FILE_URL_MATCHER                       = FILE_URL_PATTERN.matcher("");
-    private static final Matcher    FILE_URL_MD5_MATCHER                   = FILE_URL_MD5_PATTERN.matcher("");
     private static final Matcher    CORRETTO_SIG_URI_MATCHER               = CORRETTO_SIG_URI_PATTERN.matcher("");
-    private static final Matcher    DRAGONWELL_11_FILE_NAME_SHA256_MATCHER = DRAGONWELL_11_FILE_NAME_SHA256_PATTERN.matcher("");
-    private static final Matcher    DRAGONWELL_8_FILE_NAME_SHA256_MATCHER  = DRAGONWELL_8_FILE_NAME_SHA256_PATTERN.matcher("");
     private static final Matcher    HREF_FILE_MATCHER                      = HREF_FILE_PATTERN.matcher("");
     private static final Matcher    DOWNLOAD_LINK_MATCHER                  = DOWNLOAD_LINK_PATTERN.matcher("");
+    private static final Matcher    SIG_MATCHER                            = SIG_PATTERN.matcher("");
     private static final Matcher    HREF_SIG_FILE_MATCHER                  = HREF_SIG_FILE_PATTERN.matcher("");
+    private static final Matcher    HREF_SHA256_FILE_MATCHER               = HREF_SHA256_FILE_PATTERN.matcher("");
     private static final Matcher    HREF_DOWNLOAD_MATCHER                  = HREF_DOWNLOAD_PATTERN.matcher("");
     private static       HttpClient httpClient;
     private static       HttpClient httpClientAsync;
 
-    public record DownloadInfo(String pkgId, String userAgent, String countryCode, Instant timestamp) {}
-
-
-    public static final Callable<List<Pkg>> createTask(final Distro distro) {
-        return () -> getPkgsOfDistro(distro);
-    }
-
-    public static final List<Pkg> getPkgsOfDistro(final Distro distro) {
-        final List<Pkg> pkgs = new LinkedList<>();
-        try {
-            switch (distro) {
-                case ZULU:
-                    Zulu zulu = (Zulu) distro.get();
-                    // Get packages from API
-                    for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                        pkgs.addAll(getPkgs(zulu, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
-                    }
-
-                    // Get packages from CDN
-                    List<Pkg>    zuluCdnPkgs       = ((Zulu) Distro.ZULU.get()).getAllPackagesFromCDN();
-                    List<Pkg>    zuluPkgsToAdd     = new LinkedList<>();
-                    List<String> zuluPkgsFilenames = pkgs.stream().map(pkg -> pkg.getFileName()).collect(Collectors.toList());
-                    for (Pkg cdnPkg : zuluCdnPkgs) {
-                        if (!zuluPkgsFilenames.contains(cdnPkg.getFileName())) {
-                            zuluPkgsToAdd.add(cdnPkg);
-                        }
-                    }
-                    pkgs.addAll(zuluPkgsToAdd);
-                    break;
-                case ZULU_PRIME:
-                    ZuluPrime zuluPrime = (ZuluPrime) distro.get();
-                    pkgs.addAll(zuluPrime.getAllPkgs());
-                    break;
-                case CORRETTO:
-                    Corretto corretto = (Corretto) distro.get();
-                    pkgs.addAll(corretto.getAllPkgs());
-                    CacheManager.INSTANCE.getMajorVersions().stream().forEach(majorVersion ->
-                        pkgs.addAll(getPkgs(corretto, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE,
-                                            ArchiveType.NONE, PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE)));
-                    break;
-                case ORACLE:
-                    Oracle oracle = (Oracle) distro.get();
-                    pkgs.addAll(oracle.getAllPkgs());
-                    break;
-                case RED_HAT:
-                    RedHat redhat = (RedHat) distro.get();
-                    pkgs.addAll(redhat.getAllPkgs());
-                    break;
-                case OJDK_BUILD:
-                    OJDKBuild ojdkBuild = (OJDKBuild) distro.get();
-                    pkgs.addAll(ojdkBuild.getAllPkgs());
-                    break;
-                case ORACLE_OPEN_JDK:
-                    OracleOpenJDK oracleOpenJDK = (OracleOpenJDK) distro.get();
-                    pkgs.addAll(oracleOpenJDK.getAllPkgs());
-                    // Get all jdk 8 packages from github
-                    String       query8     = oracleOpenJDK.getGithubPkg8Url() + "/releases?per_page=100";
-                    HttpResponse<String> response8 = get(query8);
-                    if (null == response8) {
-                        LOGGER.debug("Response (Oracle OpenJDK) returned null");
-                    } else {
-                    if (response8.statusCode() == 200) {
-                        String      bodyText = response8.body();
-                            Gson        gson     = new Gson();
-                            JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-                            if (element instanceof JsonArray) {
-                                JsonArray jsonArray = element.getAsJsonArray();
-                                pkgs.addAll(oracleOpenJDK.getAllPkgs(jsonArray));
-                            }
-                        } else {
-                            // Problem with url request
-                            LOGGER.debug("Response (Status Code {}) {} ", response8.statusCode(), response8.body());
-                        }
-                    }
-                    // Get all jdk 11 packages from github
-                    String       query11    = oracleOpenJDK.getGithubPkg11Url() + "/releases?per_page=100";
-                    HttpResponse<String> response11 = get(query11);
-                    if (null == response11) {
-                        LOGGER.debug("Response (Oracle OpenJDK) returned null");
-                    } else {
-                    if (response11.statusCode() == 200) {
-                        String      bodyText = response11.body();
-                            Gson        gson     = new Gson();
-                            JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-                            if (element instanceof JsonArray) {
-                                JsonArray jsonArray = element.getAsJsonArray();
-                                pkgs.addAll(oracleOpenJDK.getAllPkgs(jsonArray));
-                            }
-                        } else {
-                            // Problem with url request
-                            LOGGER.debug("Response (Status Code {}) {} ", response11.statusCode(), response11.body());
-                        }
-                    }
-                    break;
-                case SAP_MACHINE:
-                    SAPMachine  sapMachine = (SAPMachine) distro.get();
-
-                    // Search through github release and fetch packages from there
-                        String querySAPMachine = sapMachine.getPkgUrl() + "?per_page=100";
-                        HttpResponse<String> responseSAPMachine = get(querySAPMachine, Map.of("accept", "application/vnd.github.v3+json",
-                                                                                              "authorization", GithubTokenPool.INSTANCE.next()));
-                        if (null == responseSAPMachine) {
-                        LOGGER.debug("Response (SAP Machine) returned null");
-                    } else {
-                            if (responseSAPMachine.statusCode() == 200) {
-                                String      bodyText = responseSAPMachine.body();
-                                Gson        gson     = new Gson();
-                                JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-                                if (element instanceof JsonArray) {
-                                    JsonArray jsonArray = element.getAsJsonArray();
-                                    pkgs.addAll(sapMachine.getAllPkgsFromJson(jsonArray));
-                                }
-                            } else {
-                                // Problem with url request
-                                LOGGER.debug("Response (Status Code {}) {} ", responseSAPMachine.statusCode(), responseSAPMachine.body());
-                            }
-                        }
-                    // Fetch packages from sap.github.io -> sapmachine_releases.json
-                    pkgs.addAll(sapMachine.getAllPkgsFromJsonUrl());
-
-                    // Fetch major versions 10, 12, 13 from github
-                    pkgs.addAll(sapMachine.getAllPkgs());
-                    break;
-                case SEMERU:
-                    Semeru semeru = (Semeru) distro.get();
-                    pkgs.addAll(semeru.getAllPkgs());
-                    break;
-                case SEMERU_CERTIFIED:
-                    SemeruCertified semeruCertified = (SemeruCertified) distro.get();
-                    pkgs.addAll(semeruCertified.getAllPkgs());
-                    break;
-                case TRAVA:
-                    Trava trava = (Trava) distro.get();
-                    pkgs.addAll(trava.getAllPkgs());
-                    break;
-                case AOJ:
-                    AOJ AOJ = (AOJ) distro.get();
-                    for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                        VersionNumber versionNumber = majorVersion.getVersionNumber();
-                            pkgs.addAll(getPkgs(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
-                                                ReleaseStatus.GA, TermOfSupport.NONE));
-                            pkgs.addAll(getPkgs(AOJ, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
-                                                ReleaseStatus.EA, TermOfSupport.NONE));
-                    }
-                    break;
-                case AOJ_OPENJ9:
-                    AOJ_OPENJ9 AOJ_OPENJ9 = (AOJ_OPENJ9) distro.get();
-                    for (MajorVersion majorVersion : CacheManager.INSTANCE.getMajorVersions()) {
-                        VersionNumber versionNumber = majorVersion.getVersionNumber();
-                            pkgs.addAll(getPkgs(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
-                                                ReleaseStatus.GA, TermOfSupport.NONE));
-                            pkgs.addAll(getPkgs(AOJ_OPENJ9, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
-                                                ReleaseStatus.EA, TermOfSupport.NONE));
-                    }
-                    break;
-                case TEMURIN:
-                    Temurin temurin = (Temurin) distro.get();
-                    CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> !Temurin.NOT_SUPPORTED_VERSIONS.contains(majorVersion.getAsInt())).forEach(majorVersion -> {
-                        VersionNumber versionNumber = majorVersion.getVersionNumber();
-
-                        pkgs.addAll(getPkgs(temurin, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
-                                            ReleaseStatus.GA, TermOfSupport.NONE));
-
-                        pkgs.addAll(getPkgs(temurin, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null,
-                                            ReleaseStatus.EA, TermOfSupport.NONE));
-                    });
-                    break;
-                case MICROSOFT:
-                    Microsoft microsoft = (Microsoft) distro.get();
-                    pkgs.addAll(microsoft.getAllPkgs());
-                    break;
-                case JETBRAINS:
-                    JetBrains jetbrains = (JetBrains) distro.get();
-                    // Add all packages from properties file
-                    pkgs.addAll(jetbrains.getAllPkgs());
-                    // Add packages from latest github release
-                    String queryJetbrains = jetbrains.GITHUB_RELEASES_URL;
-                    HttpResponse<String> responseJetbrains = Helper.get(queryJetbrains, Map.of("accept", "application/vnd.github.v3+json",
-                                                                                                   "authorization", GithubTokenPool.INSTANCE.next()));
-                    if (null == responseJetbrains) {
-                        LOGGER.debug("Response (JetBrains) returned null");
-                    } else {
-                        if (responseJetbrains.statusCode() == 200) {
-                            String      bodyText = responseJetbrains.body();
-                            Gson        gson    = new Gson();
-                            JsonElement element = gson.fromJson(bodyText, JsonElement.class);
-                            if (element instanceof JsonArray) {
-                                JsonArray jsonArray = element.getAsJsonArray();
-                                for (int i = 0 ; i < jsonArray.size() ; i++) {
-                                    JsonElement arrayElement = jsonArray.get(i);
-                                    if (arrayElement instanceof JsonObject) {
-                                        JsonObject jsonObject = arrayElement.getAsJsonObject();
-                                        if (jsonObject.has("prerelease")) {
-                                            if (jsonObject.get("prerelease").getAsBoolean()) {
-                                                continue;
-                                            }
-                                        }
-                                        if (jsonObject.has("body")) {
-                                            pkgs.addAll(jetbrains.getAllPkgsFromString(jsonObject.get("body").getAsString()));
-                                        }
-                                    }
-                                }
-                            } else if (element instanceof JsonObject) {
-                                JsonObject jsonObject = element.getAsJsonObject();
-                                boolean addPkg = true;
-                                if (jsonObject.has("prerelease")) {
-                                    addPkg = !jsonObject.get("prerelease").getAsBoolean();
-                                }
-                                if (jsonObject.has("body") && addPkg) {
-                                    pkgs.addAll(jetbrains.getAllPkgsFromString(jsonObject.get("body").getAsString()));
-                                }
-                            }
-                        } else {
-                            // Problem with url request
-                            LOGGER.debug("Response (Status Code {}) {} ", responseJetbrains.statusCode(), responseJetbrains.body());
-                        }
-                    }
-                    break;
-                case LIBERICA_NATIVE:
-                    LibericaNative libericaNative = (LibericaNative) distro.get();
-                    pkgs.addAll(libericaNative.getAllPkgs());
-                    break;
-                    case OPEN_LOGIC:
-                        OpenLogic openLogic = (OpenLogic) distro.get();
-                        pkgs.addAll(openLogic.getAllPkgs());
-                    break;
-                case BISHENG:
-                    BiSheng biSheng = (BiSheng) distro.get();
-
-                    // Get packages from CDN
-                    List<Pkg>    bishengCdnPkgs       = ((BiSheng) Distro.BISHENG.get()).getAllPackagesFromCDN();
-                    List<Pkg>    bishengPkgsToAdd     = new LinkedList<>();
-                    List<String> bishengPkgsFilenames = pkgs.stream().map(pkg -> pkg.getFileName()).collect(Collectors.toList());
-                    for (Pkg cdnPkg : bishengCdnPkgs) {
-                        if (!bishengPkgsFilenames.contains(cdnPkg.getFileName())) {
-                            bishengPkgsToAdd.add(cdnPkg);
-                        }
-                    }
-                    pkgs.addAll(bishengPkgsToAdd);
-                    break;
-                case KONA:
-                    Kona kona = (Kona) distro.get();
-                    pkgs.addAll(kona.getAllPkgs());
-                    break;
-                case DEBIAN:
-                    Debian debian = (Debian) distro.get();
-                    pkgs.addAll(debian.getAllPackages());
-                    break;
-                default:
-                    Distribution distribution = distro.get();
-                    CacheManager.INSTANCE.getMajorVersions().stream().forEach(majorVersion -> {
-                        pkgs.addAll(getPkgs(distribution, majorVersion.getVersionNumber(), false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE,
-                                           PackageType.NONE, null, ReleaseStatus.NONE, TermOfSupport.NONE));
-                    });
-                    break;
-                }
-        } catch (Exception e) {
-            LOGGER.debug("There was a problem fetching packages for {}. {}", distro, e.getMessage());
-        }
-        List<Pkg> unique = pkgs.stream().collect(collectingAndThen(toCollection(() -> new TreeSet<>(Comparator.comparing(Pkg::getId))), LinkedList::new));
-        return new LinkedList<>(unique);
-    }
-
-    private static final List<Pkg> getPkgs(final Distribution distribution, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
-                                     final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                     final Boolean fx, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
-        String query = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
-        if (query.isEmpty()) { return List.of(); }
-
-        try {
-        List<Pkg>   pkgs    = new LinkedList<>();
-            List<Pkg> pkgsFound = new ArrayList<>();
-            if (distribution.equals(Distro.ORACLE_OPEN_JDK.get())) {
-                List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(null, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
-                pkgsFound.addAll(pkgsInDistribution.stream().filter(pkg -> isVersionNumberInPkg(versionNumber, pkg)).collect(Collectors.toList()));
-            } else {
-                Map<String, String> headers = new HashMap<>();
-                if (query.contains("api.github.com")) {
-                    headers.put("accept", "application/vnd.github.v3+json");
-                    headers.put("authorization", GithubTokenPool.INSTANCE.next());
-                }
-                HttpResponse<String> response = get(query, headers);
-            if (null == response) {
-                LOGGER.debug("Response {} returned null.", distribution.getDistro().getApiString());
-            } else {
-                if (response.statusCode() == 200) {
-                String      body     = response.body();
-                    Gson        gson     = new Gson();
-                JsonElement element  = gson.fromJson(body, JsonElement.class);
-                    if (element instanceof JsonArray) {
-                        JsonArray jsonArray = element.getAsJsonArray();
-                        for (int i = 0; i < jsonArray.size(); i++) {
-                            JsonObject pkgJsonObj         = jsonArray.get(i).getAsJsonObject();
-                                List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
-                        pkgsFound.addAll(pkgsInDistribution);
-                        }
-                    } else if (element instanceof JsonObject) {
-                        JsonObject pkgJsonObj         = element.getAsJsonObject();
-                            List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
-                    pkgsFound.addAll(pkgsInDistribution);
-                    }
-                } else {
-                    // Problem with url request
-                    LOGGER.debug("Error get packages for {} {} calling {}", distribution.getName(), versionNumber, query);
-                    LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
-                    return pkgs;
-                }
-            }
-        }
-            if (latest) {
-                Optional<Pkg> pkgWithMaxVersionNumber = pkgsFound.stream().max(Comparator.comparing(Pkg::getVersionNumber));
-                if (pkgWithMaxVersionNumber.isPresent()) {
-                    VersionNumber maxNumber = pkgWithMaxVersionNumber.get().getVersionNumber();
-                    pkgsFound = pkgsFound.stream().filter(pkg -> pkg.getVersionNumber().compareTo(maxNumber) == 0).collect(Collectors.toList());
-                }
-            }
-            pkgs.addAll(pkgsFound);
-            HashSet<Pkg> unique = new HashSet<>(pkgs);
-            pkgs = new LinkedList<>(unique);
-
-        return pkgs;
-        } catch (Exception e) {
-            LOGGER.debug("Error get packages for {} {} calling {}. {}", distribution.getName(), versionNumber, query, e.getMessage());
-            return new ArrayList<>();
-        }
-    }
-
-    private static final List<Pkg> getPkgsAsync(final Distribution distribution, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
-                                          final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                          final Boolean fx, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
-        String query = distribution.getUrlForAvailablePkgs(versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
-        try {
-        Collection<CompletableFuture<List<Pkg>>> futures = Collections.synchronizedList(new ArrayList<>());
-            Map<String, String> headers = new HashMap<>();
-            if (query.contains("api.github.com")) { headers.put("accept", "application/vnd.github.v3+json"); }
-            CompletableFuture<List<Pkg>> future = Helper.getAsync(query, headers).thenApply(response -> {
-            List<Pkg> pkgs      = new LinkedList<>();
-            List<Pkg> pkgsFound = new ArrayList<>();
-            if (null == response) {
-                LOGGER.debug("Response {} returned null.", distribution.getDistro().getApiString());
-            } else {
-                if (response.statusCode() == 200) {
-                    String      body    = response.body();
-                    Gson        gson    = new Gson();
-                    JsonElement element = gson.fromJson(body, JsonElement.class);
-                    if (element instanceof JsonArray) {
-                        JsonArray jsonArray = element.getAsJsonArray();
-                        for (int j = 0; j < jsonArray.size(); j++) {
-                            JsonObject pkgJsonObj = jsonArray.get(j).getAsJsonObject();
-                                List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
-                            pkgsFound.addAll(pkgsInDistribution);
-                        }
-                    } else if (element instanceof JsonObject) {
-                        JsonObject pkgJsonObj = element.getAsJsonObject();
-                            List<Pkg> pkgsInDistribution = distribution.getPkgFromJson(pkgJsonObj, versionNumber, latest, operatingSystem, architecture, bitness, archiveType, packageType, fx, releaseStatus, termOfSupport);
-                        pkgsFound.addAll(pkgsInDistribution);
-                    }
-                } else {
-                    LOGGER.debug("Response (Status Code {}) {} ", response.statusCode(), response.body());
-                }
-            }
-
-            if (latest) {
-                Optional<Pkg> pkgWithMaxVersionNumber = pkgsFound.stream().max(Comparator.comparing(Pkg::getVersionNumber));
-                if (pkgWithMaxVersionNumber.isPresent()) {
-                    VersionNumber maxNumber = pkgWithMaxVersionNumber.get().getVersionNumber();
-                    pkgsFound = pkgsFound.stream().filter(pkg -> pkg.getVersionNumber().compareTo(maxNumber) == 0).collect(Collectors.toList());
-                }
-            }
-            pkgs.addAll(pkgsFound);
-            HashSet<Pkg> unique = new HashSet<>(pkgs);
-            pkgs = new LinkedList<>(unique);
-
-            return pkgs;
-        });
-        futures.add(future);
-
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).thenApply(f -> futures.stream()
-                                                                                                 .map(completableFuture -> completableFuture.join())
-                                                                                                 .collect(Collectors.toList()));
-
-            List<Pkg> pkgs = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                                                 .thenApply(f -> futures.stream()
-                                                                        .map(completableFuture -> completableFuture.join())
-                                                                        .flatMap(Collection::stream)
-                                                                        .collect(Collectors.toList()))
-                                                 .get();
-            return pkgs;
-        } catch (InterruptedException | CancellationException | ExecutionException e) {
-            LOGGER.debug("Error get packages async for {} {} calling {}. {}", distribution.getName(), versionNumber, query, e.getMessage());
-            return new ArrayList<>();
-        }
-    }
-
-    private static final boolean isVersionNumberInPkg(final VersionNumber versionNumber, final Pkg pkg) {
-        if (pkg.getVersionNumber().getFeature().isEmpty() || versionNumber.getFeature().isEmpty()) {
-            throw new IllegalArgumentException("Version number must have feature number");
-        }
-        boolean featureFound = pkg.getVersionNumber().getFeature().getAsInt() == versionNumber.getFeature().getAsInt();
-        if (versionNumber.getInterim().isPresent()) {
-            boolean interimFound = false;
-            if (pkg.getVersionNumber().getInterim().isPresent()) {
-                interimFound = pkg.getVersionNumber().getInterim().getAsInt() == versionNumber.getInterim().getAsInt();
-                if (versionNumber.getUpdate().isPresent()) {
-                    boolean updateFound = false;
-                    if (pkg.getVersionNumber().getUpdate().isPresent()) {
-                        updateFound = pkg.getVersionNumber().getUpdate().getAsInt() == versionNumber.getUpdate().getAsInt();
-                        if (versionNumber.getPatch().isPresent()) {
-                            boolean patchFound = false;
-                            if (pkg.getVersionNumber().getPatch().isPresent()) {
-                                patchFound = pkg.getVersionNumber().getPatch().getAsInt() == versionNumber.getPatch().getAsInt();
-                            }
-                            return featureFound && interimFound && updateFound && patchFound;
-                        }
-                    }
-                    return featureFound && interimFound && updateFound;
-                }
-            }
-            return featureFound && interimFound;
-        }
-        return featureFound;
-    }
 
     public static final ArchiveType getFileEnding(final String fileName) {
         if (null == fileName || fileName.isEmpty()) { return ArchiveType.NONE; }
@@ -627,70 +151,6 @@ public class Helper {
         FILE_URL_MATCHER.reset(text);
         while (FILE_URL_MATCHER.find()) {
             pairsFound.add(new Pair<>(FILE_URL_MATCHER.group(1), FILE_URL_MATCHER.group(3)));
-        }
-        return pairsFound;
-    }
-
-    public static final Set<Pair<String,String>> getFileUrlsAndMd5sFromString(final String text) {
-        Set<Pair<String,String>> pairsFound = new HashSet<>();
-        FILE_URL_MD5_MATCHER.reset(text);
-        while(FILE_URL_MD5_MATCHER.find()) {
-            pairsFound.add(new Pair<>(FILE_URL_MD5_MATCHER.group(1), FILE_URL_MD5_MATCHER.group(5)));
-        }
-        return pairsFound;
-    }
-
-    public static final Set<Pair<String,String>> getFileNameAndSha256FromStringDragonwell8(final String text) {
-        Set<Pair<String,String>> pairsFound = new HashSet<>();
-        DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.reset(text);
-        while(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.find()) {
-            pairsFound.add(new Pair<>(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(1) + DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(2), DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(4)));
-        }
-        return pairsFound;
-    }
-
-    public static final Set<Pair<String,String>> getDragonwell11FileNameAndSha256FromString(final String text) {
-        Set<Pair<String,String>> pairsFound = new HashSet<>();
-        DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.reset(text);
-        while(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.find()) {
-            pairsFound.add(new Pair<>(DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(1) + DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(2), DRAGONWELL_11_FILE_NAME_SHA256_MATCHER.group(4)));
-        }
-        return pairsFound;
-    }
-
-    public static final Set<Pair<String,String>> getDragonwell8FileNameAndSha256FromString(final String text) {
-        Set<Pair<String,String>> pairsFound = new HashSet<>();
-        DRAGONWELL_8_FILE_NAME_SHA256_MATCHER.reset(text);
-        final List<MatchResult> results = DRAGONWELL_8_FILE_NAME_SHA256_MATCHER.results().collect(Collectors.toList());
-        boolean filenameFound = false;
-        String  filename      = "";
-        boolean sha256Found   = false;
-        String  sha256        = "";
-        for (MatchResult result : results) {
-            String group0 = result.group(0);
-            if (null != group0) {
-                if (group0.length() == 64) {
-                    sha256Found = true;
-                    sha256 = group0.trim();
-                    if (filenameFound) {
-                        pairsFound.add(new Pair<>(filename, sha256));
-                        sha256Found = false;
-                        filenameFound = false;
-                    }
-                }
-            }
-            String group2 = result.group(2);
-            if (null != group2) {
-                if (group2.startsWith("Alibaba")) {
-                    filenameFound = true;
-                    filename      = group2.trim();
-                    if (sha256Found) {
-                        pairsFound.add(new Pair<>(filename, sha256));
-                        filenameFound = false;
-                        sha256Found   = false;
-                    }
-                }
-            }
         }
         return pairsFound;
     }
@@ -724,6 +184,15 @@ public class Helper {
         return downloadLinksFound;
     }
 
+    public static final Set<String> getSigFromString(final String text) {
+        Set<String> sigsFound = new HashSet<>();
+        SIG_MATCHER.reset(text);
+        while (SIG_MATCHER.find()) {
+            sigsFound.add(SIG_MATCHER.group(1));
+        }
+        return sigsFound;
+    }
+
     public static final Set<String> getSigFileHrefsFromString(final String text) {
         Set<String> sigHrefsFound = new HashSet<>();
         HREF_SIG_FILE_MATCHER.reset(text);
@@ -731,6 +200,15 @@ public class Helper {
             sigHrefsFound.add(HREF_SIG_FILE_MATCHER.group(1).toLowerCase());
         }
         return sigHrefsFound;
+    }
+
+    public static final Set<String> getSha256FileHrefsFromString(final String text) {
+        Set<String> sha256HrefsFound = new HashSet<>();
+        HREF_SHA256_FILE_MATCHER.reset(text);
+        while (HREF_SHA256_FILE_MATCHER.find()) {
+            sha256HrefsFound.add(HREF_SHA256_FILE_MATCHER.group(1).toLowerCase());
+        }
+        return sha256HrefsFound;
     }
 
     public static final Set<String> getDownloadHrefsFromString(final String text) {
@@ -748,15 +226,6 @@ public class Helper {
         int    lastSlash = text.lastIndexOf("/") + 1;
         String fileName  = text.substring(lastSlash);
         return fileName;
-    }
-
-    public static final boolean isReleaseTermOfSupport(final int featureVersion, final TermOfSupport termOfSupport) {
-        switch(termOfSupport) {
-            case LTS: return isLTS(featureVersion);
-            case MTS: return isMTS(featureVersion);
-            case STS: return isSTS(featureVersion);
-            default : return false;
-        }
     }
 
     public static final boolean isSTS(final int featureVersion) {
@@ -844,30 +313,6 @@ public class Helper {
         return yaml.loadAs(response.body(), YamlScopes.class);
     }
 
-    public static final int getLeadingNumbers(final String text) {
-        String[]      parts = text.split("");
-        StringBuilder numberBuilder = new StringBuilder();
-        for (int i = 0; i < parts.length; i++) {
-            if((parts[i].matches("[0-9]+"))) {
-                numberBuilder.append(parts[i]);
-            } else {
-                return Integer.parseInt(numberBuilder.toString());
-            }
-        }
-        return 0;
-    }
-
-    public static final String readFromInputStream(final InputStream inputStream) throws IOException {
-        StringBuilder resultStringBuilder = new StringBuilder();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                resultStringBuilder.append(line).append("\n");
-            }
-        }
-        return resultStringBuilder.toString();
-    }
-
     public static final boolean isPositiveInteger(final String text) {
         if (null == text || text.isEmpty()) { return false; }
         return Constants.POSITIVE_INTEGER_PATTERN.matcher(text).matches();
@@ -876,23 +321,6 @@ public class Helper {
     public static final void removeEmptyItems(final List<String> list) {
         if (null == list) { return; }
         list.removeIf(item -> item == null || "".equals(item));
-    }
-
-    public static final long getCRC32Checksum(final byte[] bytes) {
-        Checksum crc32 = new CRC32();
-
-        crc32.update(bytes, 0, bytes.length);
-        return crc32.getValue();
-    }
-
-    public static final String getHash(final HashAlgorithm hashAlgorithm, final String text) {
-        switch (hashAlgorithm) {
-            case MD5     : return getMD5(text);
-            case SHA1    : return getSHA1(text);
-            case SHA256  : return getSHA256(text);
-            case SHA3_256: return getSHA3_256(text);
-            default      : return "";
-        }
     }
 
     public static final String getMD5(final String text) { return bytesToHex(getMD5Bytes(text.getBytes(UTF_8))); }
@@ -1045,20 +473,6 @@ public class Helper {
         return text.replaceFirst(prefix, "");
     }
 
-    public static final boolean isDifferentBuild(final Pkg pkg1, final Pkg pkg2) {
-        return !pkg1.getDistribution().equals(pkg2.getDistribution())           ||
-                pkg1.getVersionNumber().compareTo(pkg2.getVersionNumber()) !=0  ||
-                pkg1.getArchitecture()    != pkg2.getArchitecture()             ||
-                pkg1.getBitness()         != pkg2.getBitness()                  ||
-                pkg1.getOperatingSystem() != pkg2.getOperatingSystem()          ||
-                pkg1.getLibCType()        != pkg2.getLibCType()                 ||
-                pkg1.getArchiveType()     != pkg2.getArchiveType()              ||
-                pkg1.getPackageType()     != pkg2.getPackageType()              ||
-                pkg1.getReleaseStatus()   != pkg2.getReleaseStatus()            ||
-                pkg1.isJavaFXBundled()    != pkg2.isJavaFXBundled()             ||
-                pkg1.getTermOfSupport()   != pkg2.getTermOfSupport();
-    }
-
     public static final List<Pkg> getAllBuildsOfPackage(final Pkg pkg) {
         List<Pkg> differentBuilds = CacheManager.INSTANCE.pkgCache.getPkgs()
                                                                   .stream()
@@ -1074,68 +488,9 @@ public class Helper {
                                                                   .filter(p -> p.getReleaseStatus()   == pkg.getReleaseStatus())
                                                                   .filter(p -> p.getTermOfSupport()   == pkg.getTermOfSupport())
                                                                   .filter(p -> p.isJavaFXBundled()    == pkg.isJavaFXBundled())
-                                                                  .filter(p -> !p.getFileName().equals(pkg.getFileName()))
+                                                                  .filter(p -> !p.getFilename().equals(pkg.getFilename()))
                                                                   .collect(Collectors.toList());
         return differentBuilds;
-    }
-
-    public static final List<Pkg> getAllBuildsOfPackageInList(final Collection<Pkg> packages, final Pkg pkg) {
-        List<Pkg> differentBuilds = packages.stream()
-                                            .filter(p -> p.getDistribution().equals(pkg.getDistribution()))
-                                            .filter(p -> p.getVersionNumber().compareTo(pkg.getVersionNumber()) == 0)
-                                            .filter(p -> p.getArchitecture()    == pkg.getArchitecture())
-                                            .filter(p -> p.getBitness()         == pkg.getBitness())
-                                            .filter(p -> p.getOperatingSystem() == pkg.getOperatingSystem())
-                                            .filter(p -> p.getLibCType()        == pkg.getLibCType())
-                                            .filter(p -> p.getArchiveType()     == pkg.getArchiveType())
-                                            .filter(p -> p.getPackageType()     == pkg.getPackageType())
-                                            .filter(p -> p.getReleaseStatus()   == pkg.getReleaseStatus())
-                                            .filter(p -> p.getTermOfSupport()   == pkg.getTermOfSupport())
-                                            .filter(p -> p.isJavaFXBundled()    == pkg.isJavaFXBundled())
-                                            .filter(p -> !p.getFileName().equals(pkg.getFileName()))
-                                            .collect(Collectors.toList());
-        return differentBuilds;
-    }
-
-    public static final Optional<Pkg> getPkgWithMaxVersionForGivenPackage(final Pkg pkg) {
-        int             featureVersion          = pkg.getVersionNumber().getFeature().getAsInt();
-        Optional<Pkg>   pkgWithMaxVersionNumber = CacheManager.INSTANCE.pkgCache.getPkgs()
-                                                                                .stream()
-                                                                                .filter(p -> p.getDistribution().equals(pkg.getDistribution()))
-                                                                                .filter(p -> p.getArchitecture()    == pkg.getArchitecture())
-                                                                                .filter(p -> p.getArchiveType()     == pkg.getArchiveType())
-                                                                                .filter(p -> p.getOperatingSystem() == pkg.getOperatingSystem())
-                                                                                .filter(p -> p.getLibCType()        == pkg.getLibCType())
-                                                                                .filter(p -> p.getTermOfSupport()   == pkg.getTermOfSupport())
-                                                                                .filter(p -> p.getPackageType()     == pkg.getPackageType())
-                                                                                .filter(p -> p.getReleaseStatus()   == pkg.getReleaseStatus())
-                                                                                .filter(p -> p.getBitness()         == pkg.getBitness())
-                                                                                .filter(p -> p.isJavaFXBundled()    == pkg.isJavaFXBundled())
-                                                                                .filter(p -> featureVersion         == pkg.getVersionNumber().getFeature().getAsInt())
-                                                                                .max(Comparator.comparing(Pkg::getVersionNumber));
-        return pkgWithMaxVersionNumber;
-    }
-
-    public static final List<Pkg> getPkgsWithLatestBuild(final List<Pkg> pkgs, final ReleaseStatus releaseStatus) {
-        List<Pkg> pkgsWithLatestBuild = new ArrayList<>();
-        Distro.getDistrosWithJavaVersioning()
-              .stream()
-              .forEach(distro -> MajorVersion.getAllMajorVersions().forEach(majorVersion -> {
-                  final int mv   = majorVersion.getAsInt();
-                  List<Pkg> filteredPkgs = pkgs.stream()
-                                               .filter(pkg -> pkg.getReleaseStatus() == releaseStatus)
-                                               .filter(pkg -> pkg.getDistribution().getDistro() == distro)
-                                               .filter(pkg -> pkg.getJavaVersion().getMajorVersion().getAsInt() == mv)
-                                               .collect(Collectors.toList());
-                  SemVer maxSemVer = filteredPkgs.stream().max(Comparator.comparing(Pkg::getSemver)).map(pkg -> pkg.getSemver()).orElse(null);
-                  if (null != maxSemVer) {
-                      filteredPkgs.forEach(pkg -> pkg.setLatestBuildAvailable(false));
-                      pkgsWithLatestBuild.addAll(filteredPkgs.stream()
-                                                             .filter(pkg -> pkg.getSemver().compareTo(maxSemVer) == 0)
-                                                             .collect(Collectors.toList()));
-                  }
-              }));
-        return pkgsWithLatestBuild;
     }
 
     public static final Integer getPositiveIntFromText(final String text) {
@@ -1145,18 +500,6 @@ public class Helper {
             //LOGGER.info("Given text {} did not contain positive integer. Full text to parse was: {}", text, fullTextToParse);
             return -1;
         }
-    }
-
-    public static final Set<String> getFilesFromFolder(final String folder) throws IOException {
-        Set<String> fileList = new HashSet<>();
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(folder))) {
-            for (Path path : stream) {
-                if (!Files.isDirectory(path)) {
-                    fileList.add(path.getFileName().toString());
-                }
-            }
-        }
-        return fileList;
     }
 
     public static final List<String> readTextFile(final String filename, final Charset charset) throws IOException {
@@ -1200,15 +543,6 @@ public class Helper {
                                             .orElse(ArchiveType.NOT_FOUND);
     }
 
-    public static final PackageType fetchPackageType(final String text) {
-        return Constants.PACKAGE_TYPE_LOOKUP.entrySet()
-                                            .stream()
-                                            .filter(entry -> text.contains(entry.getKey()))
-                                            .findFirst()
-                                            .map(Entry::getValue)
-                                            .orElse(PackageType.NOT_FOUND);
-    }
-
     public static final ReleaseStatus fetchReleaseStatus(final String text) {
         return Constants.RELEASE_STATUS_LOOKUP.entrySet()
                                               .stream()
@@ -1220,11 +554,17 @@ public class Helper {
 
     public static final boolean isUriValid(final String uri) {
         if (null == httpClient) { httpClient = createHttpClient(); }
-        final HttpRequest request = HttpRequest.newBuilder()
-                                               .method("HEAD", HttpRequest.BodyPublishers.noBody())
-                                               .uri(URI.create(uri))
-                                               .timeout(Duration.ofSeconds(30))
-                                               .build();
+        final HttpRequest request;
+        try {
+            request = HttpRequest.newBuilder()
+                                 .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                                 .uri(URI.create(uri))
+                                 .timeout(Duration.ofSeconds(3))
+                                 .build();
+        } catch (Exception e) {
+            System.out.println(uri);
+            return false;
+        }
         try {
             HttpResponse<Void> responseFuture = httpClient.send(request, BodyHandlers.discarding());
             return 200 == responseFuture.statusCode();
@@ -1232,7 +572,6 @@ public class Helper {
             return false;
         }
     }
-
 
     public static final String getAllPackagesMsgV2(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
         return getAllPackagesMsgV2(allPkgs, downloadable, include_ea, scope, OutputFormat.REDUCED_COMPRESSED);
@@ -1257,48 +596,6 @@ public class Helper {
         return msgBuilder.toString();
     }
 
-    public static final Collection<Pkg> updateLatestBuildAvailable(final Collection<Pkg> pkgsToModify) {
-        // Copy list of pkgs
-        List<Pkg> pkgs = new ArrayList<>(pkgsToModify);
-
-        // Set latestBuildAvailable=false in all pkgs
-        pkgs.forEach(pkg -> pkg.setLatestBuildAvailable(false));
-
-        // Find latest builds available
-        Collection<Pkg> pkgsFound = pkgs.parallelStream()
-                                        .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
-                                        .collect(Collectors.toList());
-        final Set<Pkg>  filteredPkgsFound = new CopyOnWriteArraySet<>();
-        final List<Pkg> pkgsToCheck       = new CopyOnWriteArrayList<>(pkgsFound);
-        final Set<Pkg>  diffPkgs          = new CopyOnWriteArraySet<>();
-        pkgsFound.forEach(pkg -> {
-            List<Pkg> pkgsWithDifferentUpdate = pkgsToCheck.parallelStream()
-                                                           .filter(pkg1 -> pkg.equalsExceptUpdate(pkg1))
-                                                           .collect(Collectors.toList());
-            diffPkgs.addAll(pkgsWithDifferentUpdate);
-
-            final Pkg pkgWithMaxVersion = pkgsWithDifferentUpdate.parallelStream()
-                                                                 .max(Comparator.comparing(Pkg::getVersionNumber))
-                                                                 .orElse(null);
-            if (null != pkgWithMaxVersion) {
-                List<Pkg> pkgsWithSmallerVersions = filteredPkgsFound.parallelStream()
-                                                                     .filter(pkg2 -> pkg2.equalsExceptUpdate(pkgWithMaxVersion))
-                                                                     .filter(pkg2 -> pkg2.getSemver().compareTo(pkgWithMaxVersion.getSemver()) < 0)
-                                                                     .collect(Collectors.toList());
-                if (!pkgsWithSmallerVersions.isEmpty()) { filteredPkgsFound.removeAll(pkgsWithSmallerVersions); }
-                filteredPkgsFound.add(pkgWithMaxVersion);
-            }
-        });
-
-        pkgsToCheck.removeAll(diffPkgs);
-        filteredPkgsFound.addAll(pkgsToCheck);
-
-        // Set latestBuildAvailable=true for pkgs found
-        pkgs.parallelStream().filter(pkg -> filteredPkgsFound.contains(pkg)).forEach(pkg -> pkg.setLatestBuildAvailable(true));
-
-        return pkgs;
-    }
-
     public static final String getUserAgent(final io.micronaut.http.HttpRequest request) {
         String      userAgent = "unknown";
         HttpHeaders headers   = request.getHeaders();
@@ -1307,7 +604,6 @@ public class Helper {
             if (optUserAgent.isPresent()) { userAgent = optUserAgent.get(); }
             Optional<String> optUserInfo = headers.findFirst("Disco-User-Info");
             if (optUserInfo.isPresent()) { userAgent = optUserInfo.get(); }
-
         }
         return userAgent;
     }
@@ -1396,156 +692,7 @@ public class Helper {
         return "";
     }
 
-    public static JBang getJBangFromHeader(final String headerText) {
-        JBANG_HEADER_MATCHER.reset(headerText);
-        final List<MatchResult> results     = JBANG_HEADER_MATCHER.results().collect(Collectors.toList());
-        final int               noOfResults = results.size();
-        if (noOfResults > 0) {
-            MatchResult result = results.get(0);
-            String group2 = result.group(2);  // version
-            String group4 = result.group(4);  // environment
-            String group5 = result.group(5);  // environmentVersion
-            String group6 = result.group(6);  // architecture
-            String group8 = result.group(8);  // java version
-            String group9 = result.group(12); // vendor
-
-            return new JBang(group2, group4, group5, group6, group8, group9);
-        }
-        return null;
-    }
-
-    public static final String getStatsFor(final String requester, final Long from, final Long to) {
-        Requester req   = Requester.fromText(requester);
-        if (Requester.NOT_FOUND == req) { return ""; }
-
-        Long      start = null == from ? Instant.MIN.getEpochSecond() : from;
-        Long      end   = null == to   ? Instant.MAX.getEpochSecond() : to;
-        if (null != from && null != to) {
-            if (from > to) { start = Instant.MIN.getEpochSecond(); }
-            if (to < from) { end   = Instant.MAX.getEpochSecond(); }
-        }
-
-        switch(req) {
-            case JBANG -> {
-                Map<String, List<Pkg>> downloadsFromJBang = new HashMap<>();
-                Map<String, JBang>     jBangMap           = new HashMap<>();
-
-                List<DownloadInfo> downloads = MongoDbManager.INSTANCE.getPkgDownloadsForRequester(req, start, end);
-                Instant jbangMinTimestamp = Instant.MAX;
-                Instant jbangMaxTimestamp = Instant.MIN;
-                long    jbangDownloads    = downloads.size();
-                for (DownloadInfo downloadInfo : downloads) {
-                    String  userAgent = downloadInfo.userAgent();
-                    Pkg     pkg       = CacheManager.INSTANCE.pkgCache.get(downloadInfo.pkgId());
-                    Instant timestamp = downloadInfo.timestamp();
-
-                    if (!downloadsFromJBang.containsKey(userAgent)) { downloadsFromJBang.put(userAgent, new ArrayList<>()); }
-                    downloadsFromJBang.get(userAgent).add(pkg);
-
-                    jbangMinTimestamp = timestamp.isBefore(jbangMinTimestamp) ? timestamp : jbangMinTimestamp;
-                    jbangMaxTimestamp = timestamp.isAfter(jbangMaxTimestamp)  ? timestamp : jbangMaxTimestamp;
-                }
-                downloadsFromJBang.entrySet().forEach(entry -> {
-                    String jbangHeader = entry.getKey();
-                    JBang  jbangTemp   = getJBangFromHeader(jbangHeader);
-                    if (null != jbangTemp) {
-                        JBang jbang;
-                        if (jBangMap.containsKey(jbangTemp.toString())) {
-                            jbang = jBangMap.get(jbangTemp.toString());
-                        } else {
-                            jbang = jbangTemp;
-                            jBangMap.put(jbang.toString(), jbang);
-                        }
-                        List<Pkg> pkgsForJBang = entry.getValue();
-                        pkgsForJBang.stream().forEach(pkg -> {
-                            SemVer semver = pkg.getSemver();
-                            String os_arc = String.join("_", pkg.getOperatingSystem().getApiString(), pkg.getArchitecture().getApiString());
-                            if (jbang.getDownloads().containsKey(semver.toString(true))) {
-                                if (jbang.getDownloads().get(semver.toString(true)).containsKey(os_arc)) {
-                                    long numberOfDownloads = jbang.getDownloads().get(semver.toString(true)).get(os_arc);
-                                    jbang.getDownloads().get(semver.toString(true)).put(os_arc, numberOfDownloads + 1L);
-                                } else {
-                                    jbang.getDownloads().get(semver.toString(true)).put(os_arc, 1L);
-                                }
-                            } else {
-                                jbang.getDownloads().put(semver.toString(true), new HashMap<>());
-                                jbang.getDownloads().get(semver.toString(true)).put(os_arc, 1L);
-                            }
-                        });
-                    }
-                });
-
-                if (jBangMap.isEmpty()) { return ""; }
-                StringBuilder jsonBuilder = new StringBuilder().append("{")
-                                                               .append("\"").append("min_timestamp").append("\":").append(jbangMinTimestamp.getEpochSecond()).append(",")
-                                                               .append("\"").append("max_timestamp").append("\":").append(jbangMaxTimestamp.getEpochSecond()).append(",")
-                                                               .append("\"").append("number_of_downloads").append("\":").append(jbangDownloads).append(",")
-                                                               .append("\"").append("stats").append("\":");
-                jsonBuilder.append(jBangMap.values().parallelStream()
-                                           .map(n -> n.toString())
-                                           .collect(Collectors.joining(",\n", "[", "]")));
-                jsonBuilder.append("}");
-                return jsonBuilder.toString();
-            }
-        }
-        return "";
-    }
-
-    public static final String getSystemInfo() {
-        final long    pid            = ProcessHandle.current().pid();
-        final Runtime runtime        = Runtime.getRuntime();
-        final int     availableCores = runtime.availableProcessors();
-        final long    totalMemory    = runtime.totalMemory();
-        final long    maxMemory      = runtime.maxMemory();
-        final long    freeMemory     = runtime.freeMemory();
-        double        cpuUtilization = -1;
-        double        memUtilization = -1;
-
-        try {
-            final String[] processInfo = { "/bin/sh", "-c", "ps -p " + pid + " -o %cpu,%mem,cmd" };
-            Process p      = Runtime.getRuntime().exec(processInfo);
-            String  result = new BufferedReader(new InputStreamReader(p.getInputStream())).lines().collect(Collectors.joining("\n"));
-            CPU_MEM_MATCHER.reset(result);
-            if (CPU_MEM_MATCHER.find()) {
-                cpuUtilization = Double.parseDouble(CPU_MEM_MATCHER.group(1));
-                memUtilization = Double.parseDouble(CPU_MEM_MATCHER.group(2));
-            }
-        } catch (IOException e) {
-            LOGGER.error("Error retrieving process info. {}", e);
-        }
-
-        StringBuilder msgBuilder     = new StringBuilder();
-        msgBuilder.append(QUOTES).append("system_info").append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                  .append(INDENTED_QUOTES).append("no_of_cpus").append(QUOTES).append(COLON).append(availableCores).append(COMMA_NEW_LINE)
-                  .append(INDENTED_QUOTES).append("total_mem").append(QUOTES).append(COLON).append(QUOTES).append(formatBytes(totalMemory)).append(QUOTES).append(COMMA_NEW_LINE)
-                  .append(INDENTED_QUOTES).append("max_mem").append(QUOTES).append(COLON).append(QUOTES).append(formatBytes(maxMemory)).append(QUOTES).append(COMMA_NEW_LINE)
-                  .append(INDENTED_QUOTES).append("free_mem").append(QUOTES).append(COLON).append(QUOTES).append(formatBytes(freeMemory)).append(QUOTES).append(COMMA_NEW_LINE)
-                  .append(INDENTED_QUOTES).append("cpu_utilization").append(QUOTES).append(COLON).append(cpuUtilization).append(COMMA_NEW_LINE)
-                  .append(INDENTED_QUOTES).append("mem_utilization").append(QUOTES).append(COLON).append(memUtilization).append(COMMA_NEW_LINE)
-                  .append(CURLY_BRACKET_CLOSE);
-        return msgBuilder.toString();
-    }
-
-    public static double[] getCpuAndMemUtilization() {
-        final long pid            = ProcessHandle.current().pid();
-        double     cpuUtilization = -1;
-        double     memUtilization = -1;
-        try {
-            final String[] processInfo = { "/bin/sh", "-c", "ps -p " + pid + " -o %cpu,%mem,cmd" };
-            Process p      = Runtime.getRuntime().exec(processInfo);
-            String  result = new BufferedReader(new InputStreamReader(p.getInputStream())).lines().collect(Collectors.joining("\n"));
-            CPU_MEM_MATCHER.reset(result);
-            if (CPU_MEM_MATCHER.find()) {
-                cpuUtilization = Double.parseDouble(CPU_MEM_MATCHER.group(1));
-                memUtilization = Double.parseDouble(CPU_MEM_MATCHER.group(2));
-            }
-        } catch (IOException e) {
-            LOGGER.error("Error retrieving process info. {}", e);
-        }
-        return new double[] { cpuUtilization, memUtilization };
-    }
-
-    public static String formatBytes(long bytes) {
+    public static final String formatBytes(long bytes) {
         if (-1000 < bytes && bytes < 1000) {
             return bytes + " B";
         }
@@ -1555,6 +702,47 @@ public class Helper {
             ci.next();
         }
         return String.format("%.1f %cB", bytes / 1000.0, ci.current());
+    }
+
+    public static long getFileSize(final String uri) {
+        long size = -1;
+        HttpResponse<String> response = Helper.httpHeadRequestSync(uri);
+        if (null != response) {
+            java.net.http.HttpHeaders headers   = response.headers();
+            Map<String, List<String>> headerMap = headers.map();
+            if (headerMap.containsKey("Content-Length")) {
+                List<String> content = headerMap.get("Content-Length");
+                if (content.size() > 0) {
+                    try {
+                        size = Long.parseLong(headerMap.get("Content-Length").get(0));
+                    } catch (NumberFormatException e) {
+                        LOGGER.debug("Error parsing file size from {}.", uri);
+                    }
+                }
+            }
+        }
+        return size;
+    }
+
+    public static final String getReleaseDetailsUrl(final Semver semver) {
+        if (null == semver) { return ""; }
+        final int           majorVersion  = semver.getMajorVersion().getAsInt();
+        final VersionNumber versionNumber = semver.getVersionNumber();
+        final String releaseDetailsUrl;
+        if (majorVersion < 7 || majorVersion == 9 || majorVersion == 10 || majorVersion == 12 || majorVersion > MajorVersion.getLatestAsInt(false)) {
+            releaseDetailsUrl = "";
+        } else if (majorVersion == 7 || majorVersion == 8) {
+            releaseDetailsUrl = new StringBuilder().append(Constants.RELEASE_DETAILS_URL).append(majorVersion).append("/?tab=allissues&version=openjdk").append(majorVersion).append("u").append(versionNumber.getUpdate().getAsInt()).toString();
+        } else {
+            StringBuilder urlBuilder = new StringBuilder().append(Constants.RELEASE_DETAILS_URL).append(majorVersion).append("/?tab=allissues&version=").append(versionNumber.getFeature().getAsInt());
+            if (versionNumber.getUpdate().getAsInt() > 0) {
+                urlBuilder.append(".").append(versionNumber.getInterim().getAsInt()).append(".").append(versionNumber.getUpdate().getAsInt()).toString();
+            } else if (versionNumber.getInterim().getAsInt() > 0) {
+                urlBuilder.append(".").append(versionNumber.getInterim().getAsInt()).toString();
+            }
+            releaseDetailsUrl = urlBuilder.toString();
+        }
+        return releaseDetailsUrl;
     }
 
 
@@ -1634,6 +822,39 @@ public class Helper {
                                                .timeout(Duration.ofSeconds(10))
                                                .build();
 
+        return httpClientAsync.sendAsync(request, BodyHandlers.ofString());
+    }
+
+    public static final HttpResponse<String> httpHeadRequestSync(final String uri) {
+        if (null == httpClient) { httpClient = createHttpClient(); }
+
+        final HttpRequest request = HttpRequest.newBuilder()
+                                               .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                                               .uri(URI.create(uri))
+                                               .build();
+
+        try {
+            HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                return response;
+            } else {
+                // Problem with url request
+                LOGGER.debug("Error executing get request {}", uri);
+                LOGGER.debug("Response (Status Code {}) {} ", response.statusCode(), response.body());
+                return response;
+            }
+        } catch (CompletionException | InterruptedException | IOException e) {
+            LOGGER.error("Error executing get request {} : {}", uri, e.getMessage());
+            return null;
+        }
+    }
+    public static final  CompletableFuture<HttpResponse<String>> httpHeadRequestAsync(final String uri) {
+        if (null == httpClientAsync) { httpClientAsync = createHttpClient(); }
+
+        final HttpRequest request = HttpRequest.newBuilder()
+                                               .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                                               .uri(URI.create(uri))
+                                               .build();
         return httpClientAsync.sendAsync(request, BodyHandlers.ofString());
     }
 }

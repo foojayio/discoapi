@@ -17,21 +17,21 @@
 package io.foojay.api.distribution;
 
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
 import io.foojay.api.pkg.MajorVersion;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
@@ -46,10 +46,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.PackageType.JRE;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.PackageType.JRE;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
 public class Microsoft implements Distribution {
@@ -114,12 +114,12 @@ public class Microsoft implements Distribution {
         return List.of("microsoft", "Microsoft", "MICROSOFT", "Microsoft OpenJDK", "Microsoft Build of OpenJDK");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.MICROSOFT.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
 
@@ -136,35 +136,43 @@ public class Microsoft implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs() {
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         try {
             String htmlCurrentPkgs = Helper.getTextFromUrl(PACKAGE_URL);
-            pkgs.addAll(getAllPkgsFromHtml(htmlCurrentPkgs));
+            pkgs.addAll(getAllPkgsFromHtml(htmlCurrentPkgs, onlyNewPkgs));
 
             String htmlOlderPkgs = Helper.getTextFromUrl(OLDER_PACKAGES_URL);
-            pkgs.addAll(getAllPkgsFromHtml(htmlOlderPkgs));
+            pkgs.addAll(getAllPkgsFromHtml(htmlOlderPkgs, onlyNewPkgs));
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Microsoft. {}", e);
         }
+
+        
+
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromHtml(final String html) {
+    public List<Pkg> getAllPkgsFromHtml(final String html, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
 
-        List<String> fileHrefs    = new ArrayList<>(Helper.getFileHrefsFromString(html));
-        List<String> sigFileHrefs = new ArrayList<>(Helper.getSigFileHrefsFromString(html));
+        List<String> fileHrefs       = new ArrayList<>(Helper.getFileHrefsFromString(html));
+        List<String> sigFileHrefs    = new ArrayList<>(Helper.getSigFileHrefsFromString(html));
+        List<String> sha256FileHrefs = new ArrayList<>(Helper.getSha256FileHrefsFromString(html));
         for (String href : fileHrefs) {
             final String filename = Helper.getFileNameFromText(href);
-            if (filename.contains("debugsymbols") || filename.startsWith("jdk")) { continue; }
+            if (filename.contains("debugsymbols") || filename.startsWith("jdk") || filename.contains("sources")) { continue; }
+
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(href)).count() > 0) { continue; }
+            }
 
             final String          withoutPrefix   = filename.replace("microsoft-", "");
             final VersionNumber   versionNumber   = VersionNumber.fromText(withoutPrefix);
@@ -185,7 +193,7 @@ public class Microsoft implements Distribution {
                 versionNumber.setSixth(0);
             }
 
-            final MajorVersion    majorVersion    = versionNumber.getMajorVersion();
+            final MajorVersion    majorVersion    = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
             final PackageType     packageType     = withoutPrefix.startsWith("jdk") ? JDK : JRE;
 
             OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet()
@@ -228,9 +236,14 @@ public class Microsoft implements Distribution {
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
             pkg.setDistributionVersion(versionNumber);
+            pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
             pkg.setDirectDownloadUri(href);
             pkg.setFileName(filename);
             if (sigFileHrefs.contains(href.toLowerCase() + ".sig")) { pkg.setSignatureUri(href.toLowerCase() + ".sig"); }
+            if (sha256FileHrefs.contains(href.toLowerCase() + ".sha256sum.txt")) {
+                pkg.setChecksumUri(href.toLowerCase() + ".sha256sum.txt");
+                pkg.setChecksumType(HashAlgorithm.SHA256);
+            }
             pkg.setArchiveType(archiveType);
             pkg.setJavaFXBundled(false);
             pkg.setTermOfSupport(majorVersion.getTermOfSupport());
@@ -238,6 +251,7 @@ public class Microsoft implements Distribution {
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkg.setSize(Helper.getFileSize(href));
 
             pkgs.add(pkg);
         }

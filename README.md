@@ -56,7 +56,7 @@ Presentation about the [Disco API](https://de.slideshare.net/han_solo/disco-api-
 * **package_type** stands for the type of package (e.g. jdk or jre)
 * **javafx_bundled** indicates if the package comes bundled with javafx (e.g. true, false)
 * **directly_downloadable** indicates if the package can directly be downloaded or if you have to go to the download page of the distribution to get it
-* **ephemeral_id** stands for an id that changes every 10 min and will be used to get the real download link (this is done to be able to count download numbers)
+* **id** stands for an id that is unique for each package
 ---
 There are different endpoints that can be used to drill down to the package the user would like to download.
 
@@ -65,28 +65,28 @@ Please find more information here:
 
 ---
 ### REST endpoints 
-/api.foojay.io/disco/v2.0/major_versions
-/api.foojay.io/disco/v2.0/distributions
-/api.foojay.io/disco/v2.0/packages
-/api.foojay.io/disco/v2.0/packages/jdks
-/api.foojay.io/disco/v2.0/packages/jres
-/api.foojay.io/disco/v2.0/ephemeral_ids
+/api.foojay.io/disco/v3.0/major_versions
+/api.foojay.io/disco/v3.0/distributions
+/api.foojay.io/disco/v3.0/packages
+/api.foojay.io/disco/v3.0/packages/jdks
+/api.foojay.io/disco/v3.0/packages/jres
+/api.foojay.io/disco/v3.0/ids
 
 ---
 ### Endpoint: major_versions
-<b>/api.foojay.io/disco/v2.0/major_versions</b> => Returns all major versions
+<b>/api.foojay.io/disco/v3.0/major_versions</b> => Returns all major versions
 
-<b>/api.foojay.io/disco/v2.0/major_versions?ea=true</b> => Returns all major versions including early access builds
+<b>/api.foojay.io/disco/v3.0/major_versions?ea=true</b> => Returns all major versions including early access builds
 
-<b>/api.foojay.io/disco/v2.0/major_versions?ga=true</b> => Returns all major versions including only general availability builds
+<b>/api.foojay.io/disco/v3.0/major_versions?ga=true</b> => Returns all major versions including only general availability builds
 
-<b>/api.foojay.io/disco/v2.0/major_versions?maintained=true</b> => Returns all major versions that are maintained at the moment (e.g. 7, 8, 11, 13, 15, 16, 17-ea, 18-ea)
+<b>/api.foojay.io/disco/v3.0/major_versions?maintained=true</b> => Returns all major versions that are maintained at the moment (e.g. 7, 8, 11, 13, 15, 16, 17-ea, 18-ea)
 
 
 ### Endpoint: distributions
-<b>/api.foojay.io/disco/v2.0/distributions</b> => Returns all available distributions incl. their available versions
+<b>/api.foojay.io/disco/v3.0/distributions</b> => Returns all available distributions incl. their available versions
 
-<b>/api.foojay.io/disco/v2.0/distributions/zulu</b> => Returns the given distribution (here Zulu) with it's available versions
+<b>/api.foojay.io/disco/v3.0/distributions/zulu</b> => Returns the given distribution (here Zulu) with it's available versions
 
 
 ### Endpoint: packages
@@ -142,88 +142,103 @@ The url parameters will look as follows:
 - archive_type=pkg
 
 So the http request will look as follows:
-https://api.foojay.io/disco/v2.0/packages?package_type=jdk&latest=available&version=11&javafx_bundled=true&operating_system=macos&architecture=x64&archive_type=dmg&archive_type=pkg
+https://api.foojay.io/disco/v3.0/packages?package_type=jdk&latest=available&version=11&javafx_bundled=true&operating_system=macos&architecture=x64&archive_type=dmg&archive_type=pkg
 
 The response to this request is the following:
 ```JSON
 {
   "result": [
     {
-      "id": "3fa2a57fff2224a7eba3c8d2c354ec05",
+      "id": "2dd07b11553c798fa49274d937ba88e9",
       "archive_type": "dmg",
       "distribution": "zulu",
       "major_version": 11,
-      "java_version": "11.0.12+7",
-      "distribution_version": "11.50.19",
+      "java_version": "11.0.15+10",
+      "distribution_version": "11.56.19",
+      "jdk_version": 11,
       "latest_build_available": true,
       "release_status": "ga",
       "term_of_support": "lts",
       "operating_system": "macos",
       "lib_c_type": "libc",
       "architecture": "x64",
+      "fpu": "unknown",
       "package_type": "jdk",
       "javafx_bundled": true,
       "directly_downloadable": true,
-      "filename": "zulu11.50.19-ca-fx-jdk11.0.12-macosx_x64.dmg",
-      "ephemeral_id": "8085c64617b251f5ac6d4cc4143ee3c6fa39ce10",
+      "filename": "zulu11.56.19-ca-fx-jdk11.0.15-macosx_x64.dmg",
       "links": {
-        "pkg_info_uri": "https://api.foojay.io/disco/v2.0/ephemeral_ids/8085c64617b251f5ac6d4cc4143ee3c6fa39ce10",
-        "pkg_download_redirect": "https://api.foojay.io/disco/v2.0/ephemeral_ids/8085c64617b251f5ac6d4cc4143ee3c6fa39ce10/redirect"
+        "pkg_info_uri": "https://api.foojay.io/disco/v3.0/ids/2dd07b11553c798fa49274d937ba88e9",
+        "pkg_download_redirect": "https://api.foojay.io/disco/v3.0/ids/2dd07b11553c798fa49274d937ba88e9/redirect"
       },
       "free_use_in_production": true,
-      "tck_tested": true,
+      "tck_tested": "yes",
+      "tck_cert_uri": "https://cdn.azul.com/zulu/pdf/cert.zulu11.56.19-ca-fx-jdk11.0.15-macosx_x64.dmg.pdf",
+      "aqavit_certified": "unknown",
+      "aqavit_cert_uri": "",
+      "size": 278223218,
       "feature": []
     },
     {
-      "id": "d8e231fb3774256719fcc4110020a352",
-      "archive_type": "pkg",
-      "distribution": "liberica",
-      "major_version": 11,
-      "java_version": "11.0.12+7",
-      "distribution_version": "11+7",
-      "latest_build_available": true,
-      "release_status": "ga",
-      "term_of_support": "lts",
-      "operating_system": "macos",
-      "lib_c_type": "libc",
-      "architecture": "amd64",
-      "package_type": "jdk",
-      "javafx_bundled": true,
-      "directly_downloadable": true,
-      "filename": "bellsoft-jdk11.0.12+7-macos-amd64-full.pkg",
-      "ephemeral_id": "2ace657a700ed1c3217c00a67913e339b0be3923",
-      "links": {
-        "pkg_info_uri": "https://api.foojay.io/disco/v2.0/ephemeral_ids/2ace657a700ed1c3217c00a67913e339b0be3923",
-        "pkg_download_redirect": "https://api.foojay.io/disco/v2.0/ephemeral_ids/2ace657a700ed1c3217c00a67913e339b0be3923/redirect"
-      },
-      "free_use_in_production": true,
-      "tck_tested": true,
-      "feature": []
-    },
-    {
-      "id": "f9800831cd027768ff99e83c7128b729",
+      "id": "2fd1b59e76244fb2a5e553c4eaba0b27",
       "archive_type": "dmg",
       "distribution": "liberica",
       "major_version": 11,
-      "java_version": "11.0.12+7",
-      "distribution_version": "11+7",
+      "java_version": "11.0.15+10",
+      "distribution_version": "11",
+      "jdk_version": 11,
       "latest_build_available": true,
       "release_status": "ga",
       "term_of_support": "lts",
       "operating_system": "macos",
       "lib_c_type": "libc",
       "architecture": "amd64",
+      "fpu": "unknown",
       "package_type": "jdk",
       "javafx_bundled": true,
       "directly_downloadable": true,
-      "filename": "bellsoft-jdk11.0.12+7-macos-amd64-full.dmg",
-      "ephemeral_id": "34b7158fc7f31c6d6c1a55d5ae7719a40fe2ec91",
+      "filename": "bellsoft-jdk11.0.15+10-macos-amd64-full.dmg",
       "links": {
-        "pkg_info_uri": "https://api.foojay.io/disco/v2.0/ephemeral_ids/34b7158fc7f31c6d6c1a55d5ae7719a40fe2ec91",
-        "pkg_download_redirect": "https://api.foojay.io/disco/v2.0/ephemeral_ids/34b7158fc7f31c6d6c1a55d5ae7719a40fe2ec91/redirect"
+        "pkg_info_uri": "https://api.foojay.io/disco/v3.0/ids/2fd1b59e76244fb2a5e553c4eaba0b27",
+        "pkg_download_redirect": "https://api.foojay.io/disco/v3.0/ids/2fd1b59e76244fb2a5e553c4eaba0b27/redirect"
       },
       "free_use_in_production": true,
-      "tck_tested": true,
+      "tck_tested": "unknown",
+      "tck_cert_uri": "",
+      "aqavit_certified": "unknown",
+      "aqavit_cert_uri": "",
+      "size": 289889581,
+      "feature": []
+    },
+    {
+      "id": "b19c6478c8424946f2dfc61d2b71b865",
+      "archive_type": "pkg",
+      "distribution": "liberica",
+      "major_version": 11,
+      "java_version": "11.0.15+10",
+      "distribution_version": "11",
+      "jdk_version": 11,
+      "latest_build_available": true,
+      "release_status": "ga",
+      "term_of_support": "lts",
+      "operating_system": "macos",
+      "lib_c_type": "libc",
+      "architecture": "amd64",
+      "fpu": "unknown",
+      "package_type": "jdk",
+      "javafx_bundled": true,
+      "directly_downloadable": true,
+      "filename": "bellsoft-jdk11.0.15+10-macos-amd64-full.pkg",
+      "links": {
+        "pkg_info_uri": "https://api.foojay.io/disco/v3.0/ids/b19c6478c8424946f2dfc61d2b71b865",
+        "pkg_download_redirect": "https://api.foojay.io/disco/v3.0/ids/b19c6478c8424946f2dfc61d2b71b865/redirect"
+      },
+      "free_use_in_production": true,
+      "tck_tested": "unknown",
+      "tck_cert_uri": "",
+      "aqavit_certified": "unknown",
+      "aqavit_cert_uri": "",
+      "size": 287112728,
       "feature": []
     }
   ],
@@ -243,24 +258,25 @@ If you know that you would like to have a package from Liberica you simply add t
 above and you will only get the packages from Liberica for the given parameters.
 
 As you can see there is no download link in the response and the reason for that is that we somehow need a way to create some
-kind of statistics. For this reason you have to do another request to the ephemeral_ids endpoint with the ephemeral_id of the
+kind of statistics. For this reason you have to do another request to the ids endpoint with the id of the
 package you would like to download.
-Please keep in mind that the ephemeral ids for each package will change every couple of minutes to avoid caching.
-To make it easier for you to get the download link you simply can call the url that is in the response in the "pkg_info_uri".
 
-So if we make the following request: https://api.foojay.io/disco/v2.0/ephemeral_ids/30dba32311753589fb67efb6222ec2e9b7635b68
+So if we make the following request: https://api.foojay.io/disco/v3.0/ids/2dd07b11553c798fa49274d937ba88e9
 we will get this response back:
 ```JSON
 {
-  "result": [
+  "result":[
     {
-      "filename": "zulu11.50.19-ca-fx-jdk11.0.12-macosx_x64.dmg",
-      "direct_download_uri": "https://cdn.azul.com/zulu/bin/zulu11.50.19-ca-fx-jdk11.0.12-macosx_x64.dmg",
-      "download_site_uri": "",
-      "signature_uri": "http://api.azul.com/zulu/download/community/v1.0/bundles/sha256/2437e7da00991c69060d444eb8d2f6aa73b4a6ff65150ddc5b206a0d9f958c0e/signature-binary/?sig_index=0"
+      "filename":"zulu11.56.19-ca-fx-jdk11.0.15-macosx_x64.dmg",
+      "direct_download_uri":"https://cdn.azul.com/zulu/bin/zulu11.56.19-ca-fx-jdk11.0.15-macosx_x64.dmg",
+      "download_site_uri":"",
+      "signature_uri":"",
+      "checksum_uri":"",
+      "checksum":"b6a13e91a10011d05b3daa53339bef97b8a949aea00bf671af0feecd979a24b9",
+      "checksum_type":"sha256"
     }
   ],
-  "message": ""
+  "message":""
 }
 ```
 In this response you will now get the direct_download_uri which will let you download the package.

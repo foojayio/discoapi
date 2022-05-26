@@ -17,24 +17,23 @@
  *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.foojay.api.pkg;
+package io.foojay.api.util;
+
+import java.time.Instant;
+import java.util.Objects;
 
 
-import io.foojay.api.util.OutputFormat;
+public class Records {
 
+    public record DownloadInfo(String pkgId, String userAgent, String countryCode, Instant timestamp) {}
 
-public interface ApiFeature {
-    String getUiString();
-
-    String getApiString();
-
-    ApiFeature getDefault();
-
-    ApiFeature getNotFound();
-
-    ApiFeature[] getAll();
-
-    String toString(OutputFormat outputFormat);
-
-    static ApiFeature fromText(final String text) { return null; }
+    public record Cmd(String name, Runnable cmd) {
+        @Override public boolean equals(final Object o) {
+            if (this == o) { return true; }
+            if (o == null || getClass() != o.getClass()) { return false; }
+            Cmd cmd = (Cmd) o;
+            return name.equals(cmd.name);
+        }
+        @Override public int hashCode() { return Objects.hash(name); }
+    }
 }

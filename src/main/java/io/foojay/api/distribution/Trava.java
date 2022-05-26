@@ -20,20 +20,21 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.HashAlgorithm;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.GithubTokenPool;
 import io.foojay.api.util.Helper;
@@ -53,10 +54,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.foojay.api.pkg.PackageType.JDK;
-import static io.foojay.api.pkg.PackageType.JRE;
-import static io.foojay.api.pkg.ReleaseStatus.EA;
-import static io.foojay.api.pkg.ReleaseStatus.GA;
+import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.PackageType.JRE;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
+import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
 public class Trava implements Distribution {
@@ -124,14 +125,14 @@ public class Trava implements Distribution {
         return List.of("trava", "TRAVA", "Trava", "trava_openjdk", "TRAVA_OPENJDK", "trava openjdk", "TRAVA OPENJDK");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.TRAVA.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString))))
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString))))
                                              .stream()
-                                             .sorted(Comparator.comparing(SemVer::getVersionNumber).reversed())
+                                             .sorted(Comparator.comparing(Semver::getVersionNumber).reversed())
                                              .collect(Collectors.toList());
     }
 
@@ -150,7 +151,7 @@ public class Trava implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         TermOfSupport supTerm = null;
@@ -166,11 +167,15 @@ public class Trava implements Distribution {
         JsonArray assets = jsonObj.getAsJsonArray("assets");
         for (JsonElement element : assets) {
             JsonObject assetJsonObj = element.getAsJsonObject();
-            String     fileName     = assetJsonObj.get("name").getAsString();
+            String     filename     = assetJsonObj.get("name").getAsString();
 
-            if (fileName.endsWith("txt") || fileName.endsWith("symbols.tar.gz")) { continue; }
+            if (filename.endsWith("txt") || filename.endsWith("symbols.tar.gz")) { continue; }
 
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+            }
 
             VersionNumber vNumber = new VersionNumber();
             DOWNLOAD_MATCHER.reset(downloadLink);
@@ -190,12 +195,12 @@ public class Trava implements Distribution {
             Pkg pkg = new Pkg();
 
             ArchiveType ext = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
-                                                           .filter(entry -> fileName.endsWith(entry.getKey()))
+                                                           .filter(entry -> filename.endsWith(entry.getKey()))
                                                            .findFirst()
                                                            .map(Entry::getValue)
                                                            .orElse(ArchiveType.NONE);
             if (ArchiveType.NONE == ext) {
-                LOGGER.debug("Archive Type not found in Trava for filename: {}", fileName);
+                LOGGER.debug("Archive Type not found in Trava for filename: {}", filename);
                 return pkgs;
             }
 
@@ -205,48 +210,49 @@ public class Trava implements Distribution {
             pkg.setTermOfSupport(supTerm);
 
             pkg.setDistribution(Distro.TRAVA.get());
-            pkg.setFileName(fileName);
+            pkg.setFileName(filename);
             pkg.setDirectDownloadUri(downloadLink);
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
             pkg.setDistributionVersion(vNumber);
+            pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
             switch (packageType) {
                 case NONE:
-                    pkg.setPackageType(fileName.contains(Constants.JDK_PREFIX) ? JDK : JRE);
+                    pkg.setPackageType(filename.contains(Constants.JDK_PREFIX) ? JDK : JRE);
                     break;
                 case JDK:
-                    if (!fileName.contains(Constants.JDK_PREFIX)) { continue; }
+                    if (!filename.contains(Constants.JDK_PREFIX)) { continue; }
                     pkg.setPackageType(JDK);
                     break;
                 case JRE:
-                    if (!fileName.contains(Constants.JRE_PREFIX)) { continue; }
+                    if (!filename.contains(Constants.JRE_PREFIX)) { continue; }
                     pkg.setPackageType(JRE);
                     break;
             }
 
             switch (releaseStatus) {
                 case NONE:
-                    pkg.setReleaseStatus(fileName.contains(Constants.EA_POSTFIX) ? EA : GA);
+                    pkg.setReleaseStatus(filename.contains(Constants.EA_POSTFIX) ? EA : GA);
                     break;
                 case GA:
-                    if (fileName.contains(Constants.EA_POSTFIX)) { continue; }
+                    if (filename.contains(Constants.EA_POSTFIX)) { continue; }
                     pkg.setReleaseStatus(GA);
                     break;
                 case EA:
-                    if (!fileName.contains(Constants.EA_POSTFIX)) { continue; }
+                    if (!filename.contains(Constants.EA_POSTFIX)) { continue; }
                     pkg.setReleaseStatus(EA);
                     break;
             }
 
             Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                             .filter(entry -> fileName.contains(entry.getKey()))
+                                                             .filter(entry -> filename.contains(entry.getKey()))
                                                              .findFirst()
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
 
             if (Architecture.NONE == arch) {
-                LOGGER.debug("Architecture not found in Trava for filename: {}", fileName);
+                LOGGER.debug("Architecture not found in Trava for filename: {}", filename);
                 return pkgs;
             }
 
@@ -254,7 +260,7 @@ public class Trava implements Distribution {
             pkg.setBitness(arch.getBitness());
 
             OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                                  .filter(entry -> fileName.contains(entry.getKey()))
+                                                                  .filter(entry -> filename.contains(entry.getKey()))
                                                                   .findFirst()
                                                                   .map(Entry::getValue)
                                                                   .orElse(OperatingSystem.NONE);
@@ -276,18 +282,22 @@ public class Trava implements Distribution {
                 }
             }
             if (OperatingSystem.NONE == os) {
-                LOGGER.debug("Operating System not found in Trava for filename: {}", fileName);
+                LOGGER.debug("Operating System not found in Trava for filename: {}", filename);
                 continue;
             }
             pkg.setOperatingSystem(os);
+            pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkg.setSize(Helper.getFileSize(downloadLink));
 
             pkgs.add(pkg);
         }
 
+        
+
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs() {
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         try {
             for (String packageUrl : PACKAGE_URLS) {
@@ -301,7 +311,7 @@ public class Trava implements Distribution {
                         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
                         if (element instanceof JsonArray) {
                             JsonArray jsonArray = element.getAsJsonArray();
-                            pkgs.addAll(getAllPkgsFromJson(jsonArray));
+                            pkgs.addAll(getAllPkgsFromJson(jsonArray, onlyNewPkgs));
                         }
                     } else {
                         // Problem with url request
@@ -314,10 +324,13 @@ public class Trava implements Distribution {
         } catch (Exception e) {
             LOGGER.error("Error fetching all packages from Trava. {}", e);
         }
+
+        
+
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray) {
+    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
         for (int i = 0; i < jsonArray.size(); i++) {
@@ -331,6 +344,10 @@ public class Trava implements Distribution {
                 if (filename.contains("-debug-")) { continue; }
 
                 String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+
+                if (onlyNewPkgs) {
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                }
 
                 VersionNumber vNumber = new VersionNumber();
                 DOWNLOAD_MATCHER.reset(downloadLink);
@@ -368,6 +385,7 @@ public class Trava implements Distribution {
                 pkg.setVersionNumber(vNumber);
                 pkg.setJavaVersion(vNumber);
                 pkg.setDistributionVersion(vNumber);
+                pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
                 pkg.setPackageType(filename.contains(Constants.JRE_POSTFIX) ? JRE : JDK);
                 pkg.setReleaseStatus(filename.contains(Constants.EA_POSTFIX) ? EA : GA);
 
@@ -413,6 +431,7 @@ public class Trava implements Distribution {
                 pkg.setOperatingSystem(os);
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
+                pkg.setSize(Helper.getFileSize(downloadLink));
 
                 pkgs.add(pkg);
             }

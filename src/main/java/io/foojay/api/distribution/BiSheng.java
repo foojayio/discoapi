@@ -20,21 +20,22 @@
 package io.foojay.api.distribution;
 
 import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.FPU;
+import eu.hansolo.jdktools.HashAlgorithm;
+import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.SignatureType;
+import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.pkg.Architecture;
-import io.foojay.api.pkg.ArchiveType;
-import io.foojay.api.pkg.Bitness;
 import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.FPU;
-import io.foojay.api.pkg.HashAlgorithm;
-import io.foojay.api.pkg.OperatingSystem;
-import io.foojay.api.pkg.PackageType;
+import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
-import io.foojay.api.pkg.ReleaseStatus;
-import io.foojay.api.pkg.SemVer;
-import io.foojay.api.pkg.SignatureType;
-import io.foojay.api.pkg.TermOfSupport;
-import io.foojay.api.pkg.VersionNumber;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
@@ -53,7 +54,7 @@ public class BiSheng implements Distribution {
     private static final Logger LOGGER = LoggerFactory.getLogger(BiSheng.class);
 
     private static final String                       GITHUB_USER            = "openeuler";
-    private static final String                       PACKAGE_URL            = "https://www.gitee.com/" + GITHUB_USER + "bishengjdk";
+    private static final String                       PACKAGE_URL            = "https://www.gitee.com/" + GITHUB_USER + "/bishengjdk";
     private static final String                       CDN_URL                = "https://mirror.iscas.ac.cn/kunpeng/archive/compiler/bisheng_jdk/";
 
     // URL parameters
@@ -109,12 +110,12 @@ public class BiSheng implements Distribution {
         return List.of("bisheng", "BISHENG", "BiSheng", "bi_sheng", "BI_SHENG", "bi-sheng", "BI-SHENG", "bi sheng", "BI SHENG", "Bi Sheng");
     }
 
-    @Override public List<SemVer> getVersions() {
+    @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
                                              .filter(pkg -> Distro.BISHENG.get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(SemVer::toString)))).stream().sorted(Comparator.comparing(SemVer::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
     }
 
 
@@ -126,13 +127,8 @@ public class BiSheng implements Distribution {
         queryBuilder.append(PACKAGE_URL);
 
         switch(versionNumber.getFeature().getAsInt()) {
-            case 8:
-            case 11:
-            case 17:
-                queryBuilder.append("-").append(versionNumber.getFeature().getAsInt());
-                break;
-            default:
-                return "";
+            case 8, 11, 17 -> queryBuilder.append("-").append(versionNumber.getFeature().getAsInt());
+            default        -> { return ""; }
         }
 
         LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
@@ -141,7 +137,7 @@ public class BiSheng implements Distribution {
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
                                               final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
-                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
+                                              final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         return pkgs;
     }
@@ -150,7 +146,7 @@ public class BiSheng implements Distribution {
      * Returns all packages found on the Kunpeng CDN
      * @return all packages found on the Kunpeng CDN
      */
-    public List<Pkg> getAllPackagesFromCDN() {
+    public List<Pkg> getAllPackagesFromCDN(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         try {
             final HttpResponse<String> response = Helper.get(CDN_URL);
@@ -165,18 +161,23 @@ public class BiSheng implements Distribution {
 
                 String[]        filenameParts       = filename.split("-");
                 PackageType     packageType         = PackageType.fromText(filenameParts[1]);
-                VersionNumber   versionNumber       = VersionNumber.fromText(filenameParts[2]);
+                VersionNumber   vNumber             = VersionNumber.fromText(filenameParts[2]);
                 OperatingSystem os                  = OperatingSystem.fromText(filenameParts[3]);
                 Architecture    architecture        = Architecture.fromText(filenameParts[4]);
-                TermOfSupport   termOfSupport       = Helper.getTermOfSupport(versionNumber);
+                TermOfSupport   termOfSupport       = Helper.getTermOfSupport(vNumber);
                 String          downloadLink        = CDN_URL + filename;
-                VersionNumber   distroVersionNumber = versionNumber;
+                VersionNumber   distroVersionNumber = vNumber;
+
+                if (onlyNewPkgs) {
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                }
 
                 Pkg pkg = new Pkg();
                 pkg.setDistribution(Distro.BISHENG.get());
-                pkg.setVersionNumber(versionNumber);
-                pkg.setJavaVersion(versionNumber);
+                pkg.setVersionNumber(vNumber);
+                pkg.setJavaVersion(vNumber);
                 pkg.setDistributionVersion(distroVersionNumber);
+                pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
                 FPU fpu;
                 if (filename.contains("32sf.")) {
@@ -241,11 +242,16 @@ public class BiSheng implements Distribution {
 
                 pkg.setFreeUseInProduction(Boolean.TRUE);
 
+                pkg.setSize(Helper.getFileSize(downloadLink));
+
                 pkgs.add(pkg);
             }
         } catch (Exception e) {
             LOGGER.debug("Error fetching packages from Bisheng CDN. {}", e.getMessage());
         }
+
+        
+
         return pkgs;
     }
 }
