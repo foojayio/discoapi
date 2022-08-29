@@ -53,6 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
@@ -109,6 +110,7 @@ public class Temurin implements Distribution {
     private static final String        FIELD_NAME             = "name";
     private static final String        FIELD_VERSION_DATA     = "version_data";
     private static final String        FIELD_SEMVER           = "semver";
+    private static final String        FIELD_BUILD            = "build";
     private static final String        FIELD_RELEASE_TYPE     = "release_type";
     private static final String        FIELD_RELEASE_NAME     = "release_name";
     private static final String        FIELD_ARCHITECTURE     = "architecture";
@@ -221,7 +223,7 @@ public class Temurin implements Distribution {
         queryBuilder.append("project=").append("jdk");
 
         queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-        queryBuilder.append("vendor=").append("adoptium");
+        queryBuilder.append("vendor=").append("eclipse");
 
         LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
 
@@ -244,7 +246,8 @@ public class Temurin implements Distribution {
             if (latest) {
                 if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }
             }
-            VersionNumber dNumber = Semver.fromText(versionDataObj.get(FIELD_SEMVER).getAsString()).getSemver1().getVersionNumber();
+            int build = versionDataObj.get(FIELD_BUILD).getAsInt();
+            vNumber.setBuild(build);
 
             Architecture arc = Constants.ARCHITECTURE_LOOKUP.entrySet()
                                                             .stream()
@@ -369,7 +372,7 @@ public class Temurin implements Distribution {
                 packagePkg.setDistribution(Distro.TEMURIN.get());
                 packagePkg.setVersionNumber(vNumber);
                 packagePkg.setJavaVersion(vNumber);
-                packagePkg.setDistributionVersion(dNumber);
+                packagePkg.setDistributionVersion(vNumber);
                 packagePkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
                 packagePkg.setTermOfSupport(supTerm);
                 packagePkg.setPackageType(pkgTypeFound);
@@ -403,15 +406,18 @@ public class Temurin implements Distribution {
             }
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
 
     public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
+
+        final OptionalInt nextButOneEA = Helper.getNextButOneEA();
+        final int latestEA = nextButOneEA.isPresent() ? nextButOneEA.getAsInt() : MajorVersion.getLatest(true).getAsInt();
         try {
-            for (int i = 8 ; i <= MajorVersion.getLatest(true).getAsInt() ; i++) {
+            for (int i = 8 ; i <= latestEA ; i++) {
                 String packageUrl = PACKAGE_URL + "temurin" + i + "-binaries/releases";
                 // Get all packages from github
                 try {
@@ -437,13 +443,15 @@ public class Temurin implements Distribution {
             LOGGER.error("Error fetching all packages from Temurin. {}", e);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
 
     public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final int featureVersion, final boolean onlyNewPkgs) {
         List<Pkg>              pkgs            = new ArrayList<>();
+        OptionalInt            nextEA          = Helper.getNextEA();
+        OptionalInt            nextButOneEA    = Helper.getNextButOneEA();
         Optional<MajorVersion> majorVersionOpt = CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> majorVersion.getAsInt() == featureVersion).findFirst();
         if (majorVersionOpt.isPresent()) {
             boolean isEarlyAccessOnly = majorVersionOpt.get().isEarlyAccessOnly();
@@ -481,7 +489,11 @@ public class Temurin implements Distribution {
                     } else {
                         versionNumber = VersionNumber.fromText(filenameParts[4] + (filenameParts.length == 6 ? ("+b" + filenameParts[5]) : ""));
                         majorVersion  = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
-                        releaseStatus = (filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA;
+                        if (nextEA.isPresent()) {
+                            releaseStatus = (filename.contains("-ea.") || majorVersion.getAsInt() == nextEA.getAsInt() || majorVersion.getAsInt() == nextButOneEA.getAsInt()) ? EA : GA;
+                        } else {
+                            releaseStatus = (filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA;
+                        }
                     }
                     String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
@@ -501,7 +513,6 @@ public class Temurin implements Distribution {
                         LOGGER.debug("Operating System not found in Temurin for filename: {}", filename);
                         continue;
                     }
-
 
                     final Architecture architecture = Constants.ARCHITECTURE_LOOKUP.entrySet()
                                                                                    .stream()
@@ -558,7 +569,7 @@ public class Temurin implements Distribution {
             }
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;

@@ -13,7 +13,7 @@ Presentation about the [Disco API](https://de.slideshare.net/han_solo/disco-api-
 * Corretto
 * Debian (contains only links to download site)
 * Dragonwell
-* GraalVM CE (8, 11, 16)
+* GraalVM CE (8, 11, 17)
 * JetBrains
 * Kona
 * Liberica

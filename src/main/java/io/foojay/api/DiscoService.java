@@ -68,12 +68,8 @@ public enum DiscoService {
         if (null != pkgScopes && !pkgScopes.isEmpty()) {
             for (Scope scope : pkgScopes) {
                 switch (scope.getApiString()) {
-                    case "signature_available":
-                        selection = selection.parallelStream().filter(pkg -> !pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
-                        break;
-                    case "signature_not_available":
-                        selection = selection.parallelStream().filter(pkg -> pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
-                        break;
+                    case "signature_available"     -> selection = selection.parallelStream().filter(pkg -> !pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
+                    case "signature_not_available" -> selection = selection.parallelStream().filter(pkg -> pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
                 }
             }
         }

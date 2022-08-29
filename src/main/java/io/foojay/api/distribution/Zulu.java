@@ -445,7 +445,7 @@ public class Zulu implements Distribution {
 
         pkgs.add(pkg);
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -565,7 +565,7 @@ public class Zulu implements Distribution {
             LOGGER.debug("Error fetching packages from Zulu CDN. {}", e.getMessage());
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }

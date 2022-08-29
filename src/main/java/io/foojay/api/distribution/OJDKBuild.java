@@ -294,7 +294,7 @@ public class OJDKBuild implements Distribution {
             pkgs.add(pkg);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -327,7 +327,7 @@ public class OJDKBuild implements Distribution {
             LOGGER.error("Error fetching all packages from OJDKBuild. {}", e);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }

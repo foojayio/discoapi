@@ -43,10 +43,12 @@ import io.foojay.api.util.Helper;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.OptionalInt;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static io.foojay.api.util.Constants.API_VERSION_V1;
@@ -69,49 +71,6 @@ import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 public class Pkg {
-    public static final String          FIELD_ID                     = "id";
-    public static final String          FIELD_DISTRIBUTION           = "distribution";
-    public static final String          FIELD_MAJOR_VERSION          = "major_version";
-    public static final String          FIELD_JAVA_VERSION           = "java_version";
-    public static final String          FIELD_FEATURE_VERSION        = "feature_version";
-    public static final String          FIELD_INTERIM_VERSION        = "interim_version";
-    public static final String          FIELD_UPDATE_VERSION         = "update_version";
-    public static final String          FIELD_PATCH_VERSION          = "patch_version";
-    public static final String          FIELD_BUILD_VERSION          = "build_version";
-    public static final String          FIELD_DISTRIBUTION_VERSION   = "distribution_version";
-    public static final String          FIELD_JDK_VERSION            = "jdk_version";
-    public static final String          FIELD_LATEST_BUILD_AVAILABLE = "latest_build_available";
-    public static final String          FIELD_ARCHITECTURE           = "architecture";
-    public static final String          FIELD_BITNESS                = "bitness";
-    public static final String          FIELD_FPU                    = "fpu";
-    public static final String          FIELD_OPERATING_SYSTEM       = "operating_system";
-    public static final String          FIELD_LIB_C_TYPE             = "lib_c_type";
-    public static final String          FIELD_PACKAGE_TYPE           = "package_type";
-    public static final String          FIELD_RELEASE_STATUS         = "release_status";
-    public static final String          FIELD_ARCHIVE_TYPE           = "archive_type";
-    public static final String          FIELD_TERM_OF_SUPPORT        = "term_of_support";
-    public static final String          FIELD_JAVAFX_BUNDLED         = "javafx_bundled";
-    public static final String          FIELD_DIRECTLY_DOWNLOADABLE  = "directly_downloadable";
-    public static final String          FIELD_FILENAME               = "filename";
-    public static final String          FIELD_DIRECT_DOWNLOAD_URI    = "direct_download_uri";
-    public static final String          FIELD_DOWNLOAD_SITE_URI      = "download_site_uri";
-    public static final String          FIELD_SIGNATURE_URI          = "signature_uri";
-    public static final String          FIELD_CHECKSUM_URI           = "checksum_uri";
-    public static final String          FIELD_CHECKSUM               = "checksum";
-    public static final String          FIELD_CHECKSUM_TYPE          = "checksum_type";
-    public static final String          FIELD_EPHEMERAL_ID           = "ephemeral_id";
-    public static final String          FIELD_LINKS                  = "links";
-    public static final String          FIELD_DOWNLOAD               = "pkg_info_uri";
-    public static final String          FIELD_REDIRECT               = "pkg_download_redirect";
-    public static final String          FIELD_FREE_USE_IN_PROD       = "free_use_in_production";
-    public static final String          FIELD_TCK_TESTED             = "tck_tested";
-    public static final String          FIELD_TCK_CERT_URI           = "tck_cert_uri";
-    public static final String          FIELD_AQAVIT_CERTIFIED       = "aqavit_certified";
-    public static final String          FIELD_AQAVIT_CERT_URI        = "aqavit_cert_uri";
-    public static final String          FIELD_VALIDATED_AT           = "validated_at";
-    public static final String          FIELD_URL_VALID              = "url_valid";
-    public static final String          FIELD_SIZE                   = "size";
-    public static final String          FIELD_FEATURE                = "feature";
     private             Distribution    distribution;
     private             VersionNumber   versionNumber;
     private             VersionNumber   javaVersion;
@@ -146,7 +105,7 @@ public class Pkg {
     private             long            validatedAt;
     private             Boolean         urlValid;
     private             long            size;
-    private             List<Feature>   features;
+    private             Set<Feature>    features;
 
 
     public Pkg() {
@@ -190,52 +149,52 @@ public class Pkg {
         this.validatedAt          = validatedAt;
         this.urlValid             = urlValid;
         this.size                 = size;
-        this.features             = features;
-        this.semver               = Semver.fromText(versionNumber.toString()).getSemver1();
+        this.features             = new HashSet<>(features);
+        this.semver               = versionNumber.getFeature().isPresent() ? Semver.fromText(versionNumber.toString()).getSemver1() : new Semver(versionNumber);
     }
     public Pkg(final String jsonText) {
         if (null == jsonText || jsonText.isEmpty()) { throw new IllegalArgumentException("Json text cannot be null or empty"); }
         final Gson       gson = new Gson();
         final JsonObject json = gson.fromJson(jsonText, JsonObject.class);
 
-        final Distro distro       = Distro.fromText(json.get(FIELD_DISTRIBUTION).getAsString());
+        final Distro distro       = Distro.fromText(json.get(PkgField.DISTRIBUTION.fieldName()).getAsString());
         this.distribution         = distro.get();
-        this.versionNumber        = VersionNumber.fromText(json.get(FIELD_JAVA_VERSION).getAsString());
-        this.javaVersion          = VersionNumber.fromText(json.get(FIELD_JAVA_VERSION).getAsString());
-        this.distributionVersion  = VersionNumber.fromText(json.get(FIELD_DISTRIBUTION_VERSION).getAsString());
-        this.jdkVersion           = new MajorVersion(json.has(FIELD_JDK_VERSION) ? json.get(FIELD_JDK_VERSION).getAsInt() : this.javaVersion.getFeature().getAsInt());
-        this.latestBuildAvailable = json.has(FIELD_LATEST_BUILD_AVAILABLE) ? json.get(FIELD_LATEST_BUILD_AVAILABLE).getAsBoolean() : Boolean.FALSE;
-        this.architecture         = Architecture.fromText(json.get(FIELD_ARCHITECTURE).getAsString());
+        this.versionNumber        = VersionNumber.fromText(json.get(PkgField.JAVA_VERSION.fieldName()).getAsString());
+        this.javaVersion          = VersionNumber.fromText(json.get(PkgField.JAVA_VERSION.fieldName()).getAsString());
+        this.distributionVersion  = VersionNumber.fromText(json.get(PkgField.DISTRIBUTION_VERSION.fieldName()).getAsString());
+        this.jdkVersion           = new MajorVersion(json.has(PkgField.JDK_VERSION.fieldName()) ? json.get(PkgField.JDK_VERSION.fieldName()).getAsInt() : this.javaVersion.getFeature().getAsInt());
+        this.latestBuildAvailable = json.has(PkgField.LATEST_BUILD_AVAILABLE.fieldName()) ? json.get(PkgField.LATEST_BUILD_AVAILABLE.fieldName()).getAsBoolean() : Boolean.FALSE;
+        this.architecture         = Architecture.fromText(json.get(PkgField.ARCHITECTURE.fieldName()).getAsString());
         this.bitness              = this.architecture.getBitness();
-        this.fpu                  = json.has(FIELD_FPU) ? FPU.fromText(json.get(FIELD_FPU).getAsString()) : FPU.UNKNOWN;
-        this.operatingSystem      = OperatingSystem.fromText(json.get(FIELD_OPERATING_SYSTEM).getAsString());
-        this.libCType             = LibCType.fromText(json.get(FIELD_LIB_C_TYPE).getAsString());
-        this.packageType          = PackageType.fromText(json.get(FIELD_PACKAGE_TYPE).getAsString());
-        this.releaseStatus        = ReleaseStatus.fromText(json.get(FIELD_RELEASE_STATUS).getAsString());
-        this.archiveType          = ArchiveType.fromText(json.get(FIELD_ARCHIVE_TYPE).getAsString());
-        this.termOfSupport        = TermOfSupport.fromText(json.get(FIELD_TERM_OF_SUPPORT).getAsString());
-        this.javafxBundled        = json.get(FIELD_JAVAFX_BUNDLED).getAsBoolean();
-        this.directlyDownloadable = json.has(FIELD_DIRECTLY_DOWNLOADABLE) ? json.get(FIELD_DIRECTLY_DOWNLOADABLE).getAsBoolean() : Boolean.TRUE;
+        this.fpu                  = json.has(PkgField.FPU.fieldName()) ? FPU.fromText(json.get(PkgField.FPU.fieldName()).getAsString()) : FPU.UNKNOWN;
+        this.operatingSystem      = OperatingSystem.fromText(json.get(PkgField.OPERATING_SYSTEM.fieldName()).getAsString());
+        this.libCType             = LibCType.fromText(json.get(PkgField.LIB_C_TYPE.fieldName()).getAsString());
+        this.packageType          = PackageType.fromText(json.get(PkgField.PACKAGE_TYPE.fieldName()).getAsString());
+        this.releaseStatus        = ReleaseStatus.fromText(json.get(PkgField.RELEASE_STATUS.fieldName()).getAsString());
+        this.termOfSupport        = TermOfSupport.fromText(json.get(PkgField.TERM_OF_SUPPORT.fieldName()).getAsString());
+        this.javafxBundled        = json.get(PkgField.JAVAFX_BUNDLED.fieldName()).getAsBoolean();
+        this.directlyDownloadable = json.has(PkgField.DIRECTLY_DOWNLOADABLE.fieldName()) ? json.get(PkgField.DIRECTLY_DOWNLOADABLE.fieldName()).getAsBoolean() : Boolean.TRUE;
         this.headless             = Boolean.FALSE;
-        this.filename             = json.get(FIELD_FILENAME).getAsString();
-        this.directDownloadUri    = json.get(FIELD_DIRECT_DOWNLOAD_URI).getAsString();
-        this.downloadSiteUri      = json.get(FIELD_DOWNLOAD_SITE_URI).getAsString();
-        this.signatureUri         = json.has(FIELD_SIGNATURE_URI) ? json.get(FIELD_SIGNATURE_URI).getAsString() : "";
-        this.checksumUri          = json.has(FIELD_CHECKSUM_URI) ? json.get(FIELD_CHECKSUM_URI).getAsString() : "";
-        this.checksum             = json.has(FIELD_CHECKSUM) ? json.get(FIELD_CHECKSUM).getAsString() : "";
-        this.checksumType         = json.has(FIELD_CHECKSUM_TYPE) ? HashAlgorithm.fromText(json.get(FIELD_CHECKSUM_TYPE).getAsString()) : HashAlgorithm.NONE;
-        this.semver               = Semver.fromText(json.get(FIELD_JAVA_VERSION).getAsString()).getSemver1();
-        this.freeUseInProduction  = json.has(FIELD_FREE_USE_IN_PROD) ? json.get(FIELD_FREE_USE_IN_PROD).getAsBoolean() : Boolean.FALSE;
-        this.tckTested            = json.has(FIELD_TCK_TESTED) ? Verification.fromText(json.get(FIELD_TCK_TESTED).getAsString()) : Verification.UNKNOWN;
-        this.tckCertUri           = json.has(FIELD_TCK_CERT_URI) ? json.get(FIELD_TCK_CERT_URI).getAsString() : "";
-        this.aqavitCertified      = json.has(FIELD_AQAVIT_CERTIFIED) ? Verification.fromText(json.get(FIELD_AQAVIT_CERTIFIED).getAsString()) : Verification.UNKNOWN;
-        this.aqavitCertUri        = json.has(FIELD_AQAVIT_CERT_URI) ? json.get(FIELD_AQAVIT_CERT_URI).getAsString() : "";
-        this.validatedAt          = json.has(FIELD_VALIDATED_AT) ? json.get(FIELD_VALIDATED_AT).getAsLong() : Instant.now().getEpochSecond() - Constants.SECONDS_PER_MONTH;
-        this.urlValid             = json.has(FIELD_URL_VALID) ? json.get(FIELD_URL_VALID).getAsBoolean() : Boolean.TRUE;
-        this.size                 = json.has(FIELD_SIZE) ? json.get(FIELD_SIZE).getAsLong() : -1;
-        if (json.has(FIELD_FEATURE)) {
-            features = new ArrayList<>();
-            JsonArray featureArray = json.getAsJsonArray(FIELD_FEATURE);
+        this.filename             = json.get(PkgField.FILENAME.fieldName()).getAsString();
+        this.archiveType          = json.get(PkgField.ARCHIVE_TYPE.fieldName()).getAsString().isEmpty() ? Helper.fetchArchiveType(this.filename) : ArchiveType.fromText(json.get(PkgField.ARCHIVE_TYPE.fieldName()).getAsString());
+        this.directDownloadUri    = json.get(PkgField.DIRECT_DOWNLOAD_URI.fieldName()).getAsString();
+        this.downloadSiteUri      = json.get(PkgField.DOWNLOAD_SITE_URI.fieldName()).getAsString();
+        this.signatureUri         = json.has(PkgField.SIGNATURE_URI.fieldName()) ? json.get(PkgField.SIGNATURE_URI.fieldName()).getAsString() : "";
+        this.checksumUri          = json.has(PkgField.CHECKSUM_URI.fieldName()) ? json.get(PkgField.CHECKSUM_URI.fieldName()).getAsString() : "";
+        this.checksum             = json.has(PkgField.CHECKSUM.fieldName()) ? json.get(PkgField.CHECKSUM.fieldName()).getAsString() : "";
+        this.checksumType         = json.has(PkgField.CHECKSUM_TYPE.fieldName()) ? HashAlgorithm.fromText(json.get(PkgField.CHECKSUM_TYPE.fieldName()).getAsString()) : HashAlgorithm.NONE;
+        this.semver               = Semver.fromText(json.get(PkgField.JAVA_VERSION.fieldName()).getAsString()).getSemver1();
+        this.freeUseInProduction  = json.has(PkgField.FREE_USE_IN_PROD.fieldName()) ? json.get(PkgField.FREE_USE_IN_PROD.fieldName()).getAsBoolean() : Boolean.FALSE;
+        this.tckTested            = json.has(PkgField.TCK_TESTED.fieldName()) ? Verification.fromText(json.get(PkgField.TCK_TESTED.fieldName()).getAsString()) : Verification.UNKNOWN;
+        this.tckCertUri           = json.has(PkgField.TCK_CERT_URI.fieldName()) ? json.get(PkgField.TCK_CERT_URI.fieldName()).getAsString() : "";
+        this.aqavitCertified      = json.has(PkgField.AQAVIT_CERTIFIED.fieldName()) ? Verification.fromText(json.get(PkgField.AQAVIT_CERTIFIED.fieldName()).getAsString()) : Verification.UNKNOWN;
+        this.aqavitCertUri        = json.has(PkgField.AQAVIT_CERT_URI.fieldName()) ? json.get(PkgField.AQAVIT_CERT_URI.fieldName()).getAsString() : "";
+        this.validatedAt          = json.has(PkgField.VALIDATED_AT.fieldName()) ? json.get(PkgField.VALIDATED_AT.fieldName()).getAsLong() : Instant.now().getEpochSecond() - Constants.SECONDS_PER_MONTH;
+        this.urlValid             = json.has(PkgField.URL_VALID.fieldName()) ? json.get(PkgField.URL_VALID.fieldName()).getAsBoolean() : Boolean.TRUE;
+        this.size                 = json.has(PkgField.SIZE.fieldName()) ? json.get(PkgField.SIZE.fieldName()).getAsLong() : -1;
+        if (json.has(PkgField.FEATURE.fieldName())) {
+            features = new HashSet<>();
+            JsonArray featureArray = json.getAsJsonArray(PkgField.FEATURE.fieldName());
             for (int i = 0 ; i < featureArray.size() ; i++) {
                 if (featureArray.get(i).isJsonObject()) {
                     JsonObject featureObj = featureArray.get(i).getAsJsonObject();
@@ -254,7 +213,7 @@ public class Pkg {
                 }
             }
         } else {
-            features = new ArrayList<>();
+            features = new HashSet<>();
         }
 
         if (ArchiveType.NOT_FOUND     == this.archiveType)     { this.archiveType     = ArchiveType.getFromFileName(this.filename); }
@@ -301,7 +260,7 @@ public class Pkg {
         this.urlValid             = pkg.isUrlValid();
         this.size                 = pkg.getSize();
         pkg.getFeatures().forEach(feature -> this.features.add(Feature.fromText(feature.getApiString())));
-        this.semver               = Semver.fromText(versionNumber.toString()).getSemver1();
+        this.semver               = versionNumber.getFeature().isPresent() ? Semver.fromText(versionNumber.toString()).getSemver1() : new Semver(versionNumber);
     }
 
 
@@ -324,7 +283,7 @@ public class Pkg {
     public VersionNumber getDistributionVersion() { return distributionVersion; }
     public void setDistributionVersion(final VersionNumber distributionVersion) { this.distributionVersion = distributionVersion; }
 
-    public Boolean isLatestBuildAvailable() { return null == latestBuildAvailable ? false : latestBuildAvailable; }
+    public Boolean isLatestBuildAvailable() { return null == latestBuildAvailable ? Boolean.FALSE : latestBuildAvailable; }
     public void setLatestBuildAvailable(final Boolean latestBuildAvailable) { this.latestBuildAvailable = latestBuildAvailable; }
 
     public Semver getSemver() { return semver; }
@@ -428,8 +387,9 @@ public class Pkg {
     public long getSize() { return size; }
     public void setSize(final long size) { this.size = size; }
 
-    public List<Feature> getFeatures() { return features; }
-    public void setFeatures(final List<Feature> features) { this.features = features; }
+    public Set<Feature> getFeatures() { return features; }
+    public void setFeatures(final List<Feature> features) { setFeatures(new HashSet<>(features)); }
+    public void setFeatures(final Set<Feature> features) { this.features = features; }
 
     public String getId() {
         return directlyDownloadable ? Helper.getMD5(directDownloadUri.getBytes(StandardCharsets.UTF_8)) : Helper.getMD5(String.join("", directDownloadUri, filename).getBytes(StandardCharsets.UTF_8));
@@ -446,224 +406,224 @@ public class Pkg {
                 switch(outputFormat) {
                     case FULL:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? Boolean.FALSE : latestBuildAvailable).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_CHECKSUM_URI).append(QUOTES).append(COLON).append(QUOTES).append(checksumUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_CHECKSUM).append(QUOTES).append(COLON).append(QUOTES).append(checksum).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_CHECKSUM_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(checksumType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_VALIDATED_AT).append(QUOTES).append(COLON).append(validatedAt).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_URL_VALID).append(QUOTES).append(COLON).append(urlValid).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? Boolean.FALSE : latestBuildAvailable).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.CHECKSUM_URI).append(QUOTES).append(COLON).append(QUOTES).append(checksumUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.CHECKSUM).append(QUOTES).append(COLON).append(QUOTES).append(checksum).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.CHECKSUM_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(checksumType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.VALIDATED_AT).append(QUOTES).append(COLON).append(validatedAt).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.URL_VALID).append(QUOTES).append(COLON).append(urlValid).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case REDUCED:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case REDUCED_ENRICHED:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FEATURE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_INTERIM_VERSION).append(QUOTES).append(COLON).append(versionNumber.getInterim().isPresent() ? versionNumber.getInterim().getAsInt() : 0).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_UPDATE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getUpdate().isPresent() ? versionNumber.getUpdate().getAsInt() : 0).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_PATCH_VERSION).append(QUOTES).append(COLON).append(versionNumber.getPatch().isPresent() ? versionNumber.getPatch().getAsInt() : 0).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_BUILD_VERSION).append(QUOTES).append(COLON).append(versionNumber.getBuild().isPresent() ? versionNumber.getBuild().getAsInt() : 0).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FEATURE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.INTERIM_VERSION).append(QUOTES).append(COLON).append(versionNumber.getInterim().isPresent() ? versionNumber.getInterim().getAsInt() : 0).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.UPDATE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getUpdate().isPresent() ? versionNumber.getUpdate().getAsInt() : 0).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.PATCH_VERSION).append(QUOTES).append(COLON).append(versionNumber.getPatch().isPresent() ? versionNumber.getPatch().getAsInt() : 0).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.BUILD_VERSION).append(QUOTES).append(COLON).append(versionNumber.getBuild().isPresent() ? versionNumber.getBuild().getAsInt() : 0).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case FULL_COMPRESSED:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN)
-                                                  .append(QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_CHECKSUM_URI).append(QUOTES).append(COLON).append(QUOTES).append(checksumUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_CHECKSUM).append(QUOTES).append(COLON).append(QUOTES).append(checksum).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_CHECKSUM_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(checksumType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_VALIDATED_AT).append(QUOTES).append(COLON).append(validatedAt).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_URL_VALID).append(QUOTES).append(COLON).append(urlValid).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
+                                                  .append(QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.CHECKSUM_URI).append(QUOTES).append(COLON).append(QUOTES).append(checksumUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.CHECKSUM).append(QUOTES).append(COLON).append(QUOTES).append(checksum).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.CHECKSUM_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(checksumType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.VALIDATED_AT).append(QUOTES).append(COLON).append(validatedAt).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.URL_VALID).append(QUOTES).append(COLON).append(urlValid).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case REDUCED_ENRICHED_COMPRESSED:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN)
-                                                  .append(QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FEATURE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_INTERIM_VERSION).append(QUOTES).append(COLON).append(versionNumber.getInterim().isPresent() ? versionNumber.getInterim().getAsInt() : 0).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_UPDATE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getUpdate().isPresent() ? versionNumber.getUpdate().getAsInt() : 0).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_PATCH_VERSION).append(QUOTES).append(COLON).append(versionNumber.getPatch().isPresent() ? versionNumber.getPatch().getAsInt() : 0).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_BUILD_VERSION).append(QUOTES).append(COLON).append(versionNumber.getBuild().isPresent() ? versionNumber.getBuild().getAsInt() : 0).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FEATURE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.INTERIM_VERSION).append(QUOTES).append(COLON).append(versionNumber.getInterim().isPresent() ? versionNumber.getInterim().getAsInt() : 0).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.UPDATE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getUpdate().isPresent() ? versionNumber.getUpdate().getAsInt() : 0).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.PATCH_VERSION).append(QUOTES).append(COLON).append(versionNumber.getPatch().isPresent() ? versionNumber.getPatch().getAsInt() : 0).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.BUILD_VERSION).append(QUOTES).append(COLON).append(versionNumber.getBuild().isPresent() ? versionNumber.getBuild().getAsInt() : 0).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                                                  .append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(CURLY_BRACKET_CLOSE).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
+                                                  .append(QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case REDUCED_COMPRESSED:
                     case MINIMIZED:
                     default:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN)
-                                                  .append(QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                                                  .append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(CURLY_BRACKET_CLOSE).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
+                                                  .append(QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                 }
@@ -672,241 +632,241 @@ public class Pkg {
                 switch(outputFormat) {
                     case FULL:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? Boolean.FALSE : latestBuildAvailable).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_CHECKSUM_URI).append(QUOTES).append(COLON).append(QUOTES).append(checksumUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_CHECKSUM).append(QUOTES).append(COLON).append(QUOTES).append(checksum).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_CHECKSUM_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(checksumType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_VALIDATED_AT).append(QUOTES).append(COLON).append(validatedAt).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_URL_VALID).append(QUOTES).append(COLON).append(urlValid).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? Boolean.FALSE : latestBuildAvailable).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.CHECKSUM_URI).append(QUOTES).append(COLON).append(QUOTES).append(checksumUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.CHECKSUM).append(QUOTES).append(COLON).append(QUOTES).append(checksum).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.CHECKSUM_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(checksumType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.VALIDATED_AT).append(QUOTES).append(COLON).append(validatedAt).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.URL_VALID).append(QUOTES).append(COLON).append(urlValid).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case REDUCED:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case REDUCED_ENRICHED:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FEATURE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_INTERIM_VERSION).append(QUOTES).append(COLON).append(versionNumber.getInterim().isPresent() ? versionNumber.getInterim().getAsInt() : 0).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_UPDATE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getUpdate().isPresent() ? versionNumber.getUpdate().getAsInt() : 0).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_PATCH_VERSION).append(QUOTES).append(COLON).append(versionNumber.getPatch().isPresent() ? versionNumber.getPatch().getAsInt() : 0).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_BUILD_VERSION).append(QUOTES).append(COLON).append(versionNumber.getBuild().isPresent() ? versionNumber.getBuild().getAsInt() : 0).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FEATURE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.INTERIM_VERSION).append(QUOTES).append(COLON).append(versionNumber.getInterim().isPresent() ? versionNumber.getInterim().getAsInt() : 0).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.UPDATE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getUpdate().isPresent() ? versionNumber.getUpdate().getAsInt() : 0).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.PATCH_VERSION).append(QUOTES).append(COLON).append(versionNumber.getPatch().isPresent() ? versionNumber.getPatch().getAsInt() : 0).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.BUILD_VERSION).append(QUOTES).append(COLON).append(versionNumber.getBuild().isPresent() ? versionNumber.getBuild().getAsInt() : 0).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case FULL_COMPRESSED:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN)
-                                                  .append(QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_CHECKSUM_URI).append(QUOTES).append(COLON).append(QUOTES).append(checksumUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_CHECKSUM).append(QUOTES).append(COLON).append(QUOTES).append(checksum).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_CHECKSUM_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(checksumType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_VALIDATED_AT).append(QUOTES).append(COLON).append(validatedAt).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_URL_VALID).append(QUOTES).append(COLON).append(urlValid).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
+                                                  .append(QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DIRECT_DOWNLOAD_URI).append(QUOTES).append(COLON).append(QUOTES).append(directDownloadUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DOWNLOAD_SITE_URI).append(QUOTES).append(COLON).append(QUOTES).append(downloadSiteUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(signatureUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.CHECKSUM_URI).append(QUOTES).append(COLON).append(QUOTES).append(checksumUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.CHECKSUM).append(QUOTES).append(COLON).append(QUOTES).append(checksum).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.CHECKSUM_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(checksumType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.VALIDATED_AT).append(QUOTES).append(COLON).append(validatedAt).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.URL_VALID).append(QUOTES).append(COLON).append(urlValid).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case REDUCED_ENRICHED_COMPRESSED:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN)
-                                                  .append(QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FEATURE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_INTERIM_VERSION).append(QUOTES).append(COLON).append(versionNumber.getInterim().isPresent() ? versionNumber.getInterim().getAsInt() : 0).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_UPDATE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getUpdate().isPresent() ? versionNumber.getUpdate().getAsInt() : 0).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_PATCH_VERSION).append(QUOTES).append(COLON).append(versionNumber.getPatch().isPresent() ? versionNumber.getPatch().getAsInt() : 0).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_BUILD_VERSION).append(QUOTES).append(COLON).append(versionNumber.getBuild().isPresent() ? versionNumber.getBuild().getAsInt() : 0).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FEATURE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.INTERIM_VERSION).append(QUOTES).append(COLON).append(versionNumber.getInterim().isPresent() ? versionNumber.getInterim().getAsInt() : 0).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.UPDATE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getUpdate().isPresent() ? versionNumber.getUpdate().getAsInt() : 0).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.PATCH_VERSION).append(QUOTES).append(COLON).append(versionNumber.getPatch().isPresent() ? versionNumber.getPatch().getAsInt() : 0).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.BUILD_VERSION).append(QUOTES).append(COLON).append(versionNumber.getBuild().isPresent() ? versionNumber.getBuild().getAsInt() : 0).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                                                  .append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(CURLY_BRACKET_CLOSE).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
+                                                  .append(QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case MINIMIZED:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN)
-                                                  .append(QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES)
+                                                  .append(QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES)
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                     case REDUCED_COMPRESSED:
                     default:
                         return new StringBuilder().append(CURLY_BRACKET_OPEN)
-                                                  .append(QUOTES).append(FIELD_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(QUOTES).append(FIELD_DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(QUOTES).append(PkgField.ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TERM_OF_SUPPORT).append(QUOTES).append(COLON).append(QUOTES).append(termOfSupport.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FPU).append(QUOTES).append(COLON).append(QUOTES).append(fpu.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
+                                                  .append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(CURLY_BRACKET_CLOSE).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
-                                                  .append(QUOTES).append(FIELD_FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
+                                                  .append(QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.TCK_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(tckCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERTIFIED).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertified.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE)))
                                                   .append(CURLY_BRACKET_CLOSE)
                                                   .toString().replaceAll("\\\\", "");
                 }
@@ -916,6 +876,57 @@ public class Pkg {
 
     public boolean isNewerThan(final Pkg pkg) {
         return (equalsExceptUpdate(pkg) && getSemver().compareTo(pkg.getSemver()) >= 0);
+    }
+
+    public List<PkgField> diff(final Pkg pkg) {
+        List<PkgField> diff = new ArrayList<>();
+        if (!pkg.getId().equals(getId()))                                       { diff.add(PkgField.ID); }
+        if (pkg.getDistribution().getDistro() != getDistribution().getDistro()) { diff.add(PkgField.DISTRIBUTION); }
+        if (pkg.getOperatingSystem()          != getOperatingSystem())          { diff.add(PkgField.OPERATING_SYSTEM); }
+        if (pkg.getArchitecture()             != getArchitecture())             { diff.add(PkgField.ARCHITECTURE); }
+        if (pkg.getBitness()                  != getBitness())                  { diff.add(PkgField.BITNESS); }
+        if (pkg.getLibCType()                 != getLibCType())                 { diff.add(PkgField.LIB_C_TYPE); }
+        if (pkg.getArchiveType()              != getArchiveType())              { diff.add(PkgField.ARCHIVE_TYPE); }
+        if (pkg.getPackageType()              != getPackageType())              { diff.add(PkgField.PACKAGE_TYPE); }
+        if (!pkg.getFilename().equals(getFilename()))                           { diff.add(PkgField.FILENAME); }
+        if (!pkg.getChecksum().equals(getChecksum()))                           { diff.add(PkgField.CHECKSUM); }
+        if (pkg.getChecksumType()             != getChecksumType())             { diff.add(PkgField.CHECKSUM_TYPE); }
+        if (!pkg.getChecksumUri().equals(getChecksumUri()))                     { diff.add(PkgField.CHECKSUM_URI); }
+        if (pkg.getAqavitCertified()          != getAqavitCertified())          { diff.add(PkgField.AQAVIT_CERTIFIED); }
+        if (!pkg.getAqavitCertUri().equals(getAqavitCertUri()))                 { diff.add(PkgField.AQAVIT_CERT_URI); }
+        if (pkg.getTckTested()                != getTckTested())                { diff.add(PkgField.TCK_TESTED); }
+        if (!pkg.getTckCertUri().equals(getTckCertUri()))                       { diff.add(PkgField.TCK_CERT_URI); }
+        if (!pkg.getDirectDownloadUri().equals(getDirectDownloadUri()))         { diff.add(PkgField.DIRECT_DOWNLOAD_URI); }
+        if (pkg.isDirectlyDownloadable()      != isDirectlyDownloadable())      { diff.add(PkgField.DIRECTLY_DOWNLOADABLE); }
+        if (pkg.isJavaFXBundled()             != isJavaFXBundled())             { diff.add(PkgField.JAVAFX_BUNDLED); }
+        if (pkg.isHeadless()                  != isHeadless())                  { diff.add(PkgField.HEADLESS); }
+        if (!pkg.getDistributionVersion().equals(getDistributionVersion()))     { diff.add(PkgField.DISTRIBUTION_VERSION); }
+        if (!pkg.getVersionNumber().equals(getVersionNumber()))                 { diff.add(PkgField.JAVA_VERSION); }
+        if (pkg.getFeatureVersion().isPresent() && getFeatureVersion().isPresent()) {
+            if (pkg.getFeatureVersion().getAsInt() != getFeatureVersion().getAsInt()) { diff.add(PkgField.FEATURE_VERSION); }
+        }
+        if (pkg.getInterimVersion().isPresent() && getInterimVersion().isPresent()) {
+            if (pkg.getInterimVersion().getAsInt() != getInterimVersion().getAsInt()) { diff.add(PkgField.INTERIM_VERSION); }
+        }
+        if (pkg.getUpdateVersion().isPresent() && getUpdateVersion().isPresent()) {
+            if (pkg.getUpdateVersion().getAsInt() != getUpdateVersion().getAsInt()) { diff.add(PkgField.UPDATE_VERSION); }
+        }
+        if (pkg.getPatchVersion().isPresent() && getPatchVersion().isPresent()) {
+            if (pkg.getPatchVersion().getAsInt() != getPatchVersion().getAsInt()) { diff.add(PkgField.PATCH_VERSION); }
+        }
+        if (pkg.getJdkVersion().getAsInt()    != getJdkVersion().getAsInt())    { diff.add(PkgField.JDK_VERSION); }
+        if (pkg.getMajorVersion().getAsInt()  != getMajorVersion().getAsInt())  { diff.add(PkgField.MAJOR_VERSION); }
+        if (pkg.getTermOfSupport()            != getTermOfSupport())            { diff.add(PkgField.TERM_OF_SUPPORT); }
+        if (pkg.getFPU()                      != getFPU())                      { diff.add(PkgField.FPU); }
+        if (pkg.getFeatures().size()          != getFeatures().size())          { diff.add(PkgField.FEATURE); }
+        if (pkg.getFreeUseInProduction()      != getFreeUseInProduction())      { diff.add(PkgField.FREE_USE_IN_PROD); }
+        if (!pkg.getSignatureUri().equals(getSignatureUri()))                   { diff.add(PkgField.SIGNATURE_URI); }
+        if (pkg.getSize()                     != getSize())                     { diff.add(PkgField.SIZE); }
+        if (!pkg.getSemver().equals(getSemver()))                               { diff.add(PkgField.SEMVER); }
+        if (pkg.getReleaseStatus()            != getReleaseStatus())            { diff.add(PkgField.RELEASE_STATUS); }
+        if (!pkg.getDownloadSiteUri().equals(getDownloadSiteUri()))             { diff.add(PkgField.DOWNLOAD_SITE_URI); }
+
+        return diff;
     }
 
     public boolean equalsExceptUpdate(final Pkg pkg) {

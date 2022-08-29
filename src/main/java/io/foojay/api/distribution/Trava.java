@@ -292,7 +292,7 @@ public class Trava implements Distribution {
             pkgs.add(pkg);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -325,7 +325,7 @@ public class Trava implements Distribution {
             LOGGER.error("Error fetching all packages from Trava. {}", e);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }

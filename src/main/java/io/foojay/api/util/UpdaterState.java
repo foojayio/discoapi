@@ -18,7 +18,21 @@
  */
 
 package io.foojay.api.util;
+import java.time.Instant;
 
-public enum UpdateState {
-    NOMINAL, FALLBACK
+
+public enum UpdaterState {
+    RUNNING, RUNNING_NO_MSG, OFFLINE;
+
+    private Instant timestamp;
+
+
+    UpdaterState() {
+        this.timestamp = Instant.now();
+    }
+
+
+    public Instant getTimestamp() { return timestamp; }
+    public void setTimestamp(final Instant timestamp) { this.timestamp = timestamp; }
 }
+

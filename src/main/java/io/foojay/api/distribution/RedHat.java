@@ -174,7 +174,7 @@ public class RedHat implements Distribution {
             LOGGER.error("Error fetching all packages from RedHat. {}", e);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -199,6 +199,8 @@ public class RedHat implements Distribution {
             if (withoutPrefix.startsWith("jre-")) {
                 pkg.setPackageType(JRE);
                 withoutPrefix = withoutPrefix.replace("jre-", "");
+            } else if (withoutPrefix.contains("jre")) {
+                pkg.setPackageType(JRE);
             } else {
                 pkg.setPackageType(JDK);
             }

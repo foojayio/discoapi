@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.OptionalInt;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -154,7 +155,7 @@ public class Microsoft implements Distribution {
             LOGGER.error("Error fetching all packages from Microsoft. {}", e);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -162,6 +163,9 @@ public class Microsoft implements Distribution {
     public List<Pkg> getAllPkgsFromHtml(final String html, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
+
+        OptionalInt nextEA       = Helper.getNextEA();
+        OptionalInt nextButOneEA = Helper.getNextButOneEA();
 
         List<String> fileHrefs       = new ArrayList<>(Helper.getFileHrefsFromString(html));
         List<String> sigFileHrefs    = new ArrayList<>(Helper.getSigFileHrefsFromString(html));
@@ -247,7 +251,11 @@ public class Microsoft implements Distribution {
             pkg.setArchiveType(archiveType);
             pkg.setJavaFXBundled(false);
             pkg.setTermOfSupport(majorVersion.getTermOfSupport());
-            pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+            if (nextEA.isPresent()) {
+                pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.getAsInt() == nextEA.getAsInt() || majorVersion.getAsInt() == nextButOneEA.getAsInt()) ? EA : GA);
+            } else {
+                pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+            }
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.TRUE);

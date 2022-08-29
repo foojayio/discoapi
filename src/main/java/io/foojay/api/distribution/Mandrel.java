@@ -19,6 +19,7 @@
 
 package io.foojay.api.distribution;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -38,20 +39,23 @@ import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
+import io.foojay.api.util.GithubTokenPool;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeSet;
+import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static eu.hansolo.jdktools.ArchiveType.SRC_TAR;
 import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
 import static eu.hansolo.jdktools.OperatingSystem.LINUX;
 import static eu.hansolo.jdktools.OperatingSystem.MACOS;
@@ -144,15 +148,18 @@ public class Mandrel implements Distribution {
                                               final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
-        TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
-        supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
-
         VersionNumber vNumber = null;
         String tag = jsonObj.get("tag_name").getAsString();
         if (tag.contains("vm-")) {
             tag = tag.substring(tag.lastIndexOf("vm-")).replace("vm-", "");
             vNumber = VersionNumber.fromText(tag);
+        } else if (tag.startsWith("mandrel")) {
+            tag = tag.replace("mandrel-", "");
+            vNumber = VersionNumber.fromText(tag);
         }
+
+        TermOfSupport supTerm = Helper.getTermOfSupport(vNumber);
+        supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
 
         boolean prerelease = false;
         if (jsonObj.has("prerelease")) {
@@ -165,7 +172,8 @@ public class Mandrel implements Distribution {
             JsonObject assetJsonObj = element.getAsJsonObject();
             String     filename     = assetJsonObj.get("name").getAsString();
             if (filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_JAR) ||
-                filename.endsWith(Constants.FILE_ENDING_SHA1) || filename.endsWith(Constants.FILE_ENDING_SHA256)) { continue; }
+                filename.endsWith(Constants.FILE_ENDING_SHA1) || filename.endsWith(Constants.FILE_ENDING_SHA256) ||
+                filename.endsWith(Constants.FILE_ENDING_SOURCE_TAR_GZ)) { continue; }
 
             FILENAME_MATCHER.reset(filename);
             if (!FILENAME_MATCHER.matches()) { continue; }
@@ -187,7 +195,6 @@ public class Mandrel implements Distribution {
             pkg.setDirectDownloadUri(downloadLink);
 
             ArchiveType ext = getFromFileName(filename);
-            if (SRC_TAR == ext || (ArchiveType.NONE != archiveType && ext != archiveType)) { continue; }
             pkg.setArchiveType(ext);
 
             Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
@@ -206,11 +213,7 @@ public class Mandrel implements Distribution {
             if (null == vNumber && strippedFilenameParts.length > 2) {
                 vNumber = VersionNumber.fromText(strippedFilenameParts[2]);
             }
-            if (latest) {
-                if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { continue; }
-            } else {
-                //if (versionNumber.compareTo(vNumber) != 0) { continue; }
-            }
+
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
             pkg.setDistributionVersion(vNumber);
@@ -267,6 +270,40 @@ public class Mandrel implements Distribution {
             pkgs.add(pkg);
         }
 
+        return pkgs;
+    }
+
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
+        List<Pkg> pkgs = new ArrayList<>();
+
+        final String pkgUrl = new StringBuilder(PACKAGE_URL).append("?per_page=100").toString();
+
+        try {
+            // Get all packages from github
+            try {
+                HttpResponse<String> response = Helper.get(pkgUrl, Map.of("accept", "application/vnd.github.v3+json",
+                                                                          "authorization", GithubTokenPool.INSTANCE.next()));
+                if (response.statusCode() == 200) {
+                    String      bodyText = response.body();
+                    Gson        gson     = new Gson();
+                    JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
+                    if (element instanceof JsonArray) {
+                        JsonArray jsonArray = element.getAsJsonArray();
+                        for (JsonElement jsonElement : jsonArray) {
+                            JsonObject jsonObj = jsonElement.getAsJsonObject();
+                            pkgs.addAll(getPkgFromJson(jsonObj, null, true, null, null, null, null, null, false, null, null, onlyNewPkgs));
+                        }
+                    }
+                } else {
+                    // Problem with url request
+                    LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
+                }
+            } catch (CompletionException e) {
+                LOGGER.error("Error fetching packages for distribution {} from {}", getName(), pkgUrl);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error fetching all packages from {}. {}", getName(), e);
+        }
         return pkgs;
     }
 }

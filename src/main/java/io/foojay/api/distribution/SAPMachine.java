@@ -254,6 +254,9 @@ public class SAPMachine implements Distribution {
                     pkg.setReleaseStatus(EA);
                     break;
             }
+            if (pkg.getFilename().contains("snapshot") || pkg.getFilename().contains("SNAPSHOT")) {
+                pkg.setReleaseStatus(EA);
+            }
 
             Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
                                                              .filter(entry -> withoutPrefix.contains(entry.getKey()))
@@ -299,10 +302,11 @@ public class SAPMachine implements Distribution {
             pkg.setFreeUseInProduction(Boolean.TRUE);
             pkg.setSize(Helper.getFileSize(downloadLink));
 
+            if (pkg.getVersionNumber().getInterim().isPresent() && pkg.getVersionNumber().getInterim().getAsInt() != 0) { continue; }
             pkgs.add(pkg);
         }
 
-
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -310,15 +314,21 @@ public class SAPMachine implements Distribution {
     public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
+        OptionalInt nextEA       = Helper.getNextEA();
+        OptionalInt nextButOneEA = Helper.getNextButOneEA();
+
         for (int i = 0; i < jsonArray.size(); i++) {
             JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
             JsonArray  assets  = jsonObj.getAsJsonArray("assets");
             for (JsonElement element : assets) {
-                JsonObject assetJsonObj = element.getAsJsonObject();
-                String     filename     = assetJsonObj.get("name").getAsString();
+                final JsonObject assetJsonObj = element.getAsJsonObject();
+                final String     filename     = assetJsonObj.get("name").getAsString();
 
-                if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) { continue; }
+                if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) {
+                    continue;
+                }
 
+                if (!filename.startsWith("sapmachine-")) { continue; }
                 final String        withoutPrefix = filename.replace("sapmachine-", "");
                 final VersionNumber versionNumber = VersionNumber.fromText(withoutPrefix);
                 final MajorVersion  majorVersion  = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
@@ -387,12 +397,20 @@ public class SAPMachine implements Distribution {
                 pkg.setArchiveType(archiveType);
                 pkg.setJavaFXBundled(false);
                 pkg.setTermOfSupport(majorVersion.getTermOfSupport());
+                if (nextEA.isPresent()) {
+                    pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.getAsInt() == nextEA.getAsInt() || majorVersion.getAsInt() == nextButOneEA.getAsInt()) ? EA : GA);
+                } else {
                 pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+                }
+                if (pkg.getFilename().contains("snapshot") || pkg.getFilename().contains("SNAPSHOT")) {
+                    pkg.setReleaseStatus(EA);
+                }
                 pkg.setPackageType(packageType);
                 pkg.setOperatingSystem(operatingSystem);
                 pkg.setFreeUseInProduction(Boolean.TRUE);
                 pkg.setSize(Helper.getFileSize(downloadLink));
 
+                if (pkg.getVersionNumber().getInterim().isPresent() && pkg.getVersionNumber().getInterim().getAsInt() != 0) { continue; }
                 pkgs.add(pkg);
             }
         }
@@ -425,7 +443,7 @@ public class SAPMachine implements Distribution {
             }
         }
 
-
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
@@ -433,6 +451,10 @@ public class SAPMachine implements Distribution {
 
     public List<Pkg> getAllPkgsFromJsonUrl(final boolean onlyNewPkgs) {
         List<Pkg>   pkgs      = new ArrayList<>();
+
+        OptionalInt nextEA       = Helper.getNextEA();
+        OptionalInt nextButOneEA = Helper.getNextButOneEA();
+
         HttpClient  clientSAP = HttpClient.newBuilder()
                                           .followRedirects(Redirect.NEVER)
                                           .version(java.net.http.HttpClient.Version.HTTP_2)
@@ -485,6 +507,7 @@ public class SAPMachine implements Distribution {
                         for (int i = 0; i < releases.size(); i++) {
                             JsonObject          releaseObj    = releases.get(i).getAsJsonObject();
                             final String        tag           = releaseObj.get("tag").getAsString();
+                            if (!tag.startsWith("sapmachine-")) { continue; }
                             final String        withoutPrefix = tag.replace("sapmachine-", "");
                             final VersionNumber versionNumber = VersionNumber.fromText(withoutPrefix);
                             for (String imageType : imageTypes) {
@@ -509,7 +532,14 @@ public class SAPMachine implements Distribution {
                                         pkg.setArchiveType(ArchiveType.getFromFileName(filename));
                                         pkg.setJavaFXBundled(false);
                                         pkg.setTermOfSupport(majorVersion.getTermOfSupport());
-                                        pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+                                        if (nextEA.isPresent()) {
+                                            pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.getAsInt() == nextEA.getAsInt() || majorVersion.getAsInt() == nextButOneEA.getAsInt()) ? EA : GA);
+                                        } else {
+                                            pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+                                        }
+                                        if (pkg.getFilename().contains("snapshot") || pkg.getFilename().contains("SNAPSHOT")) {
+                                            pkg.setReleaseStatus(EA);
+                                        }
                                         pkg.setPackageType(PackageType.fromText(imageType));
                                         pkg.setFreeUseInProduction(Boolean.TRUE);
                                         switch (os) {
@@ -547,6 +577,7 @@ public class SAPMachine implements Distribution {
                                                 break;
                                         }
                                         pkg.setSize(Helper.getFileSize(downloadLink));
+                                        if (pkg.getVersionNumber().getInterim().isPresent() && pkg.getVersionNumber().getInterim().getAsInt() != 0) { continue; }
                                         pkgs.add(pkg);
                                     }
                                 }
@@ -562,7 +593,7 @@ public class SAPMachine implements Distribution {
             LOGGER.error("Error fetching packages for distribution {} from {}", getName(), PACKAGE_JSON_URL);
         }
 
-
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         LOGGER.debug("Successfully fetched {} packages from sap.github.io", pkgs.size());
         return pkgs;
@@ -582,7 +613,7 @@ public class SAPMachine implements Distribution {
             LOGGER.error("Error fetching all packages from SAP Machine. {}", e);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -591,11 +622,15 @@ public class SAPMachine implements Distribution {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
 
+        OptionalInt nextEA       = Helper.getNextEA();
+        OptionalInt nextButOneEA = Helper.getNextButOneEA();
+
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
         for (String href : fileHrefs) {
             final String filename = Helper.getFileNameFromText(href);
             if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) { continue; }
 
+            if (!filename.startsWith("sapmachine-")) { continue; }
             final String          withoutPrefix   = filename.replace("sapmachine-", "");
             final VersionNumber   versionNumber   = VersionNumber.fromText(withoutPrefix);
             final MajorVersion    majorVersion    = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
@@ -662,7 +697,14 @@ public class SAPMachine implements Distribution {
             pkg.setArchiveType(archiveType);
             pkg.setJavaFXBundled(false);
             pkg.setTermOfSupport(majorVersion.getTermOfSupport());
-            pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+            if (nextEA.isPresent()) {
+                pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.getAsInt() == nextEA.getAsInt() || majorVersion.getAsInt() == nextButOneEA.getAsInt()) ? EA : GA);
+            } else {
+                pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+            }
+            if (pkg.getFilename().contains("snapshot") || pkg.getFilename().contains("SNAPSHOT")) {
+                pkg.setReleaseStatus(EA);
+            }
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.TRUE);

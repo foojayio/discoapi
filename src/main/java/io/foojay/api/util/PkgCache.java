@@ -78,11 +78,9 @@ public class PkgCache<T extends String, U extends Pkg> implements Cache<T, U> {
      * @param patch
      */
     public void setAll(final Map<T,U> patch) {
-        synchronized (cache) {
-            cache.clear();
-            cache.putAll(patch);
-            LOGGER.debug("Package cache cleared and set with new data");
-        }
+        cache.clear();
+        cache.putAll(patch);
+        LOGGER.debug("Package cache cleared and set with new data");
     }
 
     /**

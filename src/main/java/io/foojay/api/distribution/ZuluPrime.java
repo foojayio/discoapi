@@ -314,6 +314,9 @@ public class ZuluPrime implements Distribution {
                                                                                .findFirst()
                                                                                .map(Entry::getValue)
                                                                                .orElse(OperatingSystem.NOT_FOUND);
+
+            if (filename.startsWith("zvm")) { operatingSystem = LINUX; }
+
             if (OperatingSystem.NOT_FOUND == operatingSystem) {
                 LOGGER.debug("Operating System not found in {} for filename: {}", getName(), filename);
                 continue;
@@ -325,6 +328,7 @@ public class ZuluPrime implements Distribution {
                                                                    .findFirst()
                                                                    .map(Entry::getValue)
                                                                    .orElse(ArchiveType.NOT_FOUND);
+
             if (ArchiveType.NOT_FOUND == archiveType) {
                 LOGGER.debug("Archive Type not found in {} for filename: {}", getName(), filename);
                 continue;
@@ -332,12 +336,24 @@ public class ZuluPrime implements Distribution {
             pkg.setArchiveType(archiveType);
 
             // No support for Feature.Interim.Update.Path but only Major.Minor.Update => setPatch(0)
-            VersionNumber versionNumber = VersionNumber.fromText(withoutPrefix.substring(0, withoutPrefix.indexOf("-")));
+            VersionNumber versionNumber;
+            if (filename.startsWith("zvm")) {
+                String[] filenameParts = filename.split("-");
+                versionNumber = VersionNumber.fromText(filenameParts[2]);
+            } else {
+                versionNumber = VersionNumber.fromText(withoutPrefix.substring(0, withoutPrefix.indexOf("-")));
+            }
+
             pkg.setVersionNumber(versionNumber);
             pkg.setJavaVersion(versionNumber);
 
-            VersionNumber distributionVersion = VersionNumber.fromText(filename.substring(4, filename.indexOf("-")));
-            pkg.setDistributionVersion(distributionVersion);
+            if (filename.startsWith("zvm")) {
+                pkg.setDistributionVersion(versionNumber);
+            } else {
+                VersionNumber distributionVersion = VersionNumber.fromText(filename.substring(4, filename.indexOf("-")));
+                pkg.setDistributionVersion(distributionVersion);
+            }
+
             pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
             pkg.setReleaseStatus(GA);
 

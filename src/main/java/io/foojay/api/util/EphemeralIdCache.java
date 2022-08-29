@@ -58,17 +58,11 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
     }
     @Override public void remove(final List<T> keysToRemove) { keysToRemove.forEach(key -> ephemeralIdCache.remove(key)); }
 
-    @Override public void addAll(final Map<T,U> entries) {
-        synchronized (ephemeralIdCache) {
-            ephemeralIdCache.putAll(entries);
-        }
-    }
+    @Override public void addAll(final Map<T,U> entries) { ephemeralIdCache.putAll(entries); }
 
     @Override public void clear() {
-        synchronized (ephemeralIdCache) {
-            ephemeralIdCache.clear();
-            LOGGER.debug("EphemeralID cache cleared");
-        }
+        ephemeralIdCache.clear();
+        LOGGER.debug("EphemeralID cache cleared");
     }
 
     @Override public synchronized long size() {
@@ -78,11 +72,9 @@ public class EphemeralIdCache<T extends String, U extends String> implements Cac
     @Override public synchronized boolean isEmpty() { return ephemeralIdCache.isEmpty(); }
 
     public void setAll(final Map<T, U> entries) {
-        synchronized (ephemeralIdCache) {
-            ephemeralIdCache.clear();
-            ephemeralIdCache.putAll(entries);
-            LOGGER.debug("EphemeralID cache cleared and set with new values");
-        }
+        ephemeralIdCache.clear();
+        ephemeralIdCache.putAll(entries);
+        LOGGER.debug("EphemeralID cache cleared and set with new values");
     }
 
     /**

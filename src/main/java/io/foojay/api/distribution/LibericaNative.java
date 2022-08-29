@@ -257,17 +257,6 @@ public class LibericaNative implements Distribution {
                         pkg.setTermOfSupport(LTS);
                         pkg.setPackageType(JDK);
 
-                        if (pkgJsonObj.has(FIELD_COMPONENTS)) {
-                            JsonArray components = pkgJsonObj.getAsJsonArray(FIELD_COMPONENTS);
-                            if (components.size() > 0) {
-                                JsonObject jdkVersionObj = (JsonObject) components.get(0);
-                                if (jdkVersionObj.has(FIELD_VERSION)) {
-                                    VersionNumber jdkVersion = VersionNumber.fromText(jdkVersionObj.get(FIELD_VERSION).getAsString());
-                                    pkg.setJdkVersion(new MajorVersion(jdkVersion.getFeature().getAsInt()));
-                                }
-                            }
-                        }
-
                         if (pkgJsonObj.has(FIELD_OS)) {
                             OperatingSystem operatingSystem = OperatingSystem.fromText(pkgJsonObj.get(FIELD_OS).getAsString());
                             if (OperatingSystem.NOT_FOUND == operatingSystem) {
@@ -310,18 +299,18 @@ public class LibericaNative implements Distribution {
                             continue;
                         }
 
-                        if (pkgJsonObj.has(FIELD_GA)) {
-                            ReleaseStatus releaseStatus = pkgJsonObj.get(FIELD_GA).getAsBoolean() ? ReleaseStatus.GA : ReleaseStatus.EA;
-                            pkg.setReleaseStatus(releaseStatus);
-                        } else {
-                            continue;
-                        }
-
                         if (pkgJsonObj.has(FIELD_VERSION)) {
                             VersionNumber versionNumber = VersionNumber.fromText(pkgJsonObj.get(FIELD_VERSION).getAsString());
                             pkg.setVersionNumber(versionNumber);
                             pkg.setJavaVersion(versionNumber);
                             pkg.setDistributionVersion(versionNumber);
+                        } else {
+                            continue;
+                        }
+
+                        if (pkgJsonObj.has(FIELD_GA)) {
+                            ReleaseStatus releaseStatus = pkgJsonObj.get(FIELD_GA).getAsBoolean() ? ReleaseStatus.GA : ReleaseStatus.EA;
+                            pkg.setReleaseStatus(releaseStatus);
                         } else {
                             continue;
                         }

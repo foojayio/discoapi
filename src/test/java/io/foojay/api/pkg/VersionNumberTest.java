@@ -316,12 +316,14 @@ public class VersionNumberTest {
         VersionNumber versionNumber1 = VersionNumber.fromText("8.0.202+0");
         Semver        semVer1        = new Semver(versionNumber1);
         Semver        semVer2        = Semver.fromText("8.0.202+0").getSemver1();
+        Semver        semVer3        = new Semver(new VersionNumber(8,0,202));
 
         String correctResult = "8.0.202";
 
         assert versionNumber1.toString(OutputFormat.REDUCED_COMPRESSED, true, true).equals(correctResult);
         assert semVer1.toString(true).equals(correctResult);
         assert semVer2.toString(true).equals(correctResult);
+        assert semVer3.toString(true).equals(correctResult);
     }
 
     @Test
@@ -533,12 +535,12 @@ public class VersionNumberTest {
                                                  .sorted(Comparator.comparing(Semver::getVersionNumber).reversed())
                                                  .collect(Collectors.toList());
 
-        List<Semver> correct = List.of(Semver.fromText("11.0.5+b4").getSemver1(),
-                                       Semver.fromText("11.0.4+b3").getSemver1(),
-                                       Semver.fromText("11.0.2+b2").getSemver1(),
-                                       Semver.fromText("9.0.2+b4").getSemver1(),
-                                       Semver.fromText("9.0.1+b2").getSemver1(),
-                                       Semver.fromText("8.0.42+b4").getSemver1());
+        List<Semver> correct = List.of(Semver.fromText("11.0.5+4").getSemver1(),
+                                       Semver.fromText("11.0.4+3").getSemver1(),
+                                       Semver.fromText("11.0.2+2").getSemver1(),
+                                       Semver.fromText("9.0.2+4").getSemver1(),
+                                       Semver.fromText("9.0.1+2").getSemver1(),
+                                       Semver.fromText("8.0.42+4").getSemver1());
 
         List<String> correctSemverStrings = correct.stream().map(semver -> semver.toString()).collect(Collectors.toList());
 

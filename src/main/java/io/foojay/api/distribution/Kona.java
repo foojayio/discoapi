@@ -191,7 +191,7 @@ public class Kona implements Distribution {
             LOGGER.error("Error fetching all packages from Kona. {}", e);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
         }
@@ -330,7 +330,7 @@ public class Kona implements Distribution {
             }
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;

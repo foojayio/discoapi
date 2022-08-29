@@ -281,7 +281,7 @@ public class Dragonwell implements Distribution {
             }
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }

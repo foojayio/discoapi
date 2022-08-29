@@ -48,6 +48,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -163,13 +164,16 @@ public class SemeruCertified implements Distribution {
             LOGGER.error("Error fetching all packages from Semeru Certified. {}", e);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
 
     public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
+
+        OptionalInt nextEA       = Helper.getNextEA();
+        OptionalInt nextButOneEA = Helper.getNextButOneEA();
 
         for (int i = 0; i < jsonArray.size(); i++) {
             JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
@@ -259,7 +263,11 @@ public class SemeruCertified implements Distribution {
                 pkg.setArchiveType(archiveType);
                 pkg.setJavaFXBundled(false);
                 pkg.setTermOfSupport(majorVersion.getTermOfSupport());
-                pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+                if (nextEA.isPresent()) {
+                    pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.getAsInt() == nextEA.getAsInt() || majorVersion.getAsInt() == nextButOneEA.getAsInt()) ? EA : GA);
+                } else {
+                    pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+                }
                 pkg.setPackageType(packageType);
                 pkg.setOperatingSystem(operatingSystem);
                 pkg.setFreeUseInProduction(Boolean.TRUE);
@@ -295,7 +303,7 @@ public class SemeruCertified implements Distribution {
             }
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
@@ -304,6 +312,10 @@ public class SemeruCertified implements Distribution {
     public List<Pkg> getAllPkgsFromHtml(final String html, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
+
+        OptionalInt nextEA       = Helper.getNextEA();
+        OptionalInt nextButOneEA = Helper.getNextButOneEA();
+
         List<String> downloadLinks = new ArrayList<>(Helper.getDownloadLinkFromString(html));
         List<String> signatureUris = new ArrayList<>(Helper.getSigFromString(html));
         for (String downloadLink : downloadLinks) {
@@ -384,7 +396,11 @@ public class SemeruCertified implements Distribution {
             pkg.setArchiveType(archiveType);
             pkg.setJavaFXBundled(false);
             pkg.setTermOfSupport(majorVersion.getTermOfSupport());
-            pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+            if (nextEA.isPresent()) {
+                pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.getAsInt() == nextEA.getAsInt() || majorVersion.getAsInt() == nextButOneEA.getAsInt()) ? EA : GA);
+            } else {
+                pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+            }
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.FALSE);
@@ -393,7 +409,7 @@ public class SemeruCertified implements Distribution {
             pkgs.add(pkg);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }

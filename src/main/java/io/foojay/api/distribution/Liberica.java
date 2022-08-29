@@ -379,7 +379,7 @@ public class Liberica implements Distribution {
 
         pkgs.add(pkg);
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }

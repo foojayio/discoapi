@@ -81,11 +81,9 @@ public class JsonCache<T extends String, U extends String> implements Cache<T, U
      * @param patch
      */
     public void setAll(final Map<T,U> patch) {
-        synchronized (cache) {
-            cache.clear();
-            cache.putAll(patch);
-            LOGGER.debug("JSON cache cleared and set with new data");
-        }
+        cache.clear();
+        cache.putAll(patch);
+        LOGGER.debug("JSON cache cleared and set with new data");
     }
 
     /**
@@ -151,8 +149,8 @@ public class JsonCache<T extends String, U extends String> implements Cache<T, U
     public ConcurrentHashMap<String, String> getDeepCopy() {
         ConcurrentHashMap<String, String> deepCopy = new ConcurrentHashMap<>(16, 0.6f, 1);
         for (Entry<T,U> entry : cache.entrySet()) {
-            String id   = new String(entry.getKey());
-            String json = new String(entry.getValue());
+            String id   = entry.getKey();
+            String json = entry.getValue();
             deepCopy.put(id, json);
         }
         return deepCopy;

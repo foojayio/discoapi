@@ -160,14 +160,16 @@ public class Debian implements Distribution {
         int latestMajorVersion = CacheManager.INSTANCE.getMajorVersions().stream().max(Comparator.comparing(MajorVersion::getAsInt)).get().getAsInt();
         for (int i = 7 ; i < latestMajorVersion ; i++) {
             final String cdnUrl = CDN_URL + "openjdk-"+ i + "/";
-            try {
-                pkgs.addAll(getAllPackagesFromCDN(cdnUrl));
-            } catch (Exception e) {
-                LOGGER.debug("Error fetching packages from {} url {}. {}", getName(), cdnUrl, e.getMessage());
+            if (TermOfSupport.LTS == new MajorVersion(i).getTermOfSupport()) {
+                try {
+                    pkgs.addAll(getAllPackagesFromCDN(cdnUrl));
+                } catch (Exception e) {
+                    LOGGER.debug("Error fetching packages from {} url {}. {}", getName(), cdnUrl, e.getMessage());
+                }
             }
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }

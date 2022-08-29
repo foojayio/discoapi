@@ -66,7 +66,7 @@ public class Corretto implements Distribution {
     private static final Pattern                      FILENAME_PREFIX_PATTERN = Pattern.compile("(java-(\\d+)?\\.?(\\d+)?\\.?(\\d+)?\\.?-)|(amazon-corretto-)(jdk_|devel-)?");
     private static final Matcher                      FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
     private static final String                       PACKAGE_URL             = "https://api.github.com/repos/corretto/";// jdk8: corretto-8, jdk11: corretto-11, jdk15,jdk16: corretto-jdk
-
+    private static final List<Integer>                REPOS                   = List.of(8, 11, 17, 18);
     private static final String                       PREFIX                  = "amazon-corretto-";
 
     // URL parameters
@@ -141,7 +141,7 @@ public class Corretto implements Distribution {
         queryBuilder.append(PACKAGE_URL);
         int featureVersion = versionNumber.getFeature().getAsInt();
 
-        if (TermOfSupport.LTS == versionNumber.getMajorVersion().getTermOfSupport()) {
+        if (REPOS.contains(featureVersion)) {
             queryBuilder.append("corretto-").append(featureVersion).append("/releases").append("?per_page=100");
         } else {
             queryBuilder.append("corretto-jdk").append("/releases").append("?per_page=100");
@@ -309,7 +309,7 @@ public class Corretto implements Distribution {
             pkgs.add(pkg);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
         return pkgs;
     }
 
@@ -333,7 +333,7 @@ public class Corretto implements Distribution {
                                      LOGGER.error("Error fetching all packages from {}. {}", getName(), e);
                                  }
                              });
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
         return pkgs;
     }
 
@@ -428,7 +428,7 @@ public class Corretto implements Distribution {
             }
         });
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }

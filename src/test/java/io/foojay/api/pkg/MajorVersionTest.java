@@ -19,21 +19,33 @@
 
 package io.foojay.api.pkg;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import eu.hansolo.jdktools.Match;
 import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.scopes.Scope;
+import io.foojay.api.CacheManager;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.Helper;
 import org.junit.jupiter.api.Test;
 
 import java.io.StringReader;
+import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 
 public class MajorVersionTest {
 
-    @Test
-    public void releasesSupportTermsTest() {
+    @Test public void releasesSupportTermsTest() {
         MajorVersion majorVersion1  = new MajorVersion(1);
         MajorVersion majorVersion2  = new MajorVersion(2);
         MajorVersion majorVersion3  = new MajorVersion(3);
@@ -78,22 +90,23 @@ public class MajorVersionTest {
         assert (TermOfSupport.STS == majorVersion16.getTermOfSupport());
         assert (TermOfSupport.LTS == majorVersion17.getTermOfSupport());
         assert (TermOfSupport.STS == majorVersion18.getTermOfSupport());
-        assert (TermOfSupport.MTS == majorVersion19.getTermOfSupport());
+        assert (TermOfSupport.STS == majorVersion19.getTermOfSupport());
         assert (TermOfSupport.STS == majorVersion20.getTermOfSupport());
         assert (TermOfSupport.LTS == majorVersion21.getTermOfSupport());
         assert (TermOfSupport.STS == majorVersion22.getTermOfSupport());
-        assert (TermOfSupport.MTS == majorVersion23.getTermOfSupport());
+        assert (TermOfSupport.STS == majorVersion23.getTermOfSupport());
         assert (TermOfSupport.STS == majorVersion24.getTermOfSupport());
         assert (TermOfSupport.LTS == majorVersion25.getTermOfSupport());
     }
 
-    @Test
-    public void maintainedMajorVersionTest() {
+    @Test public void maintainedMajorVersionTest() {
         final Map<Integer, Boolean> maintainedMajorVersions = new ConcurrentHashMap<>();
         final Properties            maintainedProperties    = new Properties();
 
         try {
-            maintainedProperties.load(new StringReader(Helper.getTextFromUrl(Constants.MAINTAINED_PROPERTIES_URL)));
+            HttpResponse<String> response = Helper.get(Constants.MAINTAINED_PROPERTIES_URL);
+            assert response != null;
+            maintainedProperties.load(new StringReader(response.body()));
             maintainedMajorVersions.clear();
             maintainedProperties.entrySet().forEach(entry -> {
                 Integer majorVersion = Integer.valueOf(entry.getKey().toString().replaceAll("jdk-", ""));
@@ -107,5 +120,44 @@ public class MajorVersionTest {
 
         MajorVersion majorVersion = new MajorVersion(6);
         assert !majorVersion.isMaintained();
+    }
+
+    @Test public void validateMajorVersionTest() {
+        List<MajorVersion> majorVersions = CacheManager.INSTANCE.getMajorVersions();
+        majorVersions.add(new MajorVersion(500));
+        final Optional<MajorVersion> largestFeatureVersion       = majorVersions.stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).limit(1).findFirst();
+        final Optional<MajorVersion> secondLargestFeatureVersion = majorVersions.stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).limit(2).skip(1).findFirst();
+        final int                    initialLength               = majorVersions.size();
+        if (largestFeatureVersion.isPresent() && secondLargestFeatureVersion.isPresent()) {
+            final Integer largestFeatureVersionFound       = largestFeatureVersion.get().getAsInt();
+            final Integer secondLargestFeatureVersionFound = secondLargestFeatureVersion.get().getAsInt();
+            if (largestFeatureVersionFound - secondLargestFeatureVersionFound > 20) {
+                majorVersions.remove(largestFeatureVersion.get());
+            }
+        }
+        assert majorVersions.size() == initialLength - 1;
+    }
+
+    @Test public void maintainedMajorVersionsTest() {
+        Boolean earlyAccess         = Boolean.FALSE;
+        Boolean generalAvailability = Boolean.FALSE;
+        Boolean maintainedOnly      = Boolean.TRUE;
+        Boolean includeVersions     = Boolean.TRUE;
+
+        // Extract scopes
+        List<Scope> scopes = Helper.getDistributionScopes(new ArrayList<>());
+
+        // Extract match
+        Match scopeMatch = Match.ANY;
+
+        List<Integer> maintainedMajorVersions = CacheManager.INSTANCE.getMajorVersions()
+                                                                     .stream()
+                                                                     .filter(majorVersion -> maintainedOnly ? majorVersion.isMaintained() : majorVersion != null)
+                                                                     .sorted(Comparator.comparing(MajorVersion::getAsInt).reversed())
+                                                                     .map(majorVersion -> majorVersion.getAsInt())
+                                                                     .collect(Collectors.toList());
+
+        assert maintainedMajorVersions.contains(19);
+        assert maintainedMajorVersions.contains(18);
     }
 }

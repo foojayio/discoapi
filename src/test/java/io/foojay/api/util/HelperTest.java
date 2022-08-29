@@ -133,7 +133,7 @@ public class HelperTest {
         try {
             String html = Helper.getTextFromUrl("https://www.oracle.com/java/technologies/java-archive-javase10-downloads.html");
             List<String> fileNamesFoundInUrl = new ArrayList<>(Helper.getDownloadHrefsFromString(html));
-            assert fileNamesFoundInUrl.size() == 30;
+            assert fileNamesFoundInUrl.size() == 31;
 
             html = Helper.getTextFromUrl("https://www.oracle.com/java/technologies/javase/jdk13-archive-downloads.html");
             fileNamesFoundInUrl = new ArrayList<>(Helper.getDownloadHrefsFromString(html));
@@ -156,9 +156,9 @@ public class HelperTest {
     public void mtsTest() {
         assert Helper.isMTS(13);
         assert Helper.isMTS(15);
-        assert Helper.isMTS(19);
-        assert Helper.isMTS(23);
-        assert Helper.isMTS(27);
+        assert !Helper.isMTS(19);
+        assert !Helper.isMTS(23);
+        assert !Helper.isMTS(27);
     }
 
     @Test

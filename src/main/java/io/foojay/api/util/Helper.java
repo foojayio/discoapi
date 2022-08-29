@@ -20,11 +20,13 @@
 package io.foojay.api.util;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.ArchiveType;
 import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.PackageType;
 import eu.hansolo.jdktools.ReleaseStatus;
 import eu.hansolo.jdktools.TermOfSupport;
 import eu.hansolo.jdktools.scopes.BasicScope;
@@ -38,6 +40,7 @@ import eu.hansolo.jdktools.util.OutputFormat;
 import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
+import io.foojay.api.MongoDbManager;
 import io.foojay.api.distribution.Zulu;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
@@ -54,6 +57,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
@@ -62,6 +67,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
@@ -69,6 +75,8 @@ import java.security.NoSuchAlgorithmException;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -79,13 +87,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.function.Function;
+import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static eu.hansolo.jdktools.Constants.COMMA;
 import static io.foojay.api.util.Constants.COLON;
 import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
@@ -228,6 +240,9 @@ public class Helper {
         return fileName;
     }
 
+    public static final boolean isSTS(final MajorVersion majorVersion) {
+        return isSTS(majorVersion.getAsInt());
+    }
     public static final boolean isSTS(final int featureVersion) {
         if (featureVersion < 9) { return false; }
         switch(featureVersion) {
@@ -237,17 +252,57 @@ public class Helper {
         }
     }
 
+    public static final boolean isMTS(final MajorVersion majorVersion) {
+        return isMTS(majorVersion.getAsInt());
+    }
     public static final boolean isMTS(final int featureVersion) {
-        if (featureVersion < 13) { return false; }
+        if (featureVersion < 13 || featureVersion > 15) { return false; }
         return (!isLTS(featureVersion)) && featureVersion % 2 != 0;
     }
 
+    public static final boolean isLTS(final MajorVersion majorVersion) {
+        return isLTS(majorVersion.getAsInt());
+    }
     public static final boolean isLTS(final int featureVersion) {
         if (featureVersion < 1) { throw new IllegalArgumentException("Feature version number cannot be smaller than 1"); }
         if (featureVersion <= 8) { return true; }
         if (featureVersion < 11) { return false; }
         if (featureVersion < 17) { return ((featureVersion - 11.0) / 6.0) % 1 == 0; }
         return ((featureVersion - 17.0) / 4.0) % 1 == 0;
+    }
+
+    public static final OptionalInt getLatestGA() {
+        final LocalDate                           now      = LocalDate.now();
+        final Optional<Entry<Integer, LocalDate>> latestGA = Constants.GA_RELEASE_DATES.entrySet().stream().sorted(Map.Entry.comparingByValue(Comparator.reverseOrder())).filter(entry -> entry.getValue().isEqual(now) || entry.getValue().isBefore(now)).findFirst();
+        final OptionalInt                         opt;
+        if (latestGA.isPresent()) {
+            opt = OptionalInt.of(latestGA.get().getKey());
+        } else {
+            opt = OptionalInt.empty();
+        }
+        return opt;
+    }
+
+    public static final OptionalInt getNextEA() {
+        final OptionalInt latestGA = getLatestGA();
+        final OptionalInt nextEA;
+        if (latestGA.isPresent()) {
+            nextEA = OptionalInt.of(latestGA.getAsInt() + 1);
+        } else {
+            nextEA = OptionalInt.empty();
+        }
+        return nextEA;
+    }
+
+    public static final OptionalInt getNextButOneEA() {
+        final OptionalInt nextEA = getNextEA();
+        final OptionalInt nextButOneEA;
+        if (nextEA.isPresent()) {
+            nextButOneEA = OptionalInt.of(nextEA.getAsInt() + 1);
+        } else {
+            nextButOneEA = OptionalInt.empty();
+        }
+        return nextButOneEA;
     }
 
     public static final TermOfSupport getTermOfSupport(final VersionNumber versionNumber, final Distro distribution) {
@@ -260,7 +315,7 @@ public class Helper {
         }
     }
     public static final TermOfSupport getTermOfSupport(final VersionNumber versionNumber) {
-        if (!versionNumber.getFeature().isPresent() || versionNumber.getFeature().isEmpty()) {
+        if (null == versionNumber || !versionNumber.getFeature().isPresent() || versionNumber.getFeature().isEmpty()) {
             throw new IllegalArgumentException("VersionNumber need to have a feature version");
         }
         return getTermOfSupport(versionNumber.getFeature().getAsInt());
@@ -298,7 +353,7 @@ public class Helper {
     public static final String getTextFromUrl(final String uri) {
         try (var stream = URI.create(uri).toURL().openStream()) {
             return new String(stream.readAllBytes(), UTF_8);
-        } catch(Exception e) {
+        } catch(IOException e) {
             LOGGER.debug("Error reading text from uri {}", uri);
             return "";
         }
@@ -543,6 +598,15 @@ public class Helper {
                                             .orElse(ArchiveType.NOT_FOUND);
     }
 
+    public static final PackageType fetchPackageType(final String text) {
+        return Constants.PACKAGE_TYPE_LOOKUP.entrySet()
+                                            .stream()
+                                            .filter(entry -> text.contains(entry.getKey()))
+                                            .findFirst()
+                                            .map(Entry::getValue)
+                                            .orElse(PackageType.NOT_FOUND);
+    }
+
     public static final ReleaseStatus fetchReleaseStatus(final String text) {
         return Constants.RELEASE_STATUS_LOOKUP.entrySet()
                                               .stream()
@@ -553,7 +617,7 @@ public class Helper {
     }
 
     public static final boolean isUriValid(final String uri) {
-        if (null == httpClient) { httpClient = createHttpClient(); }
+        final HttpClient  httpClient = createHttpClient();
         final HttpRequest request;
         try {
             request = HttpRequest.newBuilder()
@@ -562,36 +626,179 @@ public class Helper {
                                  .timeout(Duration.ofSeconds(3))
                                  .build();
         } catch (Exception e) {
-            System.out.println(uri);
+            LOGGER.debug("Uri request: {} failed with exception: {}", uri, e);
             return false;
         }
         try {
-            HttpResponse<Void> responseFuture = httpClient.send(request, BodyHandlers.discarding());
-            return 200 == responseFuture.statusCode();
+            HttpResponse<Void> response = httpClient.send(request, BodyHandlers.discarding());
+            return 200 == response.statusCode();
         } catch (InterruptedException | IOException e) {
+            LOGGER.debug("Uri request: {} failed with exception: {}", uri, e);
             return false;
         }
+    }
+
+    public static final String getAllPackagesMsgV2_OLD(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
+        return getAllPackagesMsgV2(allPkgs, downloadable, include_ea, scope, OutputFormat.REDUCED_COMPRESSED);
+    }
+    public static final String getAllPackagesMsgV2_OLD(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope, final OutputFormat outputFormat) {
+        final List<Distro> publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
+        final boolean       gaOnly       = null == include_ea || !include_ea;
+        final StringBuilder msgBuilder   = new StringBuilder();
+        final Scope         scopeToCheck = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
+
+        msgBuilder.append(CURLY_BRACKET_OPEN)
+                  .append(QUOTES).append(RESULT).append(QUOTES).append(COLON)
+                  .append(allPkgs.parallelStream()
+                                 .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
+                                 .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
+                                 .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
+                                 .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
+                                 .map(pkg -> CacheManager.INSTANCE.jsonCacheV2.get(pkg.getId()))
+                                 .collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(COMMA)
+                  .append(QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES).append(NEW_LINE)
+                  .append(CURLY_BRACKET_CLOSE);
+        return msgBuilder.toString();
     }
 
     public static final String getAllPackagesMsgV2(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
         return getAllPackagesMsgV2(allPkgs, downloadable, include_ea, scope, OutputFormat.REDUCED_COMPRESSED);
     }
     public static final String getAllPackagesMsgV2(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope, final OutputFormat outputFormat) {
-        final List<Distro> publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
-        final boolean       gaOnly       = null == include_ea || !include_ea;
+        final List<Distro>   publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
+        final boolean        gaOnly        = null == include_ea || !include_ea;
+        final StringBuilder  chunkBuilder  = new StringBuilder();
+        final StringBuilder  msgBuilder    = new StringBuilder();
+        final Scope          scopeToCheck  = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
+        final Partition<Pkg> partition     = new Partition<>(allPkgs, 25000);
+
+        msgBuilder.append(CURLY_BRACKET_OPEN)
+                  .append(QUOTES).append(RESULT).append(QUOTES).append(COLON)
+                  .append(SQUARE_BRACKET_OPEN);
+
+        for (int i = 0 ; i < partition.size() ; i++) {
+            List<Pkg> chunk = partition.get(i);
+            chunkBuilder.append(chunk.parallelStream()
+                                     .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
+                                     .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
+                                     .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
+                                     .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
+                                     .map(pkg -> CacheManager.INSTANCE.jsonCacheV2.get(pkg.getId()))
+                                     .collect(Collectors.joining(COMMA)));
+            msgBuilder.append(chunkBuilder).append(COMMA);
+            chunkBuilder.setLength(0);
+        }
+        msgBuilder.setLength(msgBuilder.length() - 1);
+        msgBuilder.append(SQUARE_BRACKET_CLOSE).append(COMMA);
+        msgBuilder.append(QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES)
+                  .append(CURLY_BRACKET_CLOSE);
+        return msgBuilder.toString();
+    }
+
+    public static final String getAllPackagesMsgV3_OLD(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
+        return getAllPackagesMsgV3(allPkgs, downloadable, include_ea, scope, OutputFormat.REDUCED_COMPRESSED);
+    }
+    public static final String getAllPackagesMsgV3_OLD(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope, final OutputFormat outputFormat) {
+        final List<Distro>  publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
+        final boolean       gaOnly        = null == include_ea || !include_ea;
+        final StringBuilder msgBuilder    = new StringBuilder();
+        final Scope         scopeToCheck  = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
+
+        msgBuilder.append(CURLY_BRACKET_OPEN)
+                  .append(QUOTES).append(RESULT).append(QUOTES).append(COLON)
+                  .append(allPkgs.parallelStream()
+                                 .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
+                                 .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
+                                 .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
+                                 .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
+                                 .map(pkg -> CacheManager.INSTANCE.jsonCacheV3.get(pkg.getId()))
+                                 .collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(COMMA)
+                  .append(QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES)
+                  .append(CURLY_BRACKET_CLOSE);
+        return msgBuilder.toString();
+    }
+
+    public static final String getAllPackagesMsgV3(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
+        return getAllPackagesMsgV3(allPkgs, downloadable, include_ea, scope, OutputFormat.REDUCED_COMPRESSED);
+    }
+    public static final String getAllPackagesMsgV3(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope, final OutputFormat outputFormat) {
+        final List<Distro>  publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
+        final boolean       gaOnly        = null == include_ea || !include_ea;
+        final StringBuilder chunkBuilder  = new StringBuilder();
+        final StringBuilder msgBuilder    = new StringBuilder();
+        final Scope         scopeToCheck  = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
+
+        msgBuilder.append(CURLY_BRACKET_OPEN)
+                  .append(QUOTES).append(RESULT).append(QUOTES).append(COLON)
+                  .append(SQUARE_BRACKET_OPEN);
+
+        Partition<Pkg> partition = new Partition<>(allPkgs, 25000);
+        for (int i = 0 ; i < partition.size() ; i++) {
+            List<Pkg> chunk = partition.get(i);
+            chunkBuilder.append(chunk.parallelStream()
+                                     .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
+                                     .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
+                                     .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
+                                     .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
+                                     .map(pkg -> CacheManager.INSTANCE.jsonCacheV3.get(pkg.getId()))
+                                     .collect(Collectors.joining(COMMA)));
+            msgBuilder.append(chunkBuilder).append(COMMA);
+            chunkBuilder.setLength(0);
+        }
+        msgBuilder.setLength(msgBuilder.length() - 1);
+        msgBuilder.append(SQUARE_BRACKET_CLOSE).append(COMMA);
+        msgBuilder.append(QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES)
+                  .append(CURLY_BRACKET_CLOSE);
+        return msgBuilder.toString();
+    }
+
+    public static final String getAllPackagesMsgMinimizedV3_OLD(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
+        final List<Distro>  publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
+        final boolean       gaOnly        = null == include_ea || !include_ea;
         final StringBuilder msgBuilder   = new StringBuilder();
         final Scope         scopeToCheck = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
 
-        msgBuilder.append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                  .append(INDENTED_QUOTES).append(RESULT).append(QUOTES).append(COLON).append(NEW_LINE)
+        msgBuilder.append(CURLY_BRACKET_OPEN)
+                  .append(QUOTES).append(RESULT).append(QUOTES).append(COLON)
                   .append(INDENT).append(allPkgs.parallelStream()
                                                 .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
                                                 .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
                                                 .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
                                                 .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
-                                                .map(pkg -> CacheManager.INSTANCE.jsonCacheV2.get(pkg.getId()))
-                                                .collect(Collectors.joining(COMMA_NEW_LINE, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(COMMA_NEW_LINE)
-                  .append(INDENTED_QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES).append(NEW_LINE)
+                                                .map(pkg -> CacheManager.INSTANCE.jsonCacheMinimizedV3.get(pkg.getId()))
+                                                .collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(COMMA)
+                  .append(QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES)
+                  .append(CURLY_BRACKET_CLOSE);
+        return msgBuilder.toString();
+    }
+
+    public static final String getAllPackagesMsgMinimizedV3(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
+        final List<Distro>  publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
+        final boolean       gaOnly        = null == include_ea || !include_ea;
+        final StringBuilder chunkBuilder  = new StringBuilder();
+        final StringBuilder msgBuilder    = new StringBuilder();
+        final Scope         scopeToCheck  = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
+
+        msgBuilder.append(CURLY_BRACKET_OPEN)
+                  .append(QUOTES).append(RESULT).append(QUOTES).append(COLON)
+                  .append(SQUARE_BRACKET_OPEN);
+
+        Partition<Pkg> partition = new Partition<>(allPkgs, 25000);
+        for (int i = 0 ; i < partition.size() ; i++) {
+            List<Pkg> chunk = partition.get(i);
+            chunkBuilder.append(chunk.parallelStream()
+                                     .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
+                                     .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
+                                     .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
+                                     .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
+                                     .map(pkg -> CacheManager.INSTANCE.jsonCacheMinimizedV3.get(pkg.getId()))
+                                     .collect(Collectors.joining(COMMA)));
+            msgBuilder.append(chunkBuilder).append(COMMA);
+            chunkBuilder.setLength(0);
+        }
+        msgBuilder.setLength(msgBuilder.length() - 1);
+        msgBuilder.append(SQUARE_BRACKET_CLOSE).append(COMMA);
+        msgBuilder.append(QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES)
                   .append(CURLY_BRACKET_CLOSE);
         return msgBuilder.toString();
     }
@@ -704,7 +911,7 @@ public class Helper {
         return String.format("%.1f %cB", bytes / 1000.0, ci.current());
     }
 
-    public static long getFileSize(final String uri) {
+    public static final long getFileSize(final String uri) {
         long size = -1;
         HttpResponse<String> response = Helper.httpHeadRequestSync(uri);
         if (null != response) {
@@ -743,6 +950,17 @@ public class Helper {
             releaseDetailsUrl = urlBuilder.toString();
         }
         return releaseDetailsUrl;
+    }
+
+    public static final void checkPkgsForTooEarlyGA(final List<Pkg> pkgs) {
+        final LocalDate now = LocalDate.now();
+        Constants.GA_RELEASE_DATES.entrySet()
+                                  .stream()
+                                  .filter(entry -> entry.getValue().isAfter(now))
+                                  .forEach(entry -> pkgs.stream()
+                                                        .filter(pkg -> pkg.getMajorVersion().getAsInt() == entry.getKey())
+                                                        .filter(pkg -> pkg.getReleaseStatus() == ReleaseStatus.GA)
+                                                        .forEach(pkg -> pkg.setReleaseStatus(ReleaseStatus.EA)));
     }
 
 

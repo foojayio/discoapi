@@ -33,13 +33,18 @@ import eu.hansolo.jdktools.scopes.Scope;
 import eu.hansolo.jdktools.scopes.UsageScope;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.Pkg;
+import io.foojay.api.pkg.PkgField;
 import io.foojay.api.scopes.IDEScope;
 
+import java.io.StringReader;
+import java.net.http.HttpResponse;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -90,11 +95,15 @@ public class Constants {
     public static final String            MQTT_PKG_UPDATE_TOPIC                  = String.join(MQTT_TOPIC_SEPARATOR, Config.INSTANCE.getFoojayApiEnvironment(), "discoupdater/update/pkg");
     public static final String            MQTT_EPHEMERAL_ID_UPDATE_TOPIC         = String.join(MQTT_TOPIC_SEPARATOR, Config.INSTANCE.getFoojayApiEnvironment(), "discoupdater/update/ephemeral_id");
     public static final String            MQTT_LAST_WILL_TOPIC                   = MQTT_PRESENCE_TOPIC;
+    public static final String            MQTT_UPDATER_STATE_TOPIC               = String.join(MQTT_TOPIC_SEPARATOR, Config.INSTANCE.getFoojayApiEnvironment(), "discoupdater/state");
+    public static final String            MQTT_API_STATE_TOPIC                   = String.join(MQTT_TOPIC_SEPARATOR, Config.INSTANCE.getFoojayApiEnvironment(), "discoapi/state");
     public static final String            MQTT_PKG_UPDATE_STARTED_MSG            = "pkg_update_started";
     public static final String            MQTT_PKG_UPDATE_FINISHED_MSG           = "pkg_update_finished";
     public static final String            MQTT_PKG_UPDATE_FINISHED_EMPTY_MSG     = "pkg_update_finished_empty";
     public static final String            MQTT_EPHEMERAL_ID_UPDATE_STARTED_MSG   = "ephemeral_id_update_started";
     public static final String            MQTT_EPEHMERAL_ID_UPDATE_FINISHED_MSG  = "ephemeral_id_update_finished";
+    public static final String            MQTT_UPDATER_ONLINE_MSG                = "{\"state\":\"ONLINE\",\"msg\":\"updater is connected\"}";
+    public static final String            MQTT_UPDATER_OFFLINE_MSG               = "{\"state\":\"OFFLINE\",\"msg\":\"updater is not connected\"}";
     public static final String            MQTT_FORCE_PKG_UPDATE_MSG              = "force_pkg_update";
     public static final String            MQTT_ONLINE_MSG                        = "1";
     public static final String            MQTT_OFFLINE_MSG                       = "0";
@@ -150,17 +159,17 @@ public class Constants {
     public static final DateTimeFormatter DTF                                    = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     public static final Map<String, String> PARAMETER_LOOKUP = new HashMap<>() {{
-        put(Pkg.FIELD_ARCHITECTURE, "aarch64, amd64, arm, armel, armhf, arm64, ia64, mips, mipsel, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
-        put(Pkg.FIELD_ARCHIVE_TYPE, "apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tgz, tar.Z, zip");
-        put(Pkg.FIELD_BITNESS, "32, 64");
-        put(Pkg.FIELD_FPU, "hard_float, soft_float, unknown");
-        put(Pkg.FIELD_DISTRIBUTION, "aoj, aoj_openj9, bisheng, corretto, debian, dragonwell, gluon_graalvm, graalvm_ce8, graalvm_ce11, graalvm_ce16, graalvm_ce17, jetbrains, kona, liberica, liberica_native, mandrel, microsoft, ojdk_build, openlogic, oracle, oracle_open_jdk, redhat, sap_machine, semeru, semeru_certified, temurin, trava, zulu, zulu_prime");
-        put(Pkg.FIELD_OPERATING_SYSTEM, "aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows");
-        put(Pkg.FIELD_LIB_C_TYPE, "c_std_lib, glibc, libc, musl");
-        put(Pkg.FIELD_PACKAGE_TYPE, "jdk, jre");
-        put(Pkg.FIELD_RELEASE_STATUS, "ea, ga");
-        put(Pkg.FIELD_TERM_OF_SUPPORT, "sts, mts, lts");
-        put(Pkg.FIELD_FEATURE, "panama, loom, lanai, valhalla");
+        put(PkgField.ARCHITECTURE.fieldName(), "aarch64, amd64, arm, armel, armhf, arm64, ia64, mips, mipsel, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32");
+        put(PkgField.ARCHIVE_TYPE.fieldName(), "apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.xz, tgz, tar.Z, zip");
+        put(PkgField.BITNESS.fieldName(), "32, 64");
+        put(PkgField.FPU.fieldName(), "hard_float, soft_float, unknown");
+        put(PkgField.DISTRIBUTION.fieldName(), "aoj, aoj_openj9, bisheng, corretto, debian, dragonwell, gluon_graalvm, graalvm_ce8, graalvm_ce11, graalvm_ce16, graalvm_ce17, jetbrains, kona, liberica, liberica_native, mandrel, microsoft, ojdk_build, openlogic, oracle, oracle_open_jdk, redhat, sap_machine, semeru, semeru_certified, temurin, trava, zulu, zulu_prime");
+        put(PkgField.OPERATING_SYSTEM.fieldName(), "aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows");
+        put(PkgField.LIB_C_TYPE.fieldName(), "c_std_lib, glibc, libc, musl");
+        put(PkgField.PACKAGE_TYPE.fieldName(), "jdk, jre");
+        put(PkgField.RELEASE_STATUS.fieldName(), "ea, ga");
+        put(PkgField.TERM_OF_SUPPORT.fieldName(), "sts, mts, lts");
+        put(PkgField.FEATURE.fieldName(), "panama, loom, lanai, valhalla");
     }};
 
     public static final LinkedHashMap<String, ArchiveType> ARCHIVE_TYPE_LOOKUP = new LinkedHashMap<>() {{
@@ -175,6 +184,7 @@ public class Constants {
         put(".source.tar.gz", ArchiveType.SRC_TAR);
         put(".src.tar.gz", ArchiveType.SRC_TAR);
         put(".tar.gz", ArchiveType.TAR_GZ);
+        put(".tar.xz", ArchiveType.TAR_XZ);
         put(".tar.Z", ArchiveType.TAR_Z);
         put(".tar", ArchiveType.TAR);
         put(".zip", ArchiveType.ZIP);
@@ -342,4 +352,27 @@ public class Constants {
         put(QualityScope.TCK_TESTED, List.of()); // Zulu, Semeru Certified, Oracle, Oracle OpenJDK
         put(QualityScope.AQAVIT_CERTIFIED, List.of()); // Zulu, Temurin, Microsoft, Semeru, Semeru Certified
     }};
+
+    public static final String                  GA_RELEASE_DATES_PROPERTIES = "https://github.com/foojayio/ga_dates/raw/main/ga_dates.properties";
+    public static final Map<Integer, LocalDate> GA_RELEASE_DATES            = new ConcurrentHashMap<>();
+    static {
+        try {
+            HttpResponse<String> response = Helper.get(GA_RELEASE_DATES_PROPERTIES);
+            if (null != response) {
+                Properties gaDates        = new Properties();
+                String     propertiesText = response.body();
+                if (!propertiesText.isEmpty()) {
+                    gaDates.load(new StringReader(propertiesText));
+                }
+                gaDates.keySet().forEach(key -> {
+                    String[]  dateString     = gaDates.get(key).toString().split("_");
+                    Integer   featureVersion = Integer.valueOf(key.toString().split("-")[0]);
+                    LocalDate releaseDate    = LocalDate.of(Integer.parseInt(dateString[2]), Integer.parseInt(dateString[1]), Integer.parseInt(dateString[0]));
+                    GA_RELEASE_DATES.put(featureVersion, releaseDate);
+                });
+            }
+        } catch (Exception e) {
+            System.out.println("Error reading ga_dates.properties file from github. " + e.getMessage());
+        }
+    }
 }

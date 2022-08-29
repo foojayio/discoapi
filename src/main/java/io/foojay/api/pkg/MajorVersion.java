@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -244,6 +245,10 @@ public class MajorVersion implements Comparable<MajorVersion> {
     }
     public static boolean isMaintainedMajorVersion(final int majorVersion) {
         return getMaintainedMajorVersions().stream().filter(mv -> mv.getAsInt() == majorVersion).count() > 0;
+    }
+
+    public static Optional<MajorVersion> getMax() {
+        return getAllMajorVersions().stream().max(Comparator.comparing(MajorVersion::getAsInt));
     }
 
     // VersionNumber

@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -259,7 +260,7 @@ public class JetBrains implements Distribution {
             pkgs.add(pkg);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -339,7 +340,7 @@ public class JetBrains implements Distribution {
             }
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -347,6 +348,9 @@ public class JetBrains implements Distribution {
     public List<Pkg> getAllPkgsFromHtml(final String html, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
         if (null == html || html.isEmpty()) { return pkgs; }
+
+        OptionalInt nextEA       = Helper.getNextEA();
+        OptionalInt nextButOneEA = Helper.getNextButOneEA();
 
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
         for (String href : fileHrefs) {
@@ -412,7 +416,11 @@ public class JetBrains implements Distribution {
             pkg.setArchiveType(archiveType);
             pkg.setJavaFXBundled(false);
             pkg.setTermOfSupport(majorVersion.getTermOfSupport());
-            pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+            if (nextEA.isPresent()) {
+                pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.getAsInt() == nextEA.getAsInt() || majorVersion.getAsInt() == nextButOneEA.getAsInt()) ? EA : GA);
+            } else {
+                pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+            }
             pkg.getSemver().setMetadata(semver.getMetadata());
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
@@ -421,7 +429,7 @@ public class JetBrains implements Distribution {
             pkgs.add(pkg);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }

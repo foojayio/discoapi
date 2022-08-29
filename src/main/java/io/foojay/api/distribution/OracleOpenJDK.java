@@ -53,6 +53,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -110,7 +111,7 @@ public class OracleOpenJDK implements Distribution {
     private static final SignatureType                SIGNATURE_TYPE             = SignatureType.NONE;
     private static final HashAlgorithm                SIGNATURE_ALGORITHM        = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI              = "";
-    private static final String                       OFFICIAL_URI               = "https://openjdk.java.net/";
+    private static final String                       OFFICIAL_URI               = "https://openjdk.org/";
 
 
     public OracleOpenJDK() {
@@ -378,7 +379,7 @@ public class OracleOpenJDK implements Distribution {
             }
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -504,7 +505,7 @@ public class OracleOpenJDK implements Distribution {
             }
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -544,7 +545,7 @@ public class OracleOpenJDK implements Distribution {
             }
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -664,7 +665,8 @@ public class OracleOpenJDK implements Distribution {
 
                 String[] fileNameParts = filename.split("_");
                 if (fileNameParts.length > 1) {
-                    Semver semVer = Semver.fromText(fileNameParts[0].replace("openjdk", "")).getSemver1();
+                    String versionText = fileNameParts[0].replace("openjdk", "").replaceFirst("-", "");
+                    Semver semVer = Semver.fromText(versionText).getSemver1();
                     if (null != semVer) {
                         pkg.setReleaseStatus(semVer.getReleaseStatus());
                     }
@@ -682,7 +684,7 @@ public class OracleOpenJDK implements Distribution {
         });
 
         List<Pkg> pkgs = new ArrayList<>(pkgMap.values());
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
@@ -696,7 +698,9 @@ public class OracleOpenJDK implements Distribution {
 
         String downloadLink = propertiesPkgs.getProperty(keyBuilder.toString());
 
-        if (null == downloadLink && MajorVersion.getLatest(false).getAsInt() < versionNumber.getMajorVersion().getAsInt()) {
+        OptionalInt latestGAOpt = Helper.getLatestGA();
+        int         latestGA    = latestGAOpt.isPresent() ? latestGAOpt.getAsInt() : MajorVersion.getLatest(false).getAsInt();
+        if (null == downloadLink && latestGA < versionNumber.getMajorVersion().getAsInt()) {
             // Might be Release Candidate
             keyBuilder.setLength(0);
             keyBuilder = new StringBuilder().append(versionNumber.getFeature().getAsInt()).append("-")
@@ -832,7 +836,7 @@ public class OracleOpenJDK implements Distribution {
             pkgs.add(pkg);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }

@@ -24,7 +24,7 @@ import eu.hansolo.jdktools.scopes.BuildScope;
 import eu.hansolo.jdktools.util.OutputFormat;
 import io.foojay.api.mqtt.MqttEvt;
 import io.foojay.api.mqtt.MqttEvtObserver;
-import io.foojay.api.mqtt.MqttManager;
+import io.foojay.api.mqtt.MqttManager3;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
@@ -38,10 +38,14 @@ import io.micronaut.context.env.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.StringReader;
+import java.net.http.HttpResponse;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -55,7 +59,7 @@ public enum CacheManager {
     INSTANCE;
 
     private static final Logger                       LOGGER                      = LoggerFactory.getLogger(CacheManager.class);
-    public final         MqttManager                  mqttManager                 = new MqttManager();
+    public final         MqttManager3                 mqttManager                 = new MqttManager3();
     public final         MqttEvtObserver              mqttEvtObserver             = evt -> handleMqttEvt(evt);
     public final         PkgCache<String, Pkg>        pkgCache                    = new PkgCache<>();
     public final         JsonCache<String, String>    jsonCacheV2                 = new JsonCache<>();
@@ -77,10 +81,11 @@ public enum CacheManager {
         put(13, true);
         put(14, false);
         put(15, true);
-        put(16, true);
+        put(16, false);
         put(17, true);
         put(18, true);
         put(19, true);
+        put(20, true);
     }};
     public final         AtomicBoolean                syncWithDatabaseInProgress  = new AtomicBoolean(false);
     public final         AtomicLong                   msToFillCacheWithPkgsFromDB = new AtomicLong(-1);
@@ -92,6 +97,7 @@ public enum CacheManager {
     CacheManager() {
         mqttManager.subscribe(Constants.MQTT_PKG_UPDATE_TOPIC, MqttQos.EXACTLY_ONCE);
         mqttManager.subscribe(Constants.MQTT_EPHEMERAL_ID_UPDATE_TOPIC, MqttQos.EXACTLY_ONCE);
+        mqttManager.subscribe(Constants.MQTT_UPDATER_STATE_TOPIC, MqttQos.EXACTLY_ONCE);
         mqttManager.addMqttObserver(mqttEvtObserver);
         maintainedMajorVersions.entrySet().forEach(entry-> majorVersions.add(new MajorVersion(entry.getKey(), Helper.getTermOfSupport(entry.getKey()), entry.getValue())));
     }
@@ -105,8 +111,31 @@ public enum CacheManager {
         } else {
         majorVersions.clear();
             majorVersions.addAll(majorVersionsFromDb);
-            majorVersions.forEach(majorVersion -> maintainedMajorVersions.put(majorVersion.getAsInt(), majorVersion.isMaintained()));
             LOGGER.debug("Successfully updated major versions");
+        }
+        updateMaintainedMajorVersions();
+    }
+
+    public void updateMaintainedMajorVersions() {
+        LOGGER.debug("Updating maintained major versions");
+        final Properties            maintainedProperties       = new Properties();
+        final Map<Integer, Boolean> tmpMaintainedMajorVersions = new HashMap<>();
+        try {
+            HttpResponse<String> response = Helper.get(Constants.MAINTAINED_PROPERTIES_URL);
+            if (null == response) { return; }
+            String maintainedPropertiesText = response.body();
+            if (null == maintainedPropertiesText) { return; }
+            maintainedProperties.load(new StringReader(maintainedPropertiesText));
+            maintainedProperties.entrySet().forEach(entry -> {
+                Integer majorVersion = Integer.valueOf(entry.getKey().toString().replaceAll("jdk-", ""));
+                Boolean maintained   = Boolean.valueOf(entry.getValue().toString().toLowerCase());
+                tmpMaintainedMajorVersions.put(majorVersion, maintained);
+            });
+            maintainedMajorVersions.clear();
+            maintainedMajorVersions.putAll(tmpMaintainedMajorVersions);
+            LOGGER.debug("Successfully updated maintained major versions");
+        } catch (Exception e) {
+            LOGGER.error("Error loading maintained version properties from github. {}", e);
         }
     }
 
@@ -193,6 +222,7 @@ public enum CacheManager {
                 case Constants.MQTT_PKG_UPDATE_FINISHED_MSG -> {
                     try {
                         LOGGER.debug("Database updated -> syncCacheWithDatabase(). MQTT event: {}", evt);
+                        mqttManager.publish(Constants.MQTT_API_STATE_TOPIC, "Database updated -> syncCacheWithDatabase");
 
                         // Update cache with pkgs from mongodb
                         syncCacheWithDatabase();
@@ -208,6 +238,7 @@ public enum CacheManager {
                 case Constants.MQTT_FORCE_PKG_UPDATE_MSG -> {
                     try {
                         LOGGER.debug("Force pkg update -> syncCacheWithDatabase(). MQTT event: {}", evt);
+                        mqttManager.publish(Constants.MQTT_API_STATE_TOPIC, "Force pkg update -> syncCacheWithDatabase");
 
                         // Update cache with pkgs from mongodb
                         syncCacheWithDatabase();

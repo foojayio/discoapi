@@ -250,7 +250,7 @@ public class BiSheng implements Distribution {
             LOGGER.debug("Error fetching packages from Bisheng CDN. {}", e.getMessage());
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }

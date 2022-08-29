@@ -35,11 +35,13 @@ import eu.hansolo.jdktools.util.OutputFormat;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
+import io.foojay.api.pkg.PkgField;
 import io.foojay.api.util.Config;
 import io.foojay.api.util.Constants;
 import io.foojay.api.util.EphemeralIdCache;
 import io.foojay.api.util.Helper;
 import io.foojay.api.util.State;
+import io.foojay.api.util.UpdaterState;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.Document;
@@ -72,10 +74,7 @@ import static com.mongodb.client.model.Filters.in;
 import static com.mongodb.client.model.Filters.lte;
 import static com.mongodb.client.model.Updates.combine;
 import static com.mongodb.client.model.Updates.set;
-import static io.foojay.api.pkg.Pkg.FIELD_DISTRIBUTION;
-import static io.foojay.api.pkg.Pkg.FIELD_FILENAME;
-import static io.foojay.api.pkg.Pkg.FIELD_LATEST_BUILD_AVAILABLE;
-import static io.foojay.api.util.Constants.API_VERSION_V1;
+import static io.foojay.api.util.Constants.API_VERSION_V3;
 import static io.foojay.api.util.Constants.COMMA;
 import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
@@ -91,7 +90,6 @@ public enum MongoDbManager {
     private static final String                           FIELD_PACKAGE_ID               = "id";
     private static final String                           FIELD_EPHEMERAL_ID             = "ephemeral_id";
     private static final String                           FIELD_DOWNLOADS                = "downloads";
-    private static final String                           FIELD_ID                       = "id";
     private static final String                           FIELD_DISTRO                   = "distro";
     private static final String                           FIELD_DISTRIBUTIONS            = "distributions";
     private static final String                           FIELD_VERSION                  = "version";
@@ -305,6 +303,43 @@ public enum MongoDbManager {
                 .updateOne(eq(FIELD_TYPE, FIELD_STATE), combine(set(FIELD_TYPE, FIELD_STATE), set(FIELD_STATE, state.name()), set(FIELD_TIMESTAMP, Instant.now().getEpochSecond())), new UpdateOptions().upsert(true));
     }
 
+    public UpdaterState getUpdaterState() {
+        connect();
+        if (!connected) {
+            LOGGER.debug("MongoDB not connected, returned idle state");
+            return UpdaterState.OFFLINE;
+        }
+        if (null == Config.INSTANCE.getFoojayMongoDbDatabase()) {
+            LOGGER.debug("Cannot return state because FOOJAY_MONGODB_DATABASE environment variable was not set.");
+            return UpdaterState.OFFLINE;
+        }
+        if (null == database) {
+            LOGGER.error("Database is not set.");
+            database = mongoClient.getDatabase(Config.INSTANCE.getFoojayMongoDbDatabase());
+        }
+        if (null == Constants.UPDATER_STATE_COLLECTION) {
+            LOGGER.error("Constants.UPDATER_STATE_COLLECTION not set.");
+            return UpdaterState.OFFLINE;
+        }
+        if (!collectionExists(database, Constants.UPDATER_STATE_COLLECTION)) { database.createCollection(Constants.UPDATER_STATE_COLLECTION); }
+
+        final MongoCollection<Document> collection = database.getCollection(Constants.UPDATER_STATE_COLLECTION);
+        Document document = collection.find(eq(FIELD_TYPE, FIELD_STATE)).first();
+        if (null == document) {
+            return UpdaterState.OFFLINE;
+        } else {
+            final UpdaterState state        = UpdaterState.valueOf(document.getString(FIELD_STATE));
+            final Long         epochseconds = document.getLong(FIELD_TIMESTAMP);
+            final Instant      timestamp    = null == epochseconds ? Instant.now() : Instant.ofEpochSecond(epochseconds);
+            if (null == state) {
+                UpdaterState.OFFLINE.setTimestamp(timestamp);
+            } else {
+                state.setTimestamp(timestamp);
+            }
+            return null == state ? UpdaterState.OFFLINE : state;
+        }
+    }
+
     /**
      * Returns list of all packages in the packages collection
      * @return list of all packages in the packages collection
@@ -335,8 +370,13 @@ public enum MongoDbManager {
         final MongoCursor<Document>     cursor     = collection.find().iterator();
         try {
             while(cursor.hasNext()) {
-                Pkg pkg = new Pkg(cursor.next().toJson());
-                result.add(pkg);
+                Document document = cursor.next();
+                try {
+                    Pkg pkg = new Pkg(document.toJson());
+                    result.add(pkg);
+                } catch (Exception e) {
+                    LOGGER.error("Error creating pkg from {}", document.toJson());
+                }
             }
         } finally {
             cursor.close();
@@ -369,11 +409,16 @@ public enum MongoDbManager {
 
         final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         final List<Pkg>                 result     = new ArrayList<>();
-        final MongoCursor<Document>     cursor     = collection.find(eq(FIELD_DISTRIBUTION, distro.getApiString())).iterator();
+        final MongoCursor<Document>     cursor     = collection.find(eq(PkgField.DISTRIBUTION.fieldName(), distro.getApiString())).iterator();
         try {
             while(cursor.hasNext()) {
-                Pkg pkg = new Pkg(cursor.next().toJson());
-                result.add(pkg);
+                Document document = cursor.next();
+                try {
+                    Pkg pkg = new Pkg(document.toJson());
+                    result.add(pkg);
+                } catch (Exception e) {
+                    LOGGER.error("Error creating pkg from {}", document.toJson());
+                }
             }
         } finally {
             cursor.close();
@@ -407,7 +452,7 @@ public enum MongoDbManager {
         if (null == Constants.PACKAGES_COLLECTION) {
             LOGGER.error("Constants.BUNDLES_COLLECTION not set.");
             return;
-        };
+        }
         if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
 
         final MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
@@ -423,7 +468,7 @@ public enum MongoDbManager {
             .forEach(pkg -> {
                 try {
                     long count = collection.countDocuments(new BsonDocument(FIELD_PACKAGE_ID, new BsonString(pkg.getId())));
-                        if (count == 0) { documents.add(Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1))); }
+                    if (count == 0) { documents.add(Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V3))); }
                 } catch (JsonParseException e) {
                     LOGGER.error("Error parsing json when adding package {}. {}", pkg.getId(), e);
                 }
@@ -459,7 +504,7 @@ public enum MongoDbManager {
         if (null == Constants.PACKAGES_COLLECTION) {
             LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
             return false;
-        };
+        }
         if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
 
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
@@ -474,7 +519,7 @@ public enum MongoDbManager {
             .filter(pkg -> !pkg.getFilename().isEmpty())
             .forEach(pkg -> {
             try {
-                Document document = Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V1));
+                Document document = Document.parse(pkg.toString(OutputFormat.FULL_COMPRESSED, API_VERSION_V3));
                 collection.replaceOne(eq(FIELD_PACKAGE_ID, pkg.getId()), document, replaceOptions);
             } catch (JsonParseException e) {
                 LOGGER.error("Error parsing json when adding package {}. {}", pkg.getId(), e.getMessage());
@@ -510,13 +555,13 @@ public enum MongoDbManager {
         if (null == Constants.PACKAGES_COLLECTION) {
             LOGGER.error("Constants.PACKAGES_COLLECTION not set.");
             return false;
-        };
+        }
         if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
 
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         for (Pkg pkg : pkgs) {
             try {
-                Bson deleteFilter = eq(FIELD_FILENAME, pkg.getFilename());
+                Bson deleteFilter = eq(PkgField.FILENAME.fieldName(), pkg.getFilename());
                 collection.deleteOne(deleteFilter);
             } catch (JsonParseException e) {
                 LOGGER.error("Error when deleting package {}. {}", pkg.getId(), e.getMessage());
@@ -839,7 +884,7 @@ public enum MongoDbManager {
         if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
 
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
-        pkgs.forEach(pkg -> collection.updateOne(eq(FIELD_PACKAGE_ID, pkg.getId()), set(FIELD_LATEST_BUILD_AVAILABLE, false)));
+        pkgs.forEach(pkg -> collection.updateOne(eq(FIELD_PACKAGE_ID, pkg.getId()), set(PkgField.LATEST_BUILD_AVAILABLE.fieldName(), false)));
 
         LOGGER.debug("Successfully updated latest build available for {} packages", pkgs.size());
     }
@@ -1028,7 +1073,7 @@ public enum MongoDbManager {
 
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
         try {
-            Bson deleteFilter = eq(FIELD_DISTRIBUTION, distro.getApiString());
+            Bson deleteFilter = eq(PkgField.DISTRIBUTION.fieldName(), distro.getApiString());
             collection.deleteMany(deleteFilter);
         } catch (JsonParseException e) {
             LOGGER.error("Error when deleting package from {}. {}", distro.getApiString(), e.getMessage());
@@ -1163,7 +1208,7 @@ public enum MongoDbManager {
         if (null == document) {
             return Instant.ofEpochSecond(0);
         } else {
-            return Instant.ofEpochSecond(document.getLong(FIELD_TIMESTAMP));
+            return Instant.ofEpochSecond(((Number) document.get(FIELD_TIMESTAMP)).longValue());
         }
         }
 
@@ -1188,7 +1233,7 @@ public enum MongoDbManager {
         if (!collectionExists(database, Constants.SENTINEL_COLLECTION)) { database.createCollection(Constants.SENTINEL_COLLECTION); }
 
         final MongoCollection<Document> collection = database.getCollection(Constants.SENTINEL_COLLECTION);
-        final Document                  sentinel   = collection.find(eq(FIELD_ID, Constants.SENTINEL_PKG_ID)).first();
+        final Document                  sentinel   = collection.find(eq(PkgField.ID.fieldName(), Constants.SENTINEL_PKG_ID)).first();
 
         if (null == sentinel) {
             return false;
@@ -1221,7 +1266,7 @@ public enum MongoDbManager {
         if (!collectionExists(database, Constants.SENTINEL_COLLECTION)) { database.createCollection(Constants.SENTINEL_COLLECTION); }
 
         final MongoCollection<Document> collection = database.getCollection(Constants.SENTINEL_COLLECTION);
-        final Document                  document   = collection.find(eq(FIELD_ID, Constants.SENTINEL_PKG_ID)).first();
+        final Document                  document   = collection.find(eq(PkgField.ID.fieldName(), Constants.SENTINEL_PKG_ID)).first();
         if (null == document) {
             return Instant.ofEpochSecond(0);
         } else {
@@ -1277,7 +1322,7 @@ public enum MongoDbManager {
         if (!collectionExists(database, Constants.PACKAGES_COLLECTION)) { database.createCollection(Constants.PACKAGES_COLLECTION); }
 
         MongoCollection<Document> collection = database.getCollection(Constants.PACKAGES_COLLECTION);
-        pkgs.forEach(pkg -> collection.updateOne(eq(FIELD_PACKAGE_ID, pkg.getId()), set(FIELD_LATEST_BUILD_AVAILABLE, pkg.isLatestBuildAvailable())));
+        pkgs.forEach(pkg -> collection.updateOne(eq(FIELD_PACKAGE_ID, pkg.getId()), set(PkgField.LATEST_BUILD_AVAILABLE.fieldName(), pkg.isLatestBuildAvailable())));
 
         LOGGER.debug("Successfully synced latest build available for all packages in cache {}", pkgs.size());
     }

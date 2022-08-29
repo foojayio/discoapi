@@ -425,6 +425,10 @@ public enum Distro implements Api {
         return REVERSE_SCOPE_LOOKUP.get(UsageScope.FREE_TO_USE_IN_PRODUCTION);
     }
 
+    public static List<Distro> getDistributionsOnAdoptiumMarketplace() {
+        return List.of(Distro.ZULU, Distro.TEMURIN, Distro.RED_HAT, Distro.MICROSOFT, Distro.SEMERU, Distro.SEMERU_CERTIFIED, Distro.BISHENG, Distro.DRAGONWELL);
+    }
+
     public static long getNumberOfPkgsForDistro(final Distro distro) {
         return CacheManager.INSTANCE.pkgCache.getPkgs().parallelStream().filter(pkg -> pkg.getDistribution().getDistro() == distro).count();
     }

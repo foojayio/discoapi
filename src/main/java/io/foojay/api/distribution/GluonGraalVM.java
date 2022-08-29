@@ -176,14 +176,10 @@ public class GluonGraalVM implements Distribution {
         for (JsonElement element : assets) {
             JsonObject assetJsonObj = element.getAsJsonObject();
             String     filename     = assetJsonObj.get("name").getAsString();
-            if (!filename.endsWith(Constants.FILE_ENDING_ZIP)) { continue; }
-
-            //FILENAME_MATCHER.reset(filename);
-            //if (!FILENAME_MATCHER.matches()) { continue; }
 
             String   strippedFilename      = filename.replaceFirst("graalvm-svm-java([0-9]{2,3})-", "").replaceAll("(\\.zip)", "");
             String[] filenameParts         = filename.split("-");
-            String[] strippedFilenameParts = strippedFilename.split("-");
+            //String[] strippedFilenameParts = strippedFilename.split("-");
 
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
@@ -207,9 +203,12 @@ public class GluonGraalVM implements Distribution {
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
 
-            // TODO: Needs to be modified as soon as aarch64 builds will be available
             if (Architecture.NONE == arch) {
-                arch = Architecture.X64;
+                if (filename.contains("m1") || filename.contains("m2")) {
+                    arch = Architecture.AARCH64;
+                } else {
+                    arch = Architecture.X64;
+                }
             }
 
             if (Architecture.NONE == arch) {
@@ -251,6 +250,12 @@ public class GluonGraalVM implements Distribution {
                                                                   .findFirst()
                                                                   .map(Entry::getValue)
                                                                   .orElse(OperatingSystem.NONE);
+
+            if (OperatingSystem.NONE == os) {
+                if (strippedFilename.contains("darwin")) {
+                    os = MACOS;
+                }
+            }
 
             if (OperatingSystem.NONE == os) {
                 switch (pkg.getArchiveType()) {

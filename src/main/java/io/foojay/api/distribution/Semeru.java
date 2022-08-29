@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
@@ -153,8 +154,12 @@ public class Semeru implements Distribution {
     public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
+        OptionalInt nextButOneEA = Helper.getNextButOneEA();
+        final int latestEA = nextButOneEA.isPresent() ? nextButOneEA.getAsInt() : MajorVersion.getLatest(true).getAsInt();
+
         try {
-            for (int i = 8 ; i <= MajorVersion.getLatest(true).getAsInt() ; i++) {
+            for (int i = 8 ; i <= latestEA ; i++) {
+                if (i < 17 && TermOfSupport.LTS != new MajorVersion(i).getTermOfSupport()) { continue; }
                 String packageUrl = PACKAGE_URL + "semeru" + i + "-binaries/releases";
                 // Get all packages from github
                 try {
@@ -180,13 +185,17 @@ public class Semeru implements Distribution {
             LOGGER.error("Error fetching all packages from Semeru. {}", e);
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
     }
 
     public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
+
+        OptionalInt nextEA       = Helper.getNextEA();
+        OptionalInt nextButOneEA = Helper.getNextButOneEA();
+
         for (int i = 0; i < jsonArray.size(); i++) {
             JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
             if (jsonObj.has("prerelease")) {
@@ -275,7 +284,11 @@ public class Semeru implements Distribution {
                 pkg.setArchiveType(archiveType);
                 pkg.setJavaFXBundled(false);
                 pkg.setTermOfSupport(majorVersion.getTermOfSupport());
-                pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+                if (nextEA.isPresent()) {
+                    pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.getAsInt() == nextEA.getAsInt() || majorVersion.getAsInt() == nextButOneEA.getAsInt()) ? EA : GA);
+                } else {
+                    pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+                }
                 pkg.setPackageType(packageType);
                 pkg.setOperatingSystem(operatingSystem);
                 pkg.setFreeUseInProduction(Boolean.TRUE);
@@ -312,7 +325,7 @@ public class Semeru implements Distribution {
             }
         }
 
-        
+        Helper.checkPkgsForTooEarlyGA(pkgs);
 
         LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
