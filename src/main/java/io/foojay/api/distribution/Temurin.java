@@ -109,6 +109,7 @@ public class Temurin implements Distribution {
     private static final String        FIELD_LINK             = "link";
     private static final String        FIELD_NAME             = "name";
     private static final String        FIELD_VERSION_DATA     = "version_data";
+    private static final String        FIELD_OPENJDK_VERSION  = "openjdk_version";
     private static final String        FIELD_SEMVER           = "semver";
     private static final String        FIELD_BUILD            = "build";
     private static final String        FIELD_RELEASE_TYPE     = "release_type";
@@ -242,7 +243,7 @@ public class Temurin implements Distribution {
         for (int i = 0 ; i < binaries.size() ; i++) {
             JsonObject    binariesObj    = binaries.get(i).getAsJsonObject();
             JsonObject    versionDataObj = jsonObj.get(FIELD_VERSION_DATA).getAsJsonObject();
-            VersionNumber vNumber        = Semver.fromText(versionDataObj.get(FIELD_SEMVER).getAsString()).getSemver1().getVersionNumber();
+            VersionNumber vNumber        = Semver.fromText(versionDataObj.get(FIELD_OPENJDK_VERSION).getAsString()).getSemver1().getVersionNumber();
             if (latest) {
                 if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }
             }
@@ -276,7 +277,7 @@ public class Temurin implements Distribution {
                 String installerName         = installerObj.get(FIELD_NAME).getAsString();
                 String installerDownloadLink = installerObj.get(FIELD_LINK).getAsString();
 
-                if (installerName.contains("testimage") || installerName.contains("debugimage")) { continue; }
+                if (installerName.contains("testimage") || installerName.contains("debugimage") || installerName.endsWith("json")) { continue; }
 
                 if (Architecture.NONE == arc) {
                     arc = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
@@ -344,7 +345,7 @@ public class Temurin implements Distribution {
                 String packageName         = packageObj.get(FIELD_NAME).getAsString();
                 String packageDownloadLink = packageObj.get(FIELD_LINK).getAsString();
 
-                if (packageName.contains("testimage") || packageName.contains("debugimage")) { continue; }
+                if (packageName.contains("testimage") || packageName.contains("debugimage") || packageName.endsWith("json")) { continue; }
 
                 if (Architecture.NONE == arc) {
                     arc = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
@@ -528,15 +529,8 @@ public class Temurin implements Distribution {
                     final ArchiveType archiveType = Helper.getFileEnding(filename);
                     if (OperatingSystem.MACOS == operatingSystem) {
                         switch (archiveType) {
-                            case DEB:
-                            case RPM:
-                                operatingSystem = OperatingSystem.LINUX;
-                                break;
-                            case CAB:
-                            case MSI:
-                            case EXE:
-                                operatingSystem = OperatingSystem.WINDOWS;
-                                break;
+                            case DEB, RPM      -> operatingSystem = OperatingSystem.LINUX;
+                            case CAB, MSI, EXE -> operatingSystem = OperatingSystem.WINDOWS;
                         }
                     }
 

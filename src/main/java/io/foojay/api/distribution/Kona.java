@@ -291,6 +291,7 @@ public class Kona implements Distribution {
                         case PKG:
                             os = MACOS;
                             break;
+                        default: continue;
                     }
                 }
                 if (OperatingSystem.NONE == os) { continue; }

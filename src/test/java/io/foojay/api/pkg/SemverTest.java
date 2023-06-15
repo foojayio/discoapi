@@ -26,11 +26,8 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.SemverParser;
 import eu.hansolo.jdktools.versioning.SemverParsingResult;
 import eu.hansolo.jdktools.versioning.VersionNumber;
-import io.foojay.api.CacheManager;
-import io.foojay.api.util.Helper;
 import org.junit.jupiter.api.Test;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 

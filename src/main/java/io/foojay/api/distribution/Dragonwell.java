@@ -61,7 +61,9 @@ import static eu.hansolo.jdktools.PackageType.JDK;
 public class Dragonwell implements Distribution {
     private static final Logger                       LOGGER                 = LoggerFactory.getLogger(Dragonwell.class);
 
-    private static final String                       GITHUB_USER            = "alibaba";
+    //private static final String                       GITHUB_USER_OLD            = "alibaba";
+    //private static final String                       PACKAGE_URL_OLD            = "https://api.github.com/repos/" + GITHUB_USER + "/dragonwell";
+    private static final String                       GITHUB_USER            = "dragonwell-project";
     private static final String                       PACKAGE_URL            = "https://api.github.com/repos/" + GITHUB_USER + "/dragonwell";
 
     // URL parameters
@@ -245,6 +247,7 @@ public class Dragonwell implements Distribution {
                     case PKG:
                         os = MACOS;
                         break;
+                    default: continue;
                 }
             }
             if (OperatingSystem.NONE != operatingSystem && operatingSystem != os) { continue; }

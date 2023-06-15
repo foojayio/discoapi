@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021.
+ * Copyright (c) 2022.
  *
  * This file is part of DiscoAPI.
  *
@@ -13,20 +13,15 @@
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
+ *     You should have received a copy of the GNU General Public License
+ *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package io.foojay.api.distribution;
 
-import io.foojay.api.pkg.Distro;
-import org.junit.jupiter.api.Test;
+public class GraalVMCE20 extends GraalVM_CE {
 
-
-public class DistributionTest {
-
-    @Test
-    public void distributions() {
-        assert (Distro.getDistributions().size() == 29);
+    public GraalVMCE20() {
+        super("GRAALVM_CE20", 20);
     }
 }

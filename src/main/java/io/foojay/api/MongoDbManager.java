@@ -716,8 +716,7 @@ public enum MongoDbManager {
         LOGGER.debug("Successfully updated no of downloads for id {}", pkgId);
     }
 
-    public void addDownloadFromUserAgent(final String pkgId, final String userAgent, final String ipAddress) {
-        String countryCode = Helper.getCountryCode(ipAddress);
+    public void addDownloadFromUserAgent(final String pkgId, final String userAgent, final String countryCode) {
         connect();
         if (!connected) {
             LOGGER.debug("MongoDB not connected, no packages updated");

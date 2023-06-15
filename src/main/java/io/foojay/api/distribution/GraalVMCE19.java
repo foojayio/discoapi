@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021.
+ * Copyright (c) 2022.
  *
  * This file is part of DiscoAPI.
  *
@@ -17,23 +17,11 @@
  *     along with DiscoAPI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package io.foojay.api.util;
+package io.foojay.api.distribution;
 
-import java.time.Instant;
-import java.util.Objects;
+public class GraalVMCE19 extends GraalVM_CE {
 
-
-public class Records {
-
-    public record DownloadInfo(String pkgId, String userAgent, String countryCode, Instant timestamp) {}
-
-    public record Cmd(String name, Runnable cmd) {
-        @Override public boolean equals(final Object o) {
-            if (this == o) { return true; }
-            if (o == null || getClass() != o.getClass()) { return false; }
-            Cmd cmd = (Cmd) o;
-            return name.equals(cmd.name);
-        }
-        @Override public int hashCode() { return Objects.hash(name); }
+    public GraalVMCE19() {
+        super("GRAALVM_CE19", 19);
     }
 }

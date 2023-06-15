@@ -158,9 +158,6 @@ public class Mandrel implements Distribution {
             vNumber = VersionNumber.fromText(tag);
         }
 
-        TermOfSupport supTerm = Helper.getTermOfSupport(vNumber);
-        supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
-
         boolean prerelease = false;
         if (jsonObj.has("prerelease")) {
             prerelease = jsonObj.get("prerelease").getAsBoolean();
@@ -225,9 +222,12 @@ public class Mandrel implements Distribution {
                     pkg.setJdkVersion(new MajorVersion(jdkVersion));
                 } catch (Exception e) {
                     LOGGER.error("Error parsing jdk version from filename in Mandrel {}", filename);
+                    continue;
                 }
             }
 
+            TermOfSupport supTerm = Helper.getTermOfSupport(pkg.getJdkVersion().getAsInt());
+            supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
             pkg.setTermOfSupport(supTerm);
 
             pkg.setPackageType(JDK);
@@ -255,6 +255,7 @@ public class Mandrel implements Distribution {
                     case PKG:
                         os = MACOS;
                         break;
+                    default: continue;
                 }
             }
             if (OperatingSystem.NONE == os) {

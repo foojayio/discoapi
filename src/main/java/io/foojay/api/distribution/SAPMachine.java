@@ -32,6 +32,7 @@ import eu.hansolo.jdktools.PackageType;
 import eu.hansolo.jdktools.ReleaseStatus;
 import eu.hansolo.jdktools.SignatureType;
 import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.Verification;
 import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
@@ -69,6 +70,7 @@ import static eu.hansolo.jdktools.Architecture.PPC64LE;
 import static eu.hansolo.jdktools.Architecture.X64;
 import static eu.hansolo.jdktools.Bitness.BIT_64;
 import static eu.hansolo.jdktools.OperatingSystem.LINUX;
+import static eu.hansolo.jdktools.OperatingSystem.LINUX_MUSL;
 import static eu.hansolo.jdktools.OperatingSystem.MACOS;
 import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
 import static eu.hansolo.jdktools.PackageType.JDK;
@@ -279,19 +281,10 @@ public class SAPMachine implements Distribution {
                                                                   .orElse(OperatingSystem.NONE);
             if (OperatingSystem.NONE == os) {
                 switch (pkg.getArchiveType()) {
-                    case DEB:
-                    case RPM:
-                    case TAR_GZ:
-                        os = OperatingSystem.LINUX;
-                        break;
-                    case MSI:
-                    case ZIP:
-                        os = OperatingSystem.WINDOWS;
-                        break;
-                    case DMG:
-                    case PKG:
-                        os = OperatingSystem.MACOS;
-                        break;
+                    case DEB, RPM, TAR_GZ -> os = OperatingSystem.LINUX;
+                    case MSI, ZIP         -> os = OperatingSystem.WINDOWS;
+                    case DMG, PKG         -> os = OperatingSystem.MACOS;
+                    default               -> { continue; }
                 }
             }
             if (OperatingSystem.NONE == os) {
@@ -301,6 +294,11 @@ public class SAPMachine implements Distribution {
             pkg.setOperatingSystem(os);
             pkg.setFreeUseInProduction(Boolean.TRUE);
             pkg.setSize(Helper.getFileSize(downloadLink));
+
+            if (ReleaseStatus.GA == pkg.getReleaseStatus() && Helper.isLTS(pkg.getMajorVersion())) {
+                pkg.setTckTested(Verification.YES);
+                pkg.setTckCertUri("https://github.com/SAP/SapMachine/wiki/Frequently-Asked-Questions#Are-SapMachine-builds-verified-by-the-Java-Compatibility-Kit-JCK");
+            }
 
             if (pkg.getVersionNumber().getInterim().isPresent() && pkg.getVersionNumber().getInterim().getAsInt() != 0) { continue; }
             pkgs.add(pkg);
@@ -324,14 +322,23 @@ public class SAPMachine implements Distribution {
                 final JsonObject assetJsonObj = element.getAsJsonObject();
                 final String     filename     = assetJsonObj.get("name").getAsString();
 
-                if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) {
+                if (!filename.startsWith("sapmachine-")) { continue; }
+                if (null == filename ||
+                    filename.isEmpty() ||
+                    filename.endsWith(Constants.FILE_ENDING_TXT) ||
+                    filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) ||
+                    filename.contains("beta") ||
+                    filename.contains("internal") ||
+                    filename.contains("jdk-0.0.0") ||
+                    filename.contains("jre-0.0.0")) {
                     continue;
                 }
 
-                if (!filename.startsWith("sapmachine-")) { continue; }
                 final String        withoutPrefix = filename.replace("sapmachine-", "");
                 final VersionNumber versionNumber = VersionNumber.fromText(withoutPrefix);
                 final MajorVersion  majorVersion  = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
+                if (majorVersion.getAsInt() == 0) { continue; }
+
                 final PackageType   packageType   = withoutPrefix.startsWith("jdk") ? JDK : JRE;
                 final String        downloadLink  = assetJsonObj.get("browser_download_url").getAsString();
 
@@ -345,9 +352,22 @@ public class SAPMachine implements Distribution {
                                                                .findFirst()
                                                                .map(Entry::getValue)
                                                                                    .orElse(OperatingSystem.NOT_FOUND);
+                
                 if (OperatingSystem.NOT_FOUND == operatingSystem) {
+                    if (filename.endsWith(ArchiveType.RPM.getApiString()) || filename.endsWith(ArchiveType.DEB.getApiString())) {
+                        if (filename.contains("musl")) {
+                            operatingSystem = LINUX_MUSL;
+                        } else {
+                            operatingSystem = LINUX;
+                        }
+                    } else if (filename.endsWith(ArchiveType.DMG.getApiString()) || filename.endsWith(ArchiveType.PKG.getApiString())) {
+                        operatingSystem = MACOS;
+                    } else if (filename.endsWith(ArchiveType.EXE.getApiString()) || filename.endsWith(ArchiveType.MSI.getApiString())) {
+                        operatingSystem = WINDOWS;
+                    } else {
                     LOGGER.debug("Operating System not found in SAP Machine for filename: {}", filename);
                     continue;
+                }
                 }
 
                 final Architecture architecture = Constants.ARCHITECTURE_LOOKUP.entrySet()
@@ -376,11 +396,8 @@ public class SAPMachine implements Distribution {
                 ArchiveType archiveType = ArchiveType.getFromFileName(filename);
                 if (OperatingSystem.MACOS == operatingSystem) {
                     switch(archiveType) {
-                        case DEB:
-                        case RPM: operatingSystem = OperatingSystem.LINUX; break;
-                        case CAB:
-                        case MSI:
-                        case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
+                        case DEB, RPM      -> operatingSystem = OperatingSystem.LINUX;
+                        case CAB, MSI, EXE -> operatingSystem = OperatingSystem.WINDOWS;
                     }
                 }
 
@@ -409,6 +426,11 @@ public class SAPMachine implements Distribution {
                 pkg.setOperatingSystem(operatingSystem);
                 pkg.setFreeUseInProduction(Boolean.TRUE);
                 pkg.setSize(Helper.getFileSize(downloadLink));
+
+                if (ReleaseStatus.GA == pkg.getReleaseStatus() && Helper.isLTS(pkg.getMajorVersion())) {
+                    pkg.setTckTested(Verification.YES);
+                    pkg.setTckCertUri("https://github.com/SAP/SapMachine/wiki/Frequently-Asked-Questions#Are-SapMachine-builds-verified-by-the-Java-Compatibility-Kit-JCK");
+                }
 
                 if (pkg.getVersionNumber().getInterim().isPresent() && pkg.getVersionNumber().getInterim().getAsInt() != 0) { continue; }
                 pkgs.add(pkg);
@@ -503,7 +525,8 @@ public class SAPMachine implements Distribution {
                     for (String majorRelease : majorReleases) {
                         JsonObject         majorArray   = assets.get(majorRelease).getAsJsonObject();
                         JsonArray          releases     = majorArray.get("releases").getAsJsonArray();
-                        final MajorVersion majorVersion = new MajorVersion(Integer.valueOf(majorRelease));
+                        Integer            featureVersion = Integer.valueOf(majorRelease.replace("-ea", ""));
+                        final MajorVersion majorVersion   = new MajorVersion(featureVersion);
                         for (int i = 0; i < releases.size(); i++) {
                             JsonObject          releaseObj    = releases.get(i).getAsJsonObject();
                             final String        tag           = releaseObj.get("tag").getAsString();
@@ -526,7 +549,7 @@ public class SAPMachine implements Distribution {
                                         pkg.setVersionNumber(versionNumber);
                                         pkg.setJavaVersion(versionNumber);
                                         pkg.setDistributionVersion(versionNumber);
-                                        pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
+                                        pkg.setJdkVersion(majorVersion);
                                         pkg.setDirectDownloadUri(downloadLink);
                                         pkg.setFileName(filename);
                                         pkg.setArchiveType(ArchiveType.getFromFileName(filename));
@@ -575,7 +598,14 @@ public class SAPMachine implements Distribution {
                                                 pkg.setOperatingSystem(MACOS);
                                                 pkg.setArchitecture(AARCH64);
                                                 break;
+                                            default: continue;
                                         }
+
+                                        if (ReleaseStatus.GA == pkg.getReleaseStatus() && Helper.isLTS(pkg.getMajorVersion())) {
+                                            pkg.setTckTested(Verification.YES);
+                                            pkg.setTckCertUri("https://github.com/SAP/SapMachine/wiki/Frequently-Asked-Questions#Are-SapMachine-builds-verified-by-the-Java-Compatibility-Kit-JCK");
+                                        }
+
                                         pkg.setSize(Helper.getFileSize(downloadLink));
                                         if (pkg.getVersionNumber().getInterim().isPresent() && pkg.getVersionNumber().getInterim().getAsInt() != 0) { continue; }
                                         pkgs.add(pkg);
@@ -628,7 +658,14 @@ public class SAPMachine implements Distribution {
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
         for (String href : fileHrefs) {
             final String filename = Helper.getFileNameFromText(href);
-            if (null == filename || filename.isEmpty() || filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) || filename.contains("beta") || filename.contains("internal")) { continue; }
+            if (null == filename ||
+                filename.isEmpty() ||
+                filename.endsWith(Constants.FILE_ENDING_TXT) ||
+                filename.endsWith(Constants.FILE_ENDING_SYMBOLS_TAR_GZ) ||
+                filename.contains("beta") ||
+                filename.contains("internal") ||
+                filename.contains("jdk-0.0.0") ||
+                filename.contains("jre-0.0.0")) { continue; }
 
             if (!filename.startsWith("sapmachine-")) { continue; }
             final String          withoutPrefix   = filename.replace("sapmachine-", "");
@@ -660,11 +697,8 @@ public class SAPMachine implements Distribution {
 
             if (OperatingSystem.MACOS == operatingSystem) {
                 switch(archiveType) {
-                    case DEB:
-                    case RPM: operatingSystem = OperatingSystem.LINUX; break;
-                    case CAB:
-                    case MSI:
-                    case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
+                    case DEB, RPM      -> operatingSystem = OperatingSystem.LINUX;
+                    case CAB, MSI, EXE -> operatingSystem = OperatingSystem.WINDOWS;
                 }
             }
 
@@ -708,7 +742,14 @@ public class SAPMachine implements Distribution {
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.TRUE);
+
+            if (ReleaseStatus.GA == pkg.getReleaseStatus() && Helper.isLTS(pkg.getMajorVersion())) {
+                pkg.setTckTested(Verification.YES);
+                pkg.setTckCertUri("https://github.com/SAP/SapMachine/wiki/Frequently-Asked-Questions#Are-SapMachine-builds-verified-by-the-Java-Compatibility-Kit-JCK");
+            }
+
             pkg.setSize(Helper.getFileSize(pkg.getDirectDownloadUri()));
+            if (pkg.getVersionNumber().getInterim().isPresent() && pkg.getVersionNumber().getInterim().getAsInt() != 0) { continue; }
             pkgs.add(pkg);
         }
 

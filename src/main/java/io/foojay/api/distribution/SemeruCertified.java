@@ -31,6 +31,7 @@ import eu.hansolo.jdktools.PackageType;
 import eu.hansolo.jdktools.ReleaseStatus;
 import eu.hansolo.jdktools.SignatureType;
 import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.Verification;
 import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
@@ -242,11 +243,8 @@ public class SemeruCertified implements Distribution {
                 final ArchiveType archiveType = Helper.getFileEnding(filename);
                 if (OperatingSystem.MACOS == operatingSystem) {
                     switch(archiveType) {
-                        case DEB:
-                        case RPM: operatingSystem = OperatingSystem.LINUX; break;
-                        case CAB:
-                        case MSI:
-                        case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
+                        case DEB, RPM      -> operatingSystem = OperatingSystem.LINUX;
+                        case CAB, MSI, EXE -> operatingSystem = OperatingSystem.WINDOWS;
                     }
                 }
 
@@ -267,6 +265,13 @@ public class SemeruCertified implements Distribution {
                     pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.getAsInt() == nextEA.getAsInt() || majorVersion.getAsInt() == nextButOneEA.getAsInt()) ? EA : GA);
                 } else {
                     pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+                }
+                if (ReleaseStatus.GA == pkg.getReleaseStatus()) {
+                    pkg.setTckTested(Verification.YES);
+                    pkg.setTckCertUri("https://www.ibm.com/support/pages/semeru-runtimes-getting-started");
+                } else {
+                    pkg.setTckTested(Verification.NO);
+                    pkg.setTckCertUri("");
                 }
                 pkg.setPackageType(packageType);
                 pkg.setOperatingSystem(operatingSystem);
@@ -375,11 +380,8 @@ public class SemeruCertified implements Distribution {
             final ArchiveType archiveType = Helper.getFileEnding(filename);
             if (OperatingSystem.MACOS == operatingSystem) {
                 switch(archiveType) {
-                    case DEB:
-                    case RPM: operatingSystem = OperatingSystem.LINUX; break;
-                    case CAB:
-                    case MSI:
-                    case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
+                    case DEB, RPM      -> operatingSystem = OperatingSystem.LINUX;
+                    case CAB, MSI, EXE -> operatingSystem = OperatingSystem.WINDOWS;
                 }
             }
 
@@ -400,6 +402,13 @@ public class SemeruCertified implements Distribution {
                 pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.getAsInt() == nextEA.getAsInt() || majorVersion.getAsInt() == nextButOneEA.getAsInt()) ? EA : GA);
             } else {
                 pkg.setReleaseStatus((filename.contains("-ea.") || majorVersion.equals(MajorVersion.getLatest(true))) ? EA : GA);
+            }
+            if (ReleaseStatus.GA == pkg.getReleaseStatus()) {
+                pkg.setTckTested(Verification.YES);
+                pkg.setTckCertUri("https://www.ibm.com/support/pages/semeru-runtimes-getting-started");
+            } else {
+                pkg.setTckTested(Verification.NO);
+                pkg.setTckCertUri("");
             }
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);

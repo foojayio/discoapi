@@ -122,9 +122,21 @@ public class MajorVersion implements Comparable<MajorVersion> {
     }
     public static MajorVersion getLatest(final boolean includingEa) {
         if (includingEa) {
-            return CacheManager.INSTANCE.getMajorVersions().stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).findFirst().get();
+            return CacheManager.INSTANCE.getMajorVersions(BuildScope.BUILD_OF_OPEN_JDK).stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).findFirst().get();
         } else {
-            return CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> !majorVersion.getVersions().isEmpty()).sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).findFirst().get();
+            return CacheManager.INSTANCE.getMajorVersions(BuildScope.BUILD_OF_OPEN_JDK).stream().filter(majorVersion -> !majorVersion.getVersions().isEmpty()).sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).findFirst().get();
+        }
+    }
+
+    public static int getLatestGraalVMAsInt(final boolean includingEa) {
+        Optional<MajorVersion> opt = getLatestGraalVM(includingEa);
+        return opt.isPresent() ? opt.get().getAsInt() : 8;
+    }
+    public static Optional<MajorVersion> getLatestGraalVM(final boolean includingEa) {
+        if (includingEa) {
+            return CacheManager.INSTANCE.getMajorVersions(BuildScope.BUILD_OF_GRAALVM).stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).findFirst();
+        } else {
+            return CacheManager.INSTANCE.getMajorVersions(BuildScope.BUILD_OF_GRAALVM).stream().filter(majorVersion -> !majorVersion.getVersions().isEmpty()).sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).findFirst();
         }
     }
 

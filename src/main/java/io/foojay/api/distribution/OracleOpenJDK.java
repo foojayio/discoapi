@@ -19,6 +19,7 @@
 
 package io.foojay.api.distribution;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -33,6 +34,7 @@ import eu.hansolo.jdktools.ReleaseStatus;
 import eu.hansolo.jdktools.SignatureType;
 import eu.hansolo.jdktools.TermOfSupport;
 import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.SemverParser;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
@@ -40,6 +42,7 @@ import io.foojay.api.pkg.Feature;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
+import io.foojay.api.util.GithubTokenPool;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +59,7 @@ import java.util.Map.Entry;
 import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.TreeSet;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -82,6 +86,7 @@ public class OracleOpenJDK implements Distribution {
     private static final String                       GITHUB_USER                = "AdoptOpenJDK";
     private static final String                       GITHUB_PACKAGE_8_URL       = "https://api.github.com/repos/" + GITHUB_USER + "/openjdk8-upstream-binaries";
     private static final String                       GITHUB_PACKAGE_11_URL      = "https://api.github.com/repos/" + GITHUB_USER + "/openjdk11-upstream-binaries";
+    private static final String                       GITHUB_CRAC_URL            = "https://api.github.com/repos/CRaC/openjdk-builds/releases";
     private static final String                       FILENAME_PREFIX            = "openjdk-";
     private static final Pattern                      FILENAME_PREFIX_PATTERN    = Pattern.compile("OpenJDK(8|11)U-");
     private static final Matcher                      FILENAME_PREFIX_MATCHER    = FILENAME_PREFIX_PATTERN.matcher("");
@@ -507,6 +512,139 @@ public class OracleOpenJDK implements Distribution {
 
         Helper.checkPkgsForTooEarlyGA(pkgs);
 
+        return pkgs;
+    }
+
+    public List<Pkg> getCRaCPkgs(final boolean onlyNewPkgs) {
+        List<Pkg> pkgs = new ArrayList<>();
+        try {
+            HttpResponse<String> response = Helper.get(GITHUB_CRAC_URL, Map.of("accept", "application/vnd.github.v3+json",
+                                                                               "authorization", GithubTokenPool.INSTANCE.next()));
+            if (response.statusCode() == 200) {
+                String      bodyText = response.body();
+                Gson        gson     = new Gson();
+                JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
+                if (element instanceof JsonArray) {
+                    JsonArray jsonArray = element.getAsJsonArray();
+                    pkgs.addAll(getAllCRaCPkgsFromJson(jsonArray, onlyNewPkgs));
+                }
+            } else {
+                // Problem with url request
+                LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
+            }
+        } catch (CompletionException e) {
+            LOGGER.error("Error fetching packages for distribution {} from {}", getName(), GITHUB_CRAC_URL);
+        }
+        return pkgs;
+    }
+
+    public List<Pkg> getAllCRaCPkgsFromJson(final JsonArray jsonArray, final boolean onlyNewPkgs) {
+        List<Pkg> pkgs = new ArrayList<>();
+
+        for (int i = 0; i < jsonArray.size(); i++) {
+            JsonObject    jsonObj  = jsonArray.get(i).getAsJsonObject();
+            String        tag_name = jsonObj.get("tag_name").getAsString();
+            JsonArray     assets   = jsonObj.getAsJsonArray("assets");
+            for (JsonElement element : assets) {
+                JsonObject assetJsonObj = element.getAsJsonObject();
+                String     filename     = assetJsonObj.get("name").getAsString();
+
+                if (null == filename || filename.isEmpty() || filename.endsWith("docs.tar.gz") || filename.endsWith(".zip") || filename.endsWith("sha256")) { continue; }
+                if (filename.contains("-debug-")) { continue; }
+
+                String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+
+                if (onlyNewPkgs) {
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                }
+
+                Pkg pkg = new Pkg();
+
+                ArchiveType ext = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
+                                                               .filter(entry -> filename.endsWith(entry.getKey()))
+                                                               .findFirst()
+                                                               .map(Entry::getValue)
+                                                               .orElse(ArchiveType.NONE);
+                if (ArchiveType.NONE == ext) {
+                    LOGGER.debug("Archive Type not found in {} for filename: {}", getName(), filename);
+                    continue;
+                } else if (ArchiveType.SRC_TAR == ext) {
+                    continue;
+                }
+
+                pkg.setArchiveType(ext);
+
+                String versionString;
+                if (filename.startsWith("openjdk")) {
+                    versionString = filename.replace("openjdk-", "").replace(".tar.gz", "");
+                    versionString = versionString.split("_")[0];
+                } else if (filename.startsWith("jdk")) {
+                    versionString = filename.replace("jdk", "").replace(".tar.gz", "");
+                } else {
+                    continue;
+                }
+                Semver semver = SemverParser.fromText(versionString).getSemver1();
+                VersionNumber vNumber = VersionNumber.fromText(semver.toString(true));
+
+                TermOfSupport supTerm = null;
+                if (!vNumber.getFeature().isEmpty()) {
+                    supTerm = Helper.getTermOfSupport(vNumber, Distro.ORACLE_OPEN_JDK);
+                }
+                pkg.setTermOfSupport(supTerm);
+
+                pkg.setDistribution(Distro.ORACLE_OPEN_JDK.get());
+                pkg.setFileName(filename);
+                pkg.setDirectDownloadUri(downloadLink);
+                pkg.setVersionNumber(vNumber);
+                pkg.setJavaVersion(vNumber);
+                pkg.setDistributionVersion(vNumber);
+                pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
+                pkg.setPackageType(filename.contains(Constants.JRE_POSTFIX) ? JRE : JDK);
+                pkg.setReleaseStatus(EA);
+
+
+                Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                                                                 .filter(entry -> filename.contains(entry.getKey()))
+                                                                 .findFirst()
+                                                                 .map(Entry::getValue)
+                                                                 .orElse(Architecture.NONE);
+                if (Architecture.NONE == arch) {
+                    LOGGER.debug("Architecture not found in {} for filename: {}", getName(), filename);
+                    arch = Architecture.X64;
+                }
+                pkg.setArchitecture(arch);
+                pkg.setBitness(arch.getBitness());
+
+                OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
+                                                                      .filter(entry -> filename.contains(entry.getKey()))
+                                                                      .findFirst()
+                                                                      .map(Entry::getValue)
+                                                                      .orElse(OperatingSystem.NONE);
+                if (OperatingSystem.NONE == os) {
+                    switch (pkg.getArchiveType()) {
+                        case DEB, RPM, TAR_GZ -> os = OperatingSystem.LINUX;
+                        case MSI, ZIP         -> os = OperatingSystem.WINDOWS;
+                        case DMG, PKG         -> os = OperatingSystem.MACOS;
+                        default               -> { continue; }
+                    }
+                }
+                if (OperatingSystem.NONE == os) {
+                    LOGGER.debug("Operating System not found in {} for filename: {}", getName(), filename);
+                    continue;
+                }
+                pkg.setOperatingSystem(os);
+
+                pkg.setFreeUseInProduction(Boolean.TRUE);
+                pkg.setSize(Helper.getFileSize(downloadLink));
+                List<Feature> features = new ArrayList<>();
+                features.add(Feature.CRAC);
+                pkg.setFeatures(features);
+
+                pkgs.add(pkg);
+            }
+        }
+
+        LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), GITHUB_CRAC_URL);
         return pkgs;
     }
 

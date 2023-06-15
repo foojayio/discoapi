@@ -392,7 +392,7 @@ public class Pkg {
     public void setFeatures(final Set<Feature> features) { this.features = features; }
 
     public String getId() {
-        return directlyDownloadable ? Helper.getMD5(directDownloadUri.getBytes(StandardCharsets.UTF_8)) : Helper.getMD5(String.join("", directDownloadUri, filename).getBytes(StandardCharsets.UTF_8));
+        return directlyDownloadable ? Helper.getMD5(directDownloadUri.getBytes(StandardCharsets.UTF_8)) : Helper.getMD5((directDownloadUri + filename).getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -400,8 +400,8 @@ public class Pkg {
      * @param outputFormat The compressed versions do not contain the real download link but the current api url to track downloads
      * @return a json representation of the package depending on the given outputFormat
      */
-    public final String toString(final OutputFormat outputFormat, final String API_VERSION) {
-        switch(API_VERSION) {
+    public final String toString(final OutputFormat outputFormat, final String apiVersion) {
+        switch(apiVersion) {
             case API_VERSION_V1, API_VERSION_V2 -> {
                 switch(outputFormat) {
                     case FULL:
@@ -469,8 +469,8 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
@@ -508,8 +508,8 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
@@ -578,8 +578,8 @@ public class Pkg {
                                                   .append(QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(CURLY_BRACKET_CLOSE).append(COMMA)
                                                   .append(QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
                                                   .append(QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
@@ -613,9 +613,9 @@ public class Pkg {
                                                   .append(QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
                                                   .append(QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.EPHEMERAL_ID).append(QUOTES).append(COLON).append(QUOTES).append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN)
+                                                  .append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_EPHEMERAL_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(CURLY_BRACKET_CLOSE).append(COMMA)
                                                   .append(QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
                                                   .append(QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
@@ -694,8 +694,8 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
@@ -732,8 +732,8 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(PkgField.AQAVIT_CERT_URI).append(QUOTES).append(COLON).append(QUOTES).append(aqavitCertUri).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.SIZE).append(QUOTES).append(COLON).append(size).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
-                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENT).append(INDENT).append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(INDENT).append(CURLY_BRACKET_CLOSE).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.FEATURE).append(QUOTES).append(COLON).append(features.stream().map(feature -> feature.toString()).collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(NEW_LINE)
                                                   .append(CURLY_BRACKET_CLOSE)
@@ -800,9 +800,9 @@ public class Pkg {
                                                   .append(QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
                                                   .append(QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN)
+                                                  .append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(CURLY_BRACKET_CLOSE).append(COMMA)
                                                   .append(QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
                                                   .append(QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)
@@ -824,6 +824,7 @@ public class Pkg {
                                                   .append(QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.LIB_C_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(libCType.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.PACKAGE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(packageType.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
@@ -856,9 +857,9 @@ public class Pkg {
                                                   .append(QUOTES).append(PkgField.JAVAFX_BUNDLED).append(QUOTES).append(COLON).append(javafxBundled).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DIRECTLY_DOWNLOADABLE).append(QUOTES).append(COLON).append(directlyDownloadable).append(COMMA)
                                                   .append(QUOTES).append(PkgField.FILENAME).append(QUOTES).append(COLON).append(QUOTES).append(filename).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN).append(NEW_LINE)
-                                                  .append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(API_VERSION).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
+                                                  .append(QUOTES).append(PkgField.LINKS).append(QUOTES).append(COLON).append(CURLY_BRACKET_OPEN)
+                                                  .append(QUOTES).append(PkgField.DOWNLOAD).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.REDIRECT).append(QUOTES).append(COLON).append(QUOTES).append(BASE_URL).append(SLASH).append("v").append(apiVersion).append("/").append(ENDPOINT_IDS).append("/").append(getId()).append("/redirect").append(QUOTES)
                                                   .append(CURLY_BRACKET_CLOSE).append(COMMA)
                                                   .append(QUOTES).append(PkgField.FREE_USE_IN_PROD).append(QUOTES).append(COLON).append(freeUseInProduction).append(COMMA)
                                                   .append(QUOTES).append(PkgField.TCK_TESTED).append(QUOTES).append(COLON).append(QUOTES).append(tckTested.getApiString()).append(QUOTES).append(COMMA)

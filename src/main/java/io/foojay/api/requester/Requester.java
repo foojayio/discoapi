@@ -36,7 +36,6 @@ import static io.foojay.api.util.Constants.QUOTES;
 
 
 public enum Requester implements Api {
-    JBANG("JBang", "jbang"),
     NONE("-", ""),
     NOT_FOUND("", "");
 
@@ -86,10 +85,6 @@ public enum Requester implements Api {
     public static Requester fromText(final String text) {
         if (null == text) { return NOT_FOUND; }
         switch (text) {
-            case "jbang":
-            case "JBANG":
-            case "JBang":
-                return JBANG;
             default:
                 return NOT_FOUND;
         }

@@ -19,10 +19,6 @@
 
 package io.foojay.api.pkg;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import eu.hansolo.jdktools.Match;
 import eu.hansolo.jdktools.TermOfSupport;
 import eu.hansolo.jdktools.scopes.Scope;
@@ -120,44 +116,5 @@ public class MajorVersionTest {
 
         MajorVersion majorVersion = new MajorVersion(6);
         assert !majorVersion.isMaintained();
-    }
-
-    @Test public void validateMajorVersionTest() {
-        List<MajorVersion> majorVersions = CacheManager.INSTANCE.getMajorVersions();
-        majorVersions.add(new MajorVersion(500));
-        final Optional<MajorVersion> largestFeatureVersion       = majorVersions.stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).limit(1).findFirst();
-        final Optional<MajorVersion> secondLargestFeatureVersion = majorVersions.stream().sorted(Comparator.comparingInt(MajorVersion::getAsInt).reversed()).limit(2).skip(1).findFirst();
-        final int                    initialLength               = majorVersions.size();
-        if (largestFeatureVersion.isPresent() && secondLargestFeatureVersion.isPresent()) {
-            final Integer largestFeatureVersionFound       = largestFeatureVersion.get().getAsInt();
-            final Integer secondLargestFeatureVersionFound = secondLargestFeatureVersion.get().getAsInt();
-            if (largestFeatureVersionFound - secondLargestFeatureVersionFound > 20) {
-                majorVersions.remove(largestFeatureVersion.get());
-            }
-        }
-        assert majorVersions.size() == initialLength - 1;
-    }
-
-    @Test public void maintainedMajorVersionsTest() {
-        Boolean earlyAccess         = Boolean.FALSE;
-        Boolean generalAvailability = Boolean.FALSE;
-        Boolean maintainedOnly      = Boolean.TRUE;
-        Boolean includeVersions     = Boolean.TRUE;
-
-        // Extract scopes
-        List<Scope> scopes = Helper.getDistributionScopes(new ArrayList<>());
-
-        // Extract match
-        Match scopeMatch = Match.ANY;
-
-        List<Integer> maintainedMajorVersions = CacheManager.INSTANCE.getMajorVersions()
-                                                                     .stream()
-                                                                     .filter(majorVersion -> maintainedOnly ? majorVersion.isMaintained() : majorVersion != null)
-                                                                     .sorted(Comparator.comparing(MajorVersion::getAsInt).reversed())
-                                                                     .map(majorVersion -> majorVersion.getAsInt())
-                                                                     .collect(Collectors.toList());
-
-        assert maintainedMajorVersions.contains(19);
-        assert maintainedMajorVersions.contains(18);
     }
 }

@@ -169,7 +169,6 @@ public class MqttManager3 {
         });
     }
 
-
     private Mqtt3AsyncClient createAsyncClient() {
         Mqtt3AsyncClient asyncClient = MqttClient.builder()
                                                  .useMqttVersion3()

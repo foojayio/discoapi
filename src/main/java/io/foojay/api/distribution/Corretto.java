@@ -29,6 +29,7 @@ import eu.hansolo.jdktools.PackageType;
 import eu.hansolo.jdktools.ReleaseStatus;
 import eu.hansolo.jdktools.SignatureType;
 import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.Verification;
 import eu.hansolo.jdktools.util.OutputFormat;
 import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
@@ -43,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.http.HttpResponse;
+import java.security.cert.Certificate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -66,7 +68,7 @@ public class Corretto implements Distribution {
     private static final Pattern                      FILENAME_PREFIX_PATTERN = Pattern.compile("(java-(\\d+)?\\.?(\\d+)?\\.?(\\d+)?\\.?-)|(amazon-corretto-)(jdk_|devel-)?");
     private static final Matcher                      FILENAME_PREFIX_MATCHER = FILENAME_PREFIX_PATTERN.matcher("");
     private static final String                       PACKAGE_URL             = "https://api.github.com/repos/corretto/";// jdk8: corretto-8, jdk11: corretto-11, jdk15,jdk16: corretto-jdk
-    private static final List<Integer>                REPOS                   = List.of(8, 11, 17, 18);
+    private static final List<Integer>                REPOS                   = List.of(8, 11, 17, 18, 19, 20);
     private static final String                       PREFIX                  = "amazon-corretto-";
 
     // URL parameters
@@ -141,7 +143,16 @@ public class Corretto implements Distribution {
         queryBuilder.append(PACKAGE_URL);
         int featureVersion = versionNumber.getFeature().getAsInt();
 
-        if (REPOS.contains(featureVersion)) {
+        final List<Integer> toRemove = List.of(15, 16);
+        final List<Integer> repos    = MajorVersion.getAllMajorVersions().stream()
+                                                   .filter(majorVersion -> !majorVersion.isEarlyAccessOnly())
+                                                   .filter(majorVersion -> !NOT_SUPPORTED_VERSIONS.contains(majorVersion.getAsInt()))
+                                                   .filter(majorVersion -> !toRemove.contains(majorVersion.getAsInt()))
+                                                   .map(majorVersion -> majorVersion.getAsInt())
+                                                   .collect(Collectors.toList());
+
+        //if (REPOS.contains(featureVersion)) {
+        if (repos.contains(featureVersion)) {
             queryBuilder.append("corretto-").append(featureVersion).append("/releases").append("?per_page=100");
         } else {
             queryBuilder.append("corretto-jdk").append("/releases").append("?per_page=100");
@@ -251,6 +262,7 @@ public class Corretto implements Distribution {
                     pkg.setPackageType(JRE);
                     break;
                 case NONE:
+                default:
                     pkg.setPackageType(pkgType);
                     break;
             }
@@ -283,19 +295,10 @@ public class Corretto implements Distribution {
                                                                   .orElse(OperatingSystem.NONE);
             if (OperatingSystem.NONE == os) {
                 switch (pkg.getArchiveType()) {
-                    case DEB:
-                    case RPM:
-                    case TAR_GZ:
-                        os = OperatingSystem.LINUX;
-                        break;
-                    case MSI:
-                    case ZIP:
-                        os = OperatingSystem.WINDOWS;
-                        break;
-                    case DMG:
-                    case PKG:
-                        os = OperatingSystem.MACOS;
-                        break;
+                    case DEB, RPM, TAR_GZ -> os = OperatingSystem.LINUX;
+                    case MSI, ZIP         -> os = OperatingSystem.WINDOWS;
+                    case DMG, PKG         -> os = OperatingSystem.MACOS;
+                    default               -> { continue; }
                 }
             }
             if (OperatingSystem.NONE == os) {
@@ -342,7 +345,7 @@ public class Corretto implements Distribution {
         if (null == html || html.isEmpty()) { return pkgs; }
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
         for (String fileHref : fileHrefs) {
-            if (fileHref.contains("latest_checksum")) { continue; }
+            if (fileHref.contains("latest_checksum") || fileHref.contains("latest_sha256")) { continue; }
 
             String filename = Helper.getFileNameFromText(fileHref.replaceAll("\"", ""));
 
@@ -401,6 +404,12 @@ public class Corretto implements Distribution {
             pkg.setDistributionVersion(vNumber);
             pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
             pkg.setReleaseStatus(GA);
+
+            // TCK tested
+            if (ReleaseStatus.GA == pkg.getReleaseStatus()) {
+                pkg.setTckTested(Verification.YES);
+                pkg.setTckCertUri("https://aws.amazon.com/de/blogs/opensource/amazon-corretto-no-cost-distribution-openjdk-long-term-support/");
+            }
 
             pkg.setTermOfSupport(Helper.getTermOfSupport(versionNumber));
 

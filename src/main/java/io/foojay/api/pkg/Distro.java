@@ -22,6 +22,7 @@ package io.foojay.api.pkg;
 import eu.hansolo.jdktools.Api;
 import eu.hansolo.jdktools.ReleaseStatus;
 import eu.hansolo.jdktools.scopes.BuildScope;
+import eu.hansolo.jdktools.scopes.Scope;
 import eu.hansolo.jdktools.scopes.UsageScope;
 import eu.hansolo.jdktools.util.OutputFormat;
 import eu.hansolo.jdktools.versioning.Semver;
@@ -41,6 +42,14 @@ import static io.foojay.api.util.Constants.COMMA;
 import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_OPEN;
+import static io.foojay.api.util.Constants.EVERY_DAY;
+import static io.foojay.api.util.Constants.EVERY_FIFTEEN_MINUTES;
+import static io.foojay.api.util.Constants.EVERY_HOUR;
+import static io.foojay.api.util.Constants.EVERY_MONTH;
+import static io.foojay.api.util.Constants.EVERY_SIX_HOURS;
+import static io.foojay.api.util.Constants.EVERY_TWELVE_HOURS;
+import static io.foojay.api.util.Constants.EVERY_TWO_HOURS;
+import static io.foojay.api.util.Constants.EVERY_WEEK;
 import static io.foojay.api.util.Constants.INDENT;
 import static io.foojay.api.util.Constants.INDENTED_QUOTES;
 import static io.foojay.api.util.Constants.NEW_LINE;
@@ -51,37 +60,41 @@ import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 public enum Distro implements Api {
-    AOJ("AOJ", "aoj", new AOJ(), 4320, false),
-    AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), 4320, false),
-    BISHENG("Bi Sheng", "bisheng", new BiSheng(), 2880, true),
-    CORRETTO("Corretto", "corretto", new Corretto(), 720 + 4, true),
-    DEBIAN("Debian", "debian", new Debian(), 2880, true),
-    DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), 1440 + 4, true),
-    GLUON_GRAALVM("Gluon GraalVM", "gluon_graalvm", new GluonGraalVM(), 1440 - 16, true),
-    GRAALVM_CE8("Graal VM CE 8", "graalvm_ce8", new GraalVMCE8(), 2880, true),
-    GRAALVM_CE11("Graal VM CE 11", "graalvm_ce11", new GraalVMCE11(), 1440 - 4, true),
-    GRAALVM_CE16("Graal VM CE 16", "graalvm_ce16", new GraalVMCE16(), 2880, true),
-    GRAALVM_CE17("Graal VM CE 17", "graalvm_ce17", new GraalVMCE17(), 1440 + 8, true),
-    JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 720 - 4, true),
-    KONA("Kona", "kona", new Kona(), 1440 - 8, true),
-    LIBERICA("Liberica", "liberica", new Liberica(), 30, true),
-    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), 360 - 4, true),
-    MANDREL("Mandrel", "mandrel", new Mandrel(), 1440 + 12, true),
-    MICROSOFT("Microsoft", "microsoft", new Microsoft(), 720 + 8, true),
-    OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), 1440 - 12, true),
-    OPEN_LOGIC("OpenLogic", "openlogic", new OpenLogic(), 4320, true),
-    ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), 60, true),
-    ORACLE("Oracle", "oracle", new Oracle(), 120, true),
-    RED_HAT("Red Hat", "redhat", new RedHat(), 120, true),
-    SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), 360 + 8, true),
-    SEMERU("Semeru", "semeru", new Semeru(), 720 - 8, true),
-    SEMERU_CERTIFIED("Semeru certified", "semeru_certified", new SemeruCertified(), 360 - 8, true),
-    TEMURIN("Temurin", "temurin", new Temurin(), 30, true),
-    TRAVA("Trava", "trava", new Trava(), 1440, true),
-    ZULU("Zulu", "zulu", new Zulu(), 15, true),
-    ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), 1440, true),
-    NONE("-", "", null, 0, false),
-    NOT_FOUND("", "", null, 0, false);
+    AOJ("AOJ", "aoj", new AOJ(), EVERY_MONTH, false, BuildScope.BUILD_OF_OPEN_JDK),
+    AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), EVERY_MONTH, false, BuildScope.BUILD_OF_OPEN_JDK),
+    BISHENG("Bi Sheng", "bisheng", new BiSheng(), EVERY_WEEK, true, BuildScope.BUILD_OF_OPEN_JDK),
+    CORRETTO("Corretto", "corretto", new Corretto(), EVERY_TWELVE_HOURS + 4, true, BuildScope.BUILD_OF_OPEN_JDK),
+    DEBIAN("Debian", "debian", new Debian(), EVERY_WEEK + 4, true, BuildScope.BUILD_OF_OPEN_JDK),
+    DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), EVERY_DAY + 4, true, BuildScope.BUILD_OF_OPEN_JDK),
+    GLUON_GRAALVM("Gluon GraalVM", "gluon_graalvm", new GluonGraalVM(), EVERY_DAY - 16, true, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_CE8("GraalVM CE 8", "graalvm_ce8", new GraalVMCE8(), EVERY_WEEK, false, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_CE11("GraalVM CE 11", "graalvm_ce11", new GraalVMCE11(), EVERY_DAY - 4, false, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_CE16("GraalVM CE 16", "graalvm_ce16", new GraalVMCE16(), EVERY_MONTH, false, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_CE17("GraalVM CE 17", "graalvm_ce17", new GraalVMCE17(), EVERY_DAY + 8, false, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_CE19("GraalVM CE 19", "graalvm_ce19", new GraalVMCE19(), EVERY_DAY + 17, false, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_CE20("GraalVM CE 20", "graalvm_ce20", new GraalVMCE20(), EVERY_DAY + 23, false, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_COMMUNITY("GraalVM Community", "graalvm_community", new GraalVM_Community(), EVERY_DAY + 25, true, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM("GraalVM", "graalvm", new GraalVM(), EVERY_DAY + 29, true, BuildScope.BUILD_OF_GRAALVM),
+    JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 720 - 4, true, BuildScope.BUILD_OF_OPEN_JDK),
+    KONA("Kona", "kona", new Kona(), EVERY_DAY - 8, true, BuildScope.BUILD_OF_OPEN_JDK),
+    LIBERICA("Liberica", "liberica", new Liberica(), EVERY_TWO_HOURS, true, BuildScope.BUILD_OF_OPEN_JDK),
+    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), EVERY_SIX_HOURS - 4, true, BuildScope.BUILD_OF_GRAALVM),
+    MANDREL("Mandrel", "mandrel", new Mandrel(), EVERY_DAY + 12, true, BuildScope.BUILD_OF_GRAALVM),
+    MICROSOFT("Microsoft", "microsoft", new Microsoft(), EVERY_TWELVE_HOURS + 8, true, BuildScope.BUILD_OF_OPEN_JDK),
+    OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), EVERY_DAY - 12, false, BuildScope.BUILD_OF_OPEN_JDK),
+    OPEN_LOGIC("OpenLogic", "openlogic", new OpenLogic(), EVERY_WEEK + 8, true, BuildScope.BUILD_OF_OPEN_JDK),
+    ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), EVERY_HOUR, true, BuildScope.BUILD_OF_OPEN_JDK),
+    ORACLE("Oracle", "oracle", new Oracle(), EVERY_TWO_HOURS + 4, true, BuildScope.BUILD_OF_OPEN_JDK),
+    RED_HAT("Red Hat", "redhat", new RedHat(), EVERY_DAY + 16, true, BuildScope.BUILD_OF_OPEN_JDK),
+    SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), EVERY_TWO_HOURS + 8, true, BuildScope.BUILD_OF_OPEN_JDK),
+    SEMERU("Semeru", "semeru", new Semeru(), EVERY_SIX_HOURS - 8, true, BuildScope.BUILD_OF_OPEN_JDK),
+    SEMERU_CERTIFIED("Semeru certified", "semeru_certified", new SemeruCertified(), EVERY_SIX_HOURS - 12, true, BuildScope.BUILD_OF_OPEN_JDK),
+    TEMURIN("Temurin", "temurin", new Temurin(), EVERY_HOUR - 4, true, BuildScope.BUILD_OF_OPEN_JDK),
+    TRAVA("Trava", "trava", new Trava(), EVERY_DAY + 24, true, BuildScope.BUILD_OF_OPEN_JDK),
+    ZULU("Zulu", "zulu", new Zulu(), EVERY_FIFTEEN_MINUTES, true, BuildScope.BUILD_OF_OPEN_JDK),
+    ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), EVERY_TWELVE_HOURS + 16, true, BuildScope.BUILD_OF_OPEN_JDK),
+    NONE("-", "", null, 0, false, BuildScope.NOT_FOUND),
+    NOT_FOUND("", "", null, 0, false, BuildScope.NOT_FOUND);
 
     public  static final String                    FIELD_NAME                = "name";
     public  static final String                    FIELD_API_PARAMETER       = "api_parameter";
@@ -94,22 +107,26 @@ public enum Distro implements Api {
     public  static final String                    FIELD_SYNONYMS            = "synonyms";
     public  static final String                    FIELD_VERSIONS            = "versions";
     public  static final String                    FIELD_MAINTAINED          = "maintained";
+    public  static final String                    FIELD_BUILD_OF_OPENJDK    = "build_of_openjdk";
+    public  static final String                    FIELD_BUILD_OF_GRAALVM    = "build_of_graalvm";
     private        final String                    uiString;
     private        final String                    apiString;
     private        final Distribution              distribution;
     private        final int                       updateIntervalInMinutes;
     private        final boolean                   maintained;
+    private        final Scope                     buildScope;
     public         final AtomicReference<Instant>  lastUpdate;
     public         final AtomicReference<Instant>  lastValidationCheck;
     public         final AtomicReference<Instant>  lastRefresh;
 
 
-    Distro(final String uiString, final String apiString, final Distribution distribution, final int updateIntervalInMinutes, final boolean maintained) {
+    Distro(final String uiString, final String apiString, final Distribution distribution, final int updateIntervalInMinutes, final boolean maintained, final Scope buildScope) {
         this.uiString                = uiString;
         this.apiString               = apiString;
         this.distribution            = distribution;
         this.updateIntervalInMinutes = updateIntervalInMinutes;
         this.maintained              = maintained;
+        this.buildScope              = buildScope;
         this.lastUpdate              = new AtomicReference<>();
         this.lastValidationCheck     = new AtomicReference<>(Instant.MIN);
         this.lastRefresh             = new AtomicReference<>(Instant.MIN);
@@ -213,6 +230,31 @@ public enum Distro implements Api {
             case "GraalVMCE17":
             case "GraalVM_CE17":
                 return GRAALVM_CE17;
+            case "graalvm_ce19":
+            case "graalvmce19":
+            case "GraalVM CE 19":
+            case "GraalVMCE19":
+            case "GraalVM_CE19":
+                return GRAALVM_CE19;
+            case "graalvm_ce20":
+            case "graalvmce20":
+            case "GraalVM CE 20":
+            case "GraalVMCE20":
+            case "GraalVM_CE20":
+                return GRAALVM_CE20;
+            case "graalvm_community":
+            case "graalvmcommunity":
+            case "GraalVM Community":
+            case "GraalVM_Community":
+            case "GraalVMCommunity":
+            case "GraalVM-Community":
+            case "GRAALVM_COMMUNITY":
+            case "GRAALVM-COMMUNITY":
+                return GRAALVM_COMMUNITY;
+            case "graalvm":
+            case "GRAALVM":
+            case "GraalVM":
+                return GRAALVM;
             case "jetbrains":
             case "JetBrains":
             case "JETBRAINS":
@@ -228,6 +270,11 @@ public enum Distro implements Api {
             case "liberica native":
             case "LIBERICA NATIVE":
             case "Liberica Native":
+            case "Liberica NIK":
+            case "liberica nik":
+            case "LIBERICA NIK":
+            case "liberica_nik":
+            case "LIBERICA_NIK":
                 return LIBERICA_NATIVE;
             case "mandrel":
             case "MANDREL":
@@ -357,6 +404,10 @@ public enum Distro implements Api {
 
     public boolean isMaintained() { return maintained; }
 
+    public boolean isBuildOfOpenJDK() { return buildScope == BuildScope.BUILD_OF_OPEN_JDK; }
+
+    public boolean isBuildOfGraalVM() { return buildScope == BuildScope.BUILD_OF_GRAALVM; }
+
     public static List<Distribution> getDistributions() {
         return Arrays.stream(values())
                      .filter(distro -> Distro.NONE != distro)
@@ -399,19 +450,7 @@ public enum Distro implements Api {
                      .collect(Collectors.toList());
     }
 
-    public static List<Distro> getDistrosWithJavaVersioning() {
-        return Arrays.stream(values())
-                     .filter(distro -> Distro.NONE         != distro)
-                     .filter(distro -> Distro.NOT_FOUND    != distro)
-                     .filter(distro -> Distro.GRAALVM_CE17 != distro)
-                     .filter(distro -> Distro.GRAALVM_CE16 != distro)
-                     .filter(distro -> Distro.GRAALVM_CE11 != distro)
-                     .filter(distro -> Distro.GRAALVM_CE8  != distro)
-                     .filter(distro -> Distro.LIBERICA_NATIVE != distro)
-                     .filter(distro -> Distro.MANDREL      != distro)
-                     .filter(distro -> Distro.GLUON_GRAALVM   != distro)
-                     .collect(Collectors.toList());
-    }
+    public static List<Distro> getDistrosWithJavaVersioning() { return getDistributionsBasedOnOpenJDK(); }
 
     public static List<Distro> getDistributionsBasedOnOpenJDK() {
         return REVERSE_SCOPE_LOOKUP.get(BuildScope.BUILD_OF_OPEN_JDK);
@@ -433,9 +472,9 @@ public enum Distro implements Api {
         return CacheManager.INSTANCE.pkgCache.getPkgs().parallelStream().filter(pkg -> pkg.getDistribution().getDistro() == distro).count();
     }
 
-    public static boolean isBasedOnOpenJDK(final Distro distro) { return getDistributionsBasedOnOpenJDK().contains(distro); }
+    public static boolean isBasedOnOpenJDK(final Distro distro) { return distro.isBuildOfOpenJDK(); }
 
-    public static boolean isBasedOnGraalVM(final Distro distro) { return getDistributionsBasedOnGraalVm().contains(distro); }
+    public static boolean isBasedOnGraalVM(final Distro distro) { return distro.isBuildOfGraalVM(); }
 
 
     public String toString(final OutputFormat outputFormat) {
@@ -485,11 +524,8 @@ public enum Distro implements Api {
                           .append(INDENTED_QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA_NEW_LINE)
-                          //.append(INDENTED_QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                          //.append(INDENTED_QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA_NEW_LINE)
-                          //.append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                          //.append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                          //.append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_BUILD_OF_OPENJDK).append(QUOTES).append(COLON).append(isBuildOfOpenJDK()).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_BUILD_OF_GRAALVM).append(QUOTES).append(COLON).append(isBuildOfGraalVM()).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_OFFICIAL_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getOfficialUri()).append(QUOTES);
                 if (include_synonyms) {
                     msgBuilder.append(COMMA_NEW_LINE)
@@ -521,11 +557,8 @@ public enum Distro implements Api {
                           .append(QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA)
-                          //.append(QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA)
-                          //.append(QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA)
-                          //.append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
-                          //.append(QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA)
-                          //.append(QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(FIELD_BUILD_OF_OPENJDK).append(QUOTES).append(COLON).append(isBuildOfOpenJDK()).append(COMMA)
+                          .append(QUOTES).append(FIELD_BUILD_OF_GRAALVM).append(QUOTES).append(COLON).append(isBuildOfGraalVM()).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_OFFICIAL_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getOfficialUri()).append(QUOTES);
                 if (include_synonyms) {
                     msgBuilder.append(COMMA)
@@ -555,11 +588,8 @@ public enum Distro implements Api {
                           .append(INDENTED_QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA_NEW_LINE)
-                          //.append(INDENTED_QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                          //.append(INDENTED_QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA_NEW_LINE)
-                          //.append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                          //.append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
-                          //.append(INDENTED_QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_BUILD_OF_OPENJDK).append(QUOTES).append(COLON).append(isBuildOfOpenJDK()).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_BUILD_OF_GRAALVM).append(QUOTES).append(COLON).append(isBuildOfGraalVM()).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_OFFICIAL_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getOfficialUri()).append(QUOTES).append(NEW_LINE)
                           .append(CURLY_BRACKET_CLOSE);
                 return msgBuilder.toString();
@@ -569,11 +599,8 @@ public enum Distro implements Api {
                           .append(QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA)
-                          //.append(QUOTES).append(Distro.FIELD_HASH_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashAlgorithm().getApiString()).append(QUOTES).append(COMMA)
-                          //.append(QUOTES).append(Distro.FIELD_HASH_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getHashUri()).append(QUOTES).append(COMMA)
-                          //.append(QUOTES).append(Distro.FIELD_SIGNATURE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureType().getApiString()).append(QUOTES).append(COMMA)
-                          //.append(QUOTES).append(Distro.FIELD_SIGNATURE_ALGORITHM).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureAlgorithm().getApiString()).append(QUOTES).append(COMMA)
-                          //.append(QUOTES).append(Distro.FIELD_SIGNATURE_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getSignatureUri()).append(QUOTES).append(COMMA)
+                          .append(QUOTES).append(FIELD_BUILD_OF_OPENJDK).append(QUOTES).append(COLON).append(isBuildOfOpenJDK()).append(COMMA)
+                          .append(QUOTES).append(FIELD_BUILD_OF_GRAALVM).append(QUOTES).append(COLON).append(isBuildOfGraalVM()).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_OFFICIAL_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getOfficialUri()).append(QUOTES)
                           .append(CURLY_BRACKET_CLOSE);
                 return msgBuilder.toString();

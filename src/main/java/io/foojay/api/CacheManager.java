@@ -38,20 +38,32 @@ import io.micronaut.context.env.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.StringReader;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static io.foojay.api.util.Constants.API_VERSION_V3;
+import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
+import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 @Requires(notEnv = Environment.TEST) // Don't run in tests
@@ -78,20 +90,23 @@ public enum CacheManager {
         put(10, false);
         put(11, true);
         put(12, false);
-        put(13, true);
+        put(13, false);
         put(14, false);
-        put(15, true);
+        put(15, false);
         put(16, false);
         put(17, true);
-        put(18, true);
-        put(19, true);
+        put(18, false);
+        put(19, false);
         put(20, true);
+        put(21, true);
+        put(22, true);
     }};
     public final         AtomicBoolean                syncWithDatabaseInProgress  = new AtomicBoolean(false);
     public final         AtomicLong                   msToFillCacheWithPkgsFromDB = new AtomicLong(-1);
     public final         AtomicLong                   numberOfPackages            = new AtomicLong(-1);
     public final         AtomicReference<Instant>     lastSync                    = new AtomicReference<>(Instant.MIN);
     private final        List<MajorVersion>           majorVersions               = new LinkedList<>();
+    private final        List<MajorVersion>           graalvmMajorVersions        = new LinkedList<>();
 
 
     CacheManager() {
@@ -108,11 +123,21 @@ public enum CacheManager {
         List<MajorVersion> majorVersionsFromDb = MongoDbManager.INSTANCE.getMajorVersions();
         if (null == majorVersionsFromDb || majorVersionsFromDb.isEmpty()) {
             LOGGER.error("Error updating major versions from mongodb");
+            Set<MajorVersion> mv = new HashSet<>();
+            pkgCache.getPkgs().forEach(pkg -> mv.add(pkg.getMajorVersion()));
+            majorVersions.clear();
+            majorVersions.addAll(mv);
         } else {
         majorVersions.clear();
             majorVersions.addAll(majorVersionsFromDb);
             LOGGER.debug("Successfully updated major versions");
         }
+        
+        Set<MajorVersion> mvgvm = new HashSet<>();
+        pkgCache.getPkgs().stream().filter(pkg -> Distro.isBasedOnGraalVM(pkg.getDistribution().getDistro())).forEach(pkg -> mvgvm.add(new MajorVersion(pkg.getFeatureVersion().getAsInt())));
+        graalvmMajorVersions.clear();
+        graalvmMajorVersions.addAll(mvgvm);
+        
         updateMaintainedMajorVersions();
     }
 
@@ -162,8 +187,12 @@ public enum CacheManager {
         return getMajorVersions(BuildScope.BUILD_OF_OPEN_JDK);
     }
     public List<MajorVersion> getMajorVersions(final BuildScope scope) {
-        if (majorVersions.isEmpty()) { updateMajorVersions(); }
-        return majorVersions.stream().filter(majorVersion -> majorVersion.getScope() == scope).collect(Collectors.toList());
+        if (majorVersions.isEmpty() || graalvmMajorVersions.isEmpty()) { updateMajorVersions(); }
+        switch(scope) {
+            case BUILD_OF_GRAALVM  : return graalvmMajorVersions;
+            case BUILD_OF_OPEN_JDK :
+            default                : return majorVersions.stream().filter(majorVersion -> majorVersion.getScope() == scope).collect(Collectors.toList());
+        }
     }
 
     public void syncCacheWithDatabase() {
@@ -223,7 +252,6 @@ public enum CacheManager {
                     try {
                         LOGGER.debug("Database updated -> syncCacheWithDatabase(). MQTT event: {}", evt);
                         mqttManager.publish(Constants.MQTT_API_STATE_TOPIC, "Database updated -> syncCacheWithDatabase");
-
                         // Update cache with pkgs from mongodb
                         syncCacheWithDatabase();
 

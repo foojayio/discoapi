@@ -16,10 +16,12 @@
 
 package io.foojay.api.distribution;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.ArchiveType;
 import eu.hansolo.jdktools.Bitness;
+import eu.hansolo.jdktools.FPU;
 import eu.hansolo.jdktools.HashAlgorithm;
 import eu.hansolo.jdktools.LibCType;
 import eu.hansolo.jdktools.OperatingSystem;
@@ -27,6 +29,7 @@ import eu.hansolo.jdktools.PackageType;
 import eu.hansolo.jdktools.ReleaseStatus;
 import eu.hansolo.jdktools.SignatureType;
 import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.Verification;
 import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
@@ -48,22 +51,26 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static eu.hansolo.jdktools.Architecture.X64;
 import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
 import static eu.hansolo.jdktools.OperatingSystem.LINUX;
 import static eu.hansolo.jdktools.OperatingSystem.MACOS;
 import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
 import static eu.hansolo.jdktools.PackageType.JDK;
 import static eu.hansolo.jdktools.PackageType.JRE;
+import static eu.hansolo.jdktools.ReleaseStatus.EA;
 import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
 public class ZuluPrime implements Distribution {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZuluPrime.class);
 
-    private static final String        PACKAGE_URL            = "https://docs.azul.com/prime/prime-quick-start-tar";
+    private static final String        OLD_PACKAGE_URL        = "https://docs.azul.com/prime/prime-quick-start-tar";
+    private static final String        PACKAGE_URL            = "https://api.azul.com/metadata/v1/prime/packages/"; // https://api.azul.com/metadata/v1/docs/swagger
     public  static final String        PKGS_PROPERTIES        = "https://github.com/foojayio/openjdk_releases/raw/main/zulu_prime.properties";
 
     // URL parameters
@@ -75,12 +82,31 @@ public class ZuluPrime implements Distribution {
     private static final String        SUPPORT_TERM_PARAM     = "";
     private static final String        BITNESS_PARAM          = "";
 
+    // JSON fields
+    private static final String        FIELD_ID                   = "id";
+    private static final String        FIELD_NAME                 = "name";
+    private static final String        FIELD_URL                  = "download_url";
+    private static final String        FIELD_JAVA_VERSION         = "java_version";
+    private static final String        FIELD_DISTRO_VERSION       = "distro_version";
+    private static final String        FIELD_DISTRO_BUILD_NUMBER  = "distro_build_number";
+    private static final String        FIELD_SHA_256_HASH         = "sha256_hash";
+    private static final String        FIELD_SIGNATURES           = "signatures";
+    private static final String        FIELD_TYPE                 = "type";
+    private static final String        FIELD_OPEN_JDK_BUILD_NO    = "openjdk_build_number";
+    private static final String        FIELD_BUILD_TYPES          = "build_types";
+
     private static final HashAlgorithm HASH_ALGORITHM      = HashAlgorithm.NONE;
     private static final String        HASH_URI            = "";
     private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
     private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
     private static final String        SIGNATURE_URI       = "";
     private static final String        OFFICIAL_URI        = "https://www.azul.com/products/prime/stream-download/";
+
+    private static final Pattern       FILENAME_PREFIX_PATTERN    = Pattern.compile("(zulu|zre)(\\d+)\\.(\\d+)\\.(\\d+)(\\.|_?)(\\d+)?");
+    private static final Matcher       FILENAME_PREFIX_MATCHER    = FILENAME_PREFIX_PATTERN.matcher("");
+    private static final Pattern       FILENAME_PREFIX_VN_PATTERN = Pattern.compile("(zulu-repo-|zulu-repo_|zulu|zre)[0-9]{1,3}\\.[0-9]{1,3}(\\.|\\+)[0-9]{1,4}(\\.|-|_)([0-9]{1,3}-)?([0-9]{1,4}_[0-9]{1,4}-)?(ca-|ea-)?(fx-)?(dbg-)?(hl)?(cp(1|2|3)-)?(oem-)?(-|jre|jdk)?");
+    private static final Pattern       FEATURE_PREFIX_PATTERN     = Pattern.compile("^((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?((-ea)|(-ca)|(-jdk)|(-jre)|(-fx)|(-))?");
+    private static final Matcher       FEATURE_PREFIX_MATCHER     = FEATURE_PREFIX_PATTERN.matcher("");
 
 
     @Override public Distro getDistro() { return Distro.ZULU_PRIME; }
@@ -139,9 +165,146 @@ public class ZuluPrime implements Distribution {
     }
 
     @Override public List<Pkg> getPkgFromJson(final JsonObject jsonObj, final VersionNumber versionNumber, final boolean latest, final OperatingSystem operatingSystem,
-                                              final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType bundleType,
+                                              final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                                               final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
+
+        String filename     = jsonObj.get(FIELD_NAME).getAsString();
+        String downloadLink = jsonObj.get(FIELD_URL).getAsString();
+
+        if (onlyNewPkgs) {
+            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(pkg -> pkg.getFilename().equals(filename)).filter(pkg -> pkg.getDirectDownloadUri().equals(downloadLink)).count() > 0) { return pkgs; }
+        }
+
+        JsonArray     jdkVersionArray = jsonObj.get(FIELD_JAVA_VERSION).getAsJsonArray();
+        VersionNumber vNumber         = new VersionNumber(jdkVersionArray.get(0).getAsInt(), jdkVersionArray.get(1).getAsInt(), jdkVersionArray.get(2).getAsInt(), 0);
+
+
+        if (jsonObj.has(FIELD_OPEN_JDK_BUILD_NO)) {
+            vNumber.setBuild(jsonObj.get(FIELD_OPEN_JDK_BUILD_NO).getAsInt());
+        }
+
+        JsonArray primeVersionArray = jsonObj.get(FIELD_DISTRO_VERSION).getAsJsonArray();
+        VersionNumber dNumber = new VersionNumber(primeVersionArray.get(0).getAsInt(), primeVersionArray.get(1).getAsInt(), primeVersionArray.get(2).getAsInt(), primeVersionArray.get(3).getAsInt());
+
+        if (!latest && versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }
+        if (latest) {
+            if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { return pkgs; }
+        }
+
+        TermOfSupport supTerm = Helper.getTermOfSupport(versionNumber);
+
+        Pkg pkg = new Pkg();
+        pkg.setDistribution(Distro.ZULU_PRIME.get());
+        pkg.setVersionNumber(vNumber);
+        pkg.setJavaVersion(vNumber);
+        pkg.setDistributionVersion(dNumber);
+        pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
+        pkg.setFileName(filename);
+        pkg.setDirectDownloadUri(downloadLink);
+
+        if (jsonObj.has(FIELD_SHA_256_HASH)) {
+            String checksum = jsonObj.get(FIELD_SHA_256_HASH).getAsString();
+            pkg.setChecksum(checksum.isEmpty() ? "" : checksum);
+            pkg.setChecksumType(checksum.isEmpty() ? HashAlgorithm.NONE : HashAlgorithm.SHA256);
+        }
+
+        if (jsonObj.has(FIELD_SIGNATURES)) {
+            JsonArray signaturesArray = jsonObj.get(FIELD_SIGNATURES).getAsJsonArray();
+            if (signaturesArray.size() > 0) {
+                for (int i = 0 ; i < signaturesArray.size() ; i++) {
+                    JsonObject signatureJson = signaturesArray.get(i).getAsJsonObject();
+                    if (signatureJson.has(FIELD_TYPE)) {
+                        if (signatureJson.get(FIELD_TYPE).getAsString().equals("openpgp")) {
+                            if (signatureJson.has(FIELD_URL)) {
+                                String signatureUri = signatureJson.get(FIELD_URL).getAsString();
+                                pkg.setSignatureUri(signatureUri);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        pkg.setFPU(FPU.UNKNOWN);
+        pkg.setJavaFXBundled(false);
+
+        ArchiveType ext = Constants.ARCHIVE_TYPE_LOOKUP.entrySet().stream()
+                                                       .filter(entry -> filename.endsWith(entry.getKey()))
+                                                       .findFirst()
+                                                       .map(Entry::getValue)
+                                                       .orElse(ArchiveType.NONE);
+
+        if (ArchiveType.NONE == ext) {
+            LOGGER.debug("Archive Type not found in Prime for filename: {}", filename);
+            return pkgs;
+        }
+
+        pkg.setArchiveType(ext);
+
+        switch (packageType) {
+            case JDK -> pkg.setPackageType(JDK);
+            case JRE -> pkg.setPackageType(JRE);
+            default  -> pkg.setPackageType(JDK);
+        }
+        pkg.setReleaseStatus(GA);
+
+        Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
+                                                         .filter(entry -> filename.contains(entry.getKey()))
+                                                         .findFirst()
+                                                         .map(Entry::getValue)
+                                                         .orElse(Architecture.NONE);
+
+        if (Architecture.NONE == arch && filename.contains("macos")) {
+            arch = X64;
+        }
+
+        if (Architecture.NONE == arch) {
+            LOGGER.debug("Architecture not found in Prime for filename: {}", filename);
+            return pkgs;
+        }
+        pkg.setArchitecture(arch);
+        pkg.setBitness(arch.getBitness());
+
+        OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
+                                                              .filter(entry -> filename.contains(entry.getKey()))
+                                                              .findFirst()
+                                                              .map(Entry::getValue)
+                                                              .orElse(OperatingSystem.NONE);
+
+        if (OperatingSystem.NONE == os) {
+            switch (pkg.getArchiveType()) {
+                case DEB, RPM, TAR_GZ -> os = LINUX;
+                case MSI, ZIP         -> os = WINDOWS;
+                case DMG, PKG         -> os = MACOS;
+                default               -> { return pkgs; }
+            }
+        }
+
+        if (OperatingSystem.NONE == os) {
+            LOGGER.debug("Operating System not found in Prime for filename: {}", filename);
+            return pkgs;
+        }
+
+        pkg.setOperatingSystem(os);
+
+        pkg.setTermOfSupport(supTerm);
+
+        pkg.setFreeUseInProduction(Boolean.TRUE);
+
+        pkg.setSize(Helper.getFileSize(downloadLink));
+
+        String directDownloadUri = pkg.getDirectDownloadUri();
+        String tckCertUri        = directDownloadUri.replace("/bin/", "/pdf/cert.") + ".pdf";
+        if (Helper.isUriValid(tckCertUri)) {
+            pkg.setTckTested(Verification.YES);
+            pkg.setTckCertUri(tckCertUri);
+        }
+
+        pkgs.add(pkg);
+
+        Helper.checkPkgsForTooEarlyGA(pkgs);
+
         return pkgs;
     }
 
@@ -226,19 +389,10 @@ public class ZuluPrime implements Distribution {
 
             if (OperatingSystem.NONE == os) {
                 switch (pkg.getArchiveType()) {
-                    case DEB:
-                    case RPM:
-                    case TAR_GZ:
-                        os = LINUX;
-                        break;
-                    case MSI:
-                    case ZIP:
-                        os = WINDOWS;
-                        break;
-                    case DMG:
-                    case PKG:
-                        os = MACOS;
-                        break;
+                    case DEB, RPM, TAR_GZ -> os = LINUX;
+                    case MSI, ZIP         -> os = WINDOWS;
+                    case DMG, PKG         -> os = MACOS;
+                    default               -> { continue; }
                 }
             }
             if (OperatingSystem.NONE == os) {

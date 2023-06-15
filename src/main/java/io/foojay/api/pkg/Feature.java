@@ -41,6 +41,7 @@ public enum Feature implements Api {
     LANAI("Lanai", "lanai"),
     VALHALLA("Valhalla", "valhalla"),
     KONA_FIBER("KonaFiber", "kona_fiber"),
+    CRAC("CRaC", "crac"),
     NONE("-", ""),
     NOT_FOUND("", "");
 
@@ -115,6 +116,10 @@ public enum Feature implements Api {
             case "konafiber":
             case "KONAFIBER":
                 return KONA_FIBER;
+            case "crac":
+            case "CRAC":
+            case "CRaC":
+                return CRAC;
             default:
                 return NOT_FOUND;
         }

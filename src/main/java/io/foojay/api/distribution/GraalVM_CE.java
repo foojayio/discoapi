@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022.
+ * Copyright (c) 2023.
  *
  * This file is part of DiscoAPI.
  *
@@ -47,50 +47,66 @@ import org.slf4j.LoggerFactory;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.TreeSet;
-import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static eu.hansolo.jdktools.ArchiveType.SRC_TAR;
 import static eu.hansolo.jdktools.ArchiveType.getFromFileName;
 import static eu.hansolo.jdktools.OperatingSystem.LINUX;
 import static eu.hansolo.jdktools.OperatingSystem.MACOS;
 import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
 import static eu.hansolo.jdktools.PackageType.JDK;
-import static eu.hansolo.jdktools.ReleaseStatus.GA;
 
 
-public class GluonGraalVM implements Distribution {
-    private static final Logger LOGGER = LoggerFactory.getLogger(GluonGraalVM.class);
-
-    private static final String  GITHUB_USER      = "gluonhq";
-    private static final String  PACKAGE_URL      = "https://api.github.com/repos/" + GITHUB_USER + "/graal/releases";
-    private static final Pattern FILENAME_PATTERN = Pattern.compile("^(graalvm-svm-java)(.*)(\\.zip)$");
-    private static final Matcher FILENAME_MATCHER = FILENAME_PATTERN.matcher("");
+public abstract class GraalVM_CE implements Distribution {
+    protected              Distro        distro;
+    private                Logger        logger;
+    protected        final String        distroName;
+    protected        final int           jdkVersion;
+    protected        final Pattern       filenamePattern;
+    protected        final Matcher       filenameMatcher;
+    protected static final String        GITHUB_USER             = "graalvm";
+    protected static final String        PACKAGE_URL             = "https://api.github.com/repos/" + GITHUB_USER + "/graalvm-ce-builds/releases";
+    protected static final String        PACKAGE_EA_URL          = "https://api.github.com/repos/" + GITHUB_USER + "/graalvm-ce-dev-builds/releases";
 
     // URL parameters
-    private static final String                       ARCHITECTURE_PARAM      = "";
-    private static final String                       OPERATING_SYSTEM_PARAM  = "";
-    private static final String                       ARCHIVE_TYPE_PARAM      = "";
-    private static final String                       PACKAGE_TYPE_PARAM      = "";
-    private static final String                       RELEASE_STATUS_PARAM    = "";
-    private static final String                       SUPPORT_TERM_PARAM      = "";
-    private static final String                       BITNESS_PARAM           = "";
+    protected static final String        ARCHITECTURE_PARAM      = "";
+    protected static final String        OPERATING_SYSTEM_PARAM  = "";
+    protected static final String        ARCHIVE_TYPE_PARAM      = "";
+    protected static final String        PACKAGE_TYPE_PARAM      = "";
+    protected static final String        RELEASE_STATUS_PARAM    = "";
+    protected static final String        SUPPORT_TERM_PARAM      = "";
+    protected static final String        BITNESS_PARAM           = "";
 
-    private static final HashAlgorithm HASH_ALGORITHM      = HashAlgorithm.NONE;
-    private static final String        HASH_URI            = "";
-    private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
-    private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
-    private static final String        SIGNATURE_URI       = "";
-    private static final String        OFFICIAL_URI        = "https://docs.gluonhq.com/#_graalvm";
+    protected static final HashAlgorithm HASH_ALGORITHM          = HashAlgorithm.NONE;
+    protected static final String        HASH_URI                = "";
+    protected static final SignatureType SIGNATURE_TYPE          = SignatureType.NONE;
+    protected static final HashAlgorithm SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
+    protected static final String        SIGNATURE_URI           = "";
+    protected static final String        OFFICIAL_URI            = "https://www.graalvm.org/";
 
 
-    @Override public Distro getDistro() { return Distro.GLUON_GRAALVM; }
+    public GraalVM_CE(final String distroName, final int jdkVersion) {
+        this.distroName      = distroName;
+        this.jdkVersion      = jdkVersion;
+        this.filenamePattern = Pattern.compile(new StringBuilder().append("^(graalvm-ce-java").append(this.jdkVersion).append(")(.*)(\\.tar\\.gz|\\.zip)$").toString());
+        this.filenameMatcher = filenamePattern.matcher("");
+    }
+
+
+    @Override public Distro getDistro() {
+        if (null == this.distro) { this.distro = Distro.valueOf(this.distroName); }
+        return this.distro;
+    }
 
     @Override public String getName() { return getDistro().getUiString(); }
 
@@ -123,15 +139,23 @@ public class GluonGraalVM implements Distribution {
     @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
-        return List.of("gluon_graalvm", "GLUON_GRAALVM", "gluongraalvm", "GLUONGRAALVM", "gluon graalvm", "Gluon GraalVM", "GluonGraalVM");
+        return List.of("graalvm_ce" + this.jdkVersion, "graalvmce" + this.jdkVersion, "GraalVM CE " + this.jdkVersion, "GraalVMCE" + this.jdkVersion, "GraalVM_CE" + this.jdkVersion);
     }
 
     @Override public List<Semver> getVersions() {
         return CacheManager.INSTANCE.pkgCache.getPkgs()
                                              .stream()
-                                             .filter(pkg -> Distro.GLUON_GRAALVM.get().equals(pkg.getDistribution()))
+                                             .filter(pkg -> getDistro().get().equals(pkg.getDistribution()))
                                              .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
+                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream()
+                                             .sorted(Comparator.comparing(Semver::getVersionNumber).reversed())
+                                             .collect(Collectors.toList());
+    }
+
+
+    protected Logger getLogger() {
+        if (null == logger) { this.logger = LoggerFactory.getLogger(getDistro().get().getClass()); }
+        return logger;
     }
 
 
@@ -139,8 +163,7 @@ public class GluonGraalVM implements Distribution {
                                                    final boolean latest, final OperatingSystem operatingSystem,
                                                    final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                                                    final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport) {
-
-        LOGGER.debug("Query string for {}: {}", this.getName(), PACKAGE_URL);
+        getLogger().debug("Query string for {}: {}", this.getName(), PACKAGE_URL);
         return PACKAGE_URL;
     }
 
@@ -149,36 +172,38 @@ public class GluonGraalVM implements Distribution {
                                               final Boolean javafxBundled, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
 
+        TermOfSupport supTerm = Helper.getTermOfSupport(this.jdkVersion);
+        supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
+
         VersionNumber vNumber = null;
         String tag = jsonObj.get("tag_name").getAsString();
-        tag = tag.replace("gluon-", "");
-        tag = tag.replace("-Final", "");
-        tag = tag.replace("-latest", "");
-        if (tag.contains("-dev")) {
-            tag = tag.substring(0, tag.lastIndexOf("-dev"));
-        }
-
-        vNumber = VersionNumber.fromText(tag);
-        if (null == vNumber) {
-            LOGGER.error("Error parsing version number from GluonGraalVM tag {}", tag);
-            return pkgs;
+        if (tag.contains("vm-")) {
+            tag = tag.substring(tag.lastIndexOf("vm-")).replace("vm-", "");
+            vNumber = VersionNumber.fromText(tag);
+        } else if (tag.contains("-dev")) {
+            int build = Integer.parseInt(tag.substring(tag.lastIndexOf("_") + 1));
+            tag = tag.substring(0, tag.indexOf("-"));
+            vNumber = VersionNumber.fromText(tag);
+            vNumber.setBuild(build);
         }
 
         boolean prerelease = false;
         if (jsonObj.has("prerelease")) {
             prerelease = jsonObj.get("prerelease").getAsBoolean();
         }
-        if (prerelease) { return pkgs; }
+        if (prerelease && ReleaseStatus.EA != releaseStatus) { return pkgs; }
 
         JsonArray assets = jsonObj.getAsJsonArray("assets");
         for (JsonElement element : assets) {
             JsonObject assetJsonObj = element.getAsJsonObject();
             String     filename     = assetJsonObj.get("name").getAsString();
-            //if (!filename.endsWith(Constants.FILE_ENDING_ZIP)) { continue; }
+            if (filename.endsWith(Constants.FILE_ENDING_TXT) || filename.endsWith(Constants.FILE_ENDING_JAR) ||
+                filename.endsWith(Constants.FILE_ENDING_SHA1) || filename.endsWith(Constants.FILE_ENDING_SHA256)) { continue; }
 
-            String   strippedFilename      = filename.replaceFirst("graalvm-svm-java([0-9]{2,3})-", "").replaceAll("(\\.zip)", "");
-            String[] filenameParts         = filename.split("-");
-            //String[] strippedFilenameParts = strippedFilename.split("-");
+            filenameMatcher.reset(filename);
+            if (!filenameMatcher.matches()) { continue; }
+            String   strippedFilename = filename.replaceFirst(new StringBuilder("graalvm-ce-java").append(this.jdkVersion).append("-").toString(), "").replaceAll("(\\.tar\\.gz|\\.zip)", "");
+            String[] filenameParts    = strippedFilename.split("-");
 
             String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
 
@@ -188,12 +213,12 @@ public class GluonGraalVM implements Distribution {
 
             Pkg pkg = new Pkg();
 
-            pkg.setDistribution(Distro.GLUON_GRAALVM.get());
+            pkg.setDistribution(getDistro().get());
             pkg.setFileName(filename);
             pkg.setDirectDownloadUri(downloadLink);
 
             ArchiveType ext = getFromFileName(filename);
-            if (ArchiveType.NOT_FOUND == ext) { continue; }
+            if (SRC_TAR == ext || (ArchiveType.NONE != archiveType && ext != archiveType)) { continue; }
             pkg.setArchiveType(ext);
 
             Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
@@ -201,62 +226,38 @@ public class GluonGraalVM implements Distribution {
                                                              .findFirst()
                                                              .map(Entry::getValue)
                                                              .orElse(Architecture.NONE);
-
             if (Architecture.NONE == arch) {
-                if (filename.contains("m1") || filename.contains("m2")) {
-                    arch = Architecture.AARCH64;
-                } else {
-                    arch = Architecture.X64;
-                }
-            }
-
-            if (Architecture.NONE == arch) {
-                LOGGER.debug("Architecture not found in GluonGraalVM for filename: {}", filename);
+                getLogger().debug("Architecture not found in GraalVM CE" + this.jdkVersion + " for filename: {}", filename);
                 continue;
             }
 
             pkg.setArchitecture(arch);
             pkg.setBitness(arch.getBitness());
 
+            if (null == vNumber && filenameParts.length > 2) {
+                vNumber = VersionNumber.fromText(filenameParts[2]);
+            }
+            if (latest) {
+                if (versionNumber.getFeature().getAsInt() != vNumber.getFeature().getAsInt()) { continue; }
+            } else {
+                //if (versionNumber.compareTo(vNumber) != 0) { continue; }
+            }
             pkg.setVersionNumber(vNumber);
             pkg.setJavaVersion(vNumber);
+            pkg.setDistributionVersion(vNumber);
+            pkg.setJdkVersion(new MajorVersion(jdkVersion));
 
-            for (String part : filenameParts) {
-                if (part.startsWith("java")) {
-                    String jvmVersion = part.replace("java", "");
-                    try {
-                        pkg.setDistributionVersion(VersionNumber.fromText(jvmVersion));
-                        Integer jdkVersion = Integer.parseInt(jvmVersion);
-                        pkg.setJdkVersion(new MajorVersion(jdkVersion));
-                    } catch (Exception e) {
-                        LOGGER.error("Error parsing JDK version from filename in Gluon GraalVM {}", filename);
-                    }
-                    break;
-                }
-            }
-            if (null == pkg.getDistributionVersion() || pkg.getDistributionVersion().getFeature().isEmpty()) {
-                pkg.setDistributionVersion(vNumber);
-            }
-
-            TermOfSupport supTerm = Helper.getTermOfSupport(pkg.getJdkVersion().getAsInt());
-            supTerm = TermOfSupport.MTS == supTerm ? TermOfSupport.STS : supTerm;
             pkg.setTermOfSupport(supTerm);
 
             pkg.setPackageType(JDK);
 
-            pkg.setReleaseStatus(GA);
+            pkg.setReleaseStatus(ReleaseStatus.NONE == releaseStatus ? ReleaseStatus.GA : releaseStatus);
 
             OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
                                                                   .filter(entry -> strippedFilename.contains(entry.getKey()))
                                                                   .findFirst()
                                                                   .map(Entry::getValue)
                                                                   .orElse(OperatingSystem.NONE);
-
-            if (OperatingSystem.NONE == os) {
-                if (strippedFilename.contains("darwin")) {
-                    os = MACOS;
-                }
-            }
 
             if (OperatingSystem.NONE == os) {
                 switch (pkg.getArchiveType()) {
@@ -273,11 +274,10 @@ public class GluonGraalVM implements Distribution {
                     case PKG:
                         os = MACOS;
                         break;
-                    default: continue;
                 }
             }
             if (OperatingSystem.NONE == os) {
-                LOGGER.debug("Operating System not found in Gluon GraalVM for filename: {}", filename);
+                getLogger().debug("Operating System not found in GraalVM CE" + this.jdkVersion + " for filename: {}", filename);
                 continue;
             }
             pkg.setOperatingSystem(os);
@@ -314,37 +314,60 @@ public class GluonGraalVM implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
+    public List<Pkg> getAllPkgs(boolean includingEA, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
+        pkgs.addAll(getAllPkgs(PACKAGE_URL, ReleaseStatus.GA, onlyNewPkgs));
+        if (includingEA) { pkgs.addAll(getAllPkgs(PACKAGE_EA_URL, ReleaseStatus.EA, onlyNewPkgs)); }
+        return pkgs;
+    }
+    private List<Pkg> getAllPkgs(final String query, final ReleaseStatus releaseStatus, final boolean onlyNewPkgs) {
+        VersionNumber versionNumber = new VersionNumber(this.jdkVersion);
 
-        final String pkgUrl = new StringBuilder(PACKAGE_URL).append("?per_page=100").toString();
-
+        if (query.isEmpty()) { return List.of(); }
         try {
-            // Get all packages from github
-            try {
-                HttpResponse<String> response = Helper.get(pkgUrl, Map.of("accept", "application/vnd.github.v3+json",
-                                                                              "authorization", GithubTokenPool.INSTANCE.next()));
+            List<Pkg>           pkgs      = new LinkedList<>();
+            List<Pkg>           pkgsFound = new ArrayList<>();
+            Map<String, String> headers   = new HashMap<>();
+            if (query.contains("api.github.com")) {
+                headers.put("accept", "application/vnd.github.v3+json");
+                headers.put("authorization", GithubTokenPool.INSTANCE.next());
+            }
+            HttpResponse<String> response = Helper.get(query, headers);
+            if (null == response) {
+                getLogger().debug("Response {} returned null.", getDistro().getApiString());
+            } else {
                 if (response.statusCode() == 200) {
-                    String      bodyText = response.body();
-                    Gson        gson     = new Gson();
-                    JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
+                    String      body    = response.body();
+                    Gson        gson    = new Gson();
+                    JsonElement element = gson.fromJson(body, JsonElement.class);
                     if (element instanceof JsonArray) {
                         JsonArray jsonArray = element.getAsJsonArray();
-                        for (JsonElement jsonElement : jsonArray) {
-                            JsonObject jsonObj = jsonElement.getAsJsonObject();
-                            pkgs.addAll(getPkgFromJson(jsonObj, null, true, null, null, null, null, null, false, null, null,onlyNewPkgs));
+                        for (int i = 0; i < jsonArray.size(); i++) {
+                            JsonObject pkgJsonObj = jsonArray.get(i).getAsJsonObject();
+                            List<Pkg> pkgsInDistribution = getPkgFromJson(pkgJsonObj, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, releaseStatus, TermOfSupport.NONE, onlyNewPkgs);
+                            pkgsFound.addAll(pkgsInDistribution);
                         }
+                    } else if (element instanceof JsonObject) {
+                        JsonObject pkgJsonObj = element.getAsJsonObject();
+                        List<Pkg> pkgsInDistribution = getPkgFromJson(pkgJsonObj, versionNumber, false, OperatingSystem.NONE, Architecture.NONE, Bitness.NONE, ArchiveType.NONE, PackageType.NONE, null, releaseStatus, TermOfSupport.NONE, onlyNewPkgs);
+                        pkgsFound.addAll(pkgsInDistribution);
                     }
                 } else {
                     // Problem with url request
-                    LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
+                    getLogger().debug("Error getting packages for {} {}, calling {}.Response ({}) {} ", getName(), versionNumber, query, response.statusCode(), response.body());
+                    return pkgs;
                 }
-            } catch (CompletionException e) {
-                LOGGER.error("Error fetching packages for distribution {} from {}", getName(), pkgUrl);
             }
+
+            pkgs.addAll(pkgsFound);
+            HashSet<Pkg> unique = new HashSet<>(pkgs);
+            pkgs = new LinkedList<>(unique);
+
+            return pkgs;
         } catch (Exception e) {
-            LOGGER.error("Error fetching all packages from GluonGraalVM. {}", e);
+            System.out.println("Error get packages for " + getName() + " " + versionNumber + " calling " + query + ". Exception: " + e);
+            getLogger().debug("Error get packages for {} {} calling {}. {}", getName(), versionNumber, query, e.getMessage());
+            return new ArrayList<>();
         }
-        return pkgs;
     }
 }

@@ -20,7 +20,6 @@
 package io.foojay.api.util;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import eu.hansolo.jdktools.Architecture;
@@ -40,7 +39,6 @@ import eu.hansolo.jdktools.util.OutputFormat;
 import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
-import io.foojay.api.MongoDbManager;
 import io.foojay.api.distribution.Zulu;
 import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
@@ -50,6 +48,7 @@ import io.foojay.api.scopes.YamlScopes;
 import io.micronaut.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
@@ -57,8 +56,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
@@ -67,7 +64,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
@@ -75,7 +71,6 @@ import java.security.NoSuchAlgorithmException;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -91,21 +86,15 @@ import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.function.Function;
-import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static eu.hansolo.jdktools.Constants.COMMA;
 import static io.foojay.api.util.Constants.COLON;
-import static io.foojay.api.util.Constants.COMMA_NEW_LINE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_CLOSE;
 import static io.foojay.api.util.Constants.CURLY_BRACKET_OPEN;
-import static io.foojay.api.util.Constants.INDENT;
-import static io.foojay.api.util.Constants.INDENTED_QUOTES;
 import static io.foojay.api.util.Constants.MESSAGE;
-import static io.foojay.api.util.Constants.NEW_LINE;
 import static io.foojay.api.util.Constants.QUOTES;
 import static io.foojay.api.util.Constants.RESULT;
 import static io.foojay.api.util.Constants.SQUARE_BRACKET_CLOSE;
@@ -123,8 +112,6 @@ public class Helper {
     public  static final Pattern    HREF_SIG_FILE_PATTERN                  = Pattern.compile("href=\"([^\"]*(\\.sig))\"");
     public  static final Pattern    HREF_SHA256_FILE_PATTERN               = Pattern.compile("href=\"([^\"]*(\\.sha256sum.txt))\"");
     public  static final Pattern    HREF_DOWNLOAD_PATTERN                  = Pattern.compile("(\\>)(\\s|\\h?(jdk|jre|serverjre)-(([0-9]+\\.[0-9]+\\.[0-9]+_[a-z]+-[a-z0-9]+_)|([0-9]+u[0-9]+-[a-z]+-[a-z0-9]+(-vfp-hflt)?)).*[a-zA-Z]+)(\\<)");
-    private static final Pattern    JBANG_HEADER_PATTERN                   = Pattern.compile("(JBang)\\/([0-9]+\\.[0-9]+\\.[0-9]+(\\.[0-9]+)?)\\s+\\(([0-9A-Za-z\\s]+)\\/([a-zA-Z0-9_\\.\\-]+)\\/([a-z0-9A-Z_\\s]+)\\)\\s(Java\\/([0-9]+(\\.[0-9]+)?(\\.[0-9]+)?([_0-9]+)?))\\/(.*)");
-    private static final Matcher    JBANG_HEADER_MATCHER                   = JBANG_HEADER_PATTERN.matcher("");
     private static final Matcher    FILE_URL_MATCHER                       = FILE_URL_PATTERN.matcher("");
     private static final Matcher    CORRETTO_SIG_URI_MATCHER               = CORRETTO_SIG_URI_PATTERN.matcher("");
     private static final Matcher    HREF_FILE_MATCHER                      = HREF_FILE_PATTERN.matcher("");
@@ -360,7 +347,7 @@ public class Helper {
     }
 
     public static final YamlScopes loadYamlScopes(final String uri) {
-        Constructor constructor = new Constructor(YamlScopes.class);
+        Constructor constructor = new Constructor(new LoaderOptions());
         Yaml        yaml        = new Yaml(constructor );
         HttpResponse<String> response = get(uri);
         if (null == response) { return null; }
@@ -638,28 +625,6 @@ public class Helper {
         }
     }
 
-    public static final String getAllPackagesMsgV2_OLD(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
-        return getAllPackagesMsgV2(allPkgs, downloadable, include_ea, scope, OutputFormat.REDUCED_COMPRESSED);
-    }
-    public static final String getAllPackagesMsgV2_OLD(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope, final OutputFormat outputFormat) {
-        final List<Distro> publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
-        final boolean       gaOnly       = null == include_ea || !include_ea;
-        final StringBuilder msgBuilder   = new StringBuilder();
-        final Scope         scopeToCheck = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
-
-        msgBuilder.append(CURLY_BRACKET_OPEN)
-                  .append(QUOTES).append(RESULT).append(QUOTES).append(COLON)
-                  .append(allPkgs.parallelStream()
-                                 .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
-                                 .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
-                                 .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
-                                 .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
-                                 .map(pkg -> CacheManager.INSTANCE.jsonCacheV2.get(pkg.getId()))
-                                 .collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(COMMA)
-                  .append(QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES).append(NEW_LINE)
-                  .append(CURLY_BRACKET_CLOSE);
-        return msgBuilder.toString();
-    }
 
     public static final String getAllPackagesMsgV2(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
         return getAllPackagesMsgV2(allPkgs, downloadable, include_ea, scope, OutputFormat.REDUCED_COMPRESSED);
@@ -695,110 +660,50 @@ public class Helper {
         return msgBuilder.toString();
     }
 
-    public static final String getAllPackagesMsgV3_OLD(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
-        return getAllPackagesMsgV3(allPkgs, downloadable, include_ea, scope, OutputFormat.REDUCED_COMPRESSED);
+    public static final String getAllPackagesMsgV3(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
+        return getAllPackagesMsgV3(allPkgs, downloadable, include_ea, scope, true);
     }
-    public static final String getAllPackagesMsgV3_OLD(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope, final OutputFormat outputFormat) {
+    public static final String getAllPackagesMsgV3(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope, final boolean sorted) {
         final List<Distro>  publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
         final boolean       gaOnly        = null == include_ea || !include_ea;
+        final StringBuilder chunkBuilder  = new StringBuilder();
         final StringBuilder msgBuilder    = new StringBuilder();
         final Scope         scopeToCheck  = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
 
         msgBuilder.append(CURLY_BRACKET_OPEN)
                   .append(QUOTES).append(RESULT).append(QUOTES).append(COLON)
-                  .append(allPkgs.parallelStream()
+                  .append(SQUARE_BRACKET_OPEN);
+
+        Partition<Pkg> partition = new Partition<>(allPkgs, 25000);
+        if (sorted) {
+            for (int i = 0 ; i < partition.size() ; i++) {
+                List<Pkg> chunk = partition.get(i);
+                chunkBuilder.append(chunk.parallelStream()
                                  .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
                                  .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
                                  .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
                                  .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
                                  .map(pkg -> CacheManager.INSTANCE.jsonCacheV3.get(pkg.getId()))
-                                 .collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(COMMA)
-                  .append(QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES)
-                  .append(CURLY_BRACKET_CLOSE);
-        return msgBuilder.toString();
+                                         .collect(Collectors.joining(COMMA)));
+                msgBuilder.append(chunkBuilder).append(COMMA);
+                chunkBuilder.setLength(0);
     }
-
-    public static final String getAllPackagesMsgV3(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
-        return getAllPackagesMsgV3(allPkgs, downloadable, include_ea, scope, OutputFormat.REDUCED_COMPRESSED);
-    }
-    public static final String getAllPackagesMsgV3(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope, final OutputFormat outputFormat) {
-        final List<Distro>  publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
-        final boolean       gaOnly        = null == include_ea || !include_ea;
-        final StringBuilder chunkBuilder  = new StringBuilder();
-        final StringBuilder msgBuilder    = new StringBuilder();
-        final Scope         scopeToCheck  = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
-
-        msgBuilder.append(CURLY_BRACKET_OPEN)
-                  .append(QUOTES).append(RESULT).append(QUOTES).append(COLON)
-                  .append(SQUARE_BRACKET_OPEN);
-
-        Partition<Pkg> partition = new Partition<>(allPkgs, 25000);
+        } else {
         for (int i = 0 ; i < partition.size() ; i++) {
             List<Pkg> chunk = partition.get(i);
             chunkBuilder.append(chunk.parallelStream()
                                      .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
                                      .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
                                      .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
-                                     .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
                                      .map(pkg -> CacheManager.INSTANCE.jsonCacheV3.get(pkg.getId()))
                                      .collect(Collectors.joining(COMMA)));
             msgBuilder.append(chunkBuilder).append(COMMA);
             chunkBuilder.setLength(0);
         }
-        msgBuilder.setLength(msgBuilder.length() - 1);
-        msgBuilder.append(SQUARE_BRACKET_CLOSE).append(COMMA);
-        msgBuilder.append(QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES)
-                  .append(CURLY_BRACKET_CLOSE);
-        return msgBuilder.toString();
-    }
-
-    public static final String getAllPackagesMsgMinimizedV3_OLD(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
-        final List<Distro>  publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
-        final boolean       gaOnly        = null == include_ea || !include_ea;
-        final StringBuilder msgBuilder   = new StringBuilder();
-        final Scope         scopeToCheck = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
-
-        msgBuilder.append(CURLY_BRACKET_OPEN)
-                  .append(QUOTES).append(RESULT).append(QUOTES).append(COLON)
-                  .append(INDENT).append(allPkgs.parallelStream()
-                                                .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
-                                                .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
-                                                .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
-                                                .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
-                                                .map(pkg -> CacheManager.INSTANCE.jsonCacheMinimizedV3.get(pkg.getId()))
-                                                .collect(Collectors.joining(COMMA, SQUARE_BRACKET_OPEN, SQUARE_BRACKET_CLOSE))).append(COMMA)
-                  .append(QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES)
-                  .append(CURLY_BRACKET_CLOSE);
-        return msgBuilder.toString();
-    }
-
-    public static final String getAllPackagesMsgMinimizedV3(final Collection<Pkg> allPkgs, final Boolean downloadable, final Boolean include_ea, final BuildScope scope) {
-        final List<Distro>  publicDistros = null == downloadable || !downloadable ? Distro.getPublicDistros() : Distro.getPublicDistrosDirectlyDownloadable();
-        final boolean       gaOnly        = null == include_ea || !include_ea;
-        final StringBuilder chunkBuilder  = new StringBuilder();
-        final StringBuilder msgBuilder    = new StringBuilder();
-        final Scope         scopeToCheck  = (BuildScope.BUILD_OF_OPEN_JDK == scope || BuildScope.BUILD_OF_GRAALVM == scope) ? scope : null;
-
-        msgBuilder.append(CURLY_BRACKET_OPEN)
-                  .append(QUOTES).append(RESULT).append(QUOTES).append(COLON)
-                  .append(SQUARE_BRACKET_OPEN);
-
-        Partition<Pkg> partition = new Partition<>(allPkgs, 25000);
-        for (int i = 0 ; i < partition.size() ; i++) {
-            List<Pkg> chunk = partition.get(i);
-            chunkBuilder.append(chunk.parallelStream()
-                                     .filter(pkg -> null == scopeToCheck ? pkg != null : Constants.REVERSE_SCOPE_LOOKUP.get(scopeToCheck).contains(pkg.getDistribution().getDistro()))
-                                     .filter(pkg -> publicDistros.contains(pkg.getDistribution().getDistro()))
-                                     .filter(pkg -> gaOnly ? ReleaseStatus.GA == pkg.getReleaseStatus() : null != pkg.getReleaseStatus())
-                                     .sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed()))
-                                     .map(pkg -> CacheManager.INSTANCE.jsonCacheMinimizedV3.get(pkg.getId()))
-                                     .collect(Collectors.joining(COMMA)));
-            msgBuilder.append(chunkBuilder).append(COMMA);
-            chunkBuilder.setLength(0);
         }
         msgBuilder.setLength(msgBuilder.length() - 1);
-        msgBuilder.append(SQUARE_BRACKET_CLOSE).append(COMMA);
-        msgBuilder.append(QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES)
+        msgBuilder.append(SQUARE_BRACKET_CLOSE).append(COMMA)
+                  .append(QUOTES).append(MESSAGE).append(QUOTES).append(COLON).append(QUOTES).append(QUOTES)
                   .append(CURLY_BRACKET_CLOSE);
         return msgBuilder.toString();
     }
@@ -961,6 +866,45 @@ public class Helper {
                                                         .filter(pkg -> pkg.getMajorVersion().getAsInt() == entry.getKey())
                                                         .filter(pkg -> pkg.getReleaseStatus() == ReleaseStatus.GA)
                                                         .forEach(pkg -> pkg.setReleaseStatus(ReleaseStatus.EA)));
+    }
+
+    public static final Optional<Semver> getMaxVersionNumber(final BuildScope buildScope, final Integer jdkVersion, final boolean includeEa) {
+        if (null != jdkVersion && jdkVersion <= 6) { throw new IllegalArgumentException("Please provide a valid jdkVersion"); }
+        switch (buildScope) {
+            case BUILD_OF_GRAALVM : return CacheManager.INSTANCE.pkgCache.getPkgs()
+                                                                         .stream()
+                                                                         .filter(pkg -> Distro.isBasedOnGraalVM(pkg.getDistribution().getDistro()))
+                                                                         .filter(pkg -> null == jdkVersion ? pkg.getJdkVersion() != null : jdkVersion == pkg.getJdkVersion().getAsInt())
+                                                                         .filter(pkg -> includeEa ? pkg.getReleaseStatus() != null : ReleaseStatus.GA == pkg.getReleaseStatus())
+                                                                         .map(pkg -> pkg.getSemver())
+                                                                         .sorted(Comparator.comparing(Semver::getVersionNumber).reversed())
+                                                                         .findFirst();
+            case BUILD_OF_OPEN_JDK:
+            default               : return CacheManager.INSTANCE.pkgCache.getPkgs()
+                                                                         .stream().filter(pkg -> Distro.isBasedOnOpenJDK(pkg.getDistribution().getDistro()))
+                                                                         .filter(pkg -> includeEa ? pkg.getReleaseStatus() != null : ReleaseStatus.GA == pkg.getReleaseStatus())
+                                                                         .map(pkg -> pkg.getSemver())
+                                                                         .sorted(Comparator.comparing(Semver::getVersionNumber).reversed())
+                                                                         .findFirst();
+        }
+    }
+
+    public static final Set<OperatingSystem> getSupportedOperatingSystems(final Distro distro) {
+        Set<OperatingSystem> supportedOperatingSystems = CacheManager.INSTANCE.pkgCache.getPkgs()
+                                                                                       .parallelStream()
+                                                                                       .filter(pkg -> distro == pkg.getDistribution().getDistro())
+                                                                                       .map(pkg -> pkg.getOperatingSystem())
+                                                                                       .collect(Collectors.toSet());
+        return supportedOperatingSystems;
+    }
+
+    public static final Set<Architecture> getSupportedArchitectures(final Distro distro) {
+        Set<Architecture> supportedArchitectures = CacheManager.INSTANCE.pkgCache.getPkgs()
+                                                                                 .parallelStream()
+                                                                                 .filter(pkg -> distro == pkg.getDistribution().getDistro())
+                                                                                 .map(pkg -> pkg.getArchitecture())
+                                                                                 .collect(Collectors.toSet());
+        return supportedArchitectures;
     }
 
 

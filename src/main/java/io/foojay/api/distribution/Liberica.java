@@ -30,6 +30,7 @@ import eu.hansolo.jdktools.PackageType;
 import eu.hansolo.jdktools.ReleaseStatus;
 import eu.hansolo.jdktools.SignatureType;
 import eu.hansolo.jdktools.TermOfSupport;
+import eu.hansolo.jdktools.Verification;
 import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
@@ -316,6 +317,7 @@ public class Liberica implements Distribution {
                 pkg.setPackageType(JRE);
                 break;
             case NONE:
+            default:
                 pkg.setPackageType(bundleTyp.toLowerCase().contains(Constants.JRE) ? JRE : JDK);
                 break;
         }
@@ -361,6 +363,9 @@ public class Liberica implements Distribution {
 
         pkg.setJavaFXBundled(isFX);
         pkg.setReleaseStatus(isGA ? ReleaseStatus.GA : releaseStatus);
+
+        pkg.setTckTested(isGA ? Verification.YES : Verification.NO);
+        pkg.setTckCertUri(isGA ? "https://bell-sw.com/libericajdk/" : "");
 
         pkg.setTermOfSupport(supTerm);
 

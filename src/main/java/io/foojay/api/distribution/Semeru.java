@@ -263,11 +263,8 @@ public class Semeru implements Distribution {
                 final ArchiveType archiveType = Helper.getFileEnding(filename);
                 if (OperatingSystem.MACOS == operatingSystem) {
                     switch(archiveType) {
-                        case DEB:
-                        case RPM: operatingSystem = OperatingSystem.LINUX; break;
-                        case CAB:
-                        case MSI:
-                        case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
+                        case DEB, RPM      -> operatingSystem = OperatingSystem.LINUX;
+                        case CAB, MSI, EXE -> operatingSystem = OperatingSystem.WINDOWS;
                     }
                 }
 

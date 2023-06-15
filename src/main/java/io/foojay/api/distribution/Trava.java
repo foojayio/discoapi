@@ -218,9 +218,6 @@ public class Trava implements Distribution {
             pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
 
             switch (packageType) {
-                case NONE:
-                    pkg.setPackageType(filename.contains(Constants.JDK_PREFIX) ? JDK : JRE);
-                    break;
                 case JDK:
                     if (!filename.contains(Constants.JDK_PREFIX)) { continue; }
                     pkg.setPackageType(JDK);
@@ -229,12 +226,13 @@ public class Trava implements Distribution {
                     if (!filename.contains(Constants.JRE_PREFIX)) { continue; }
                     pkg.setPackageType(JRE);
                     break;
+                case NONE:
+                default:
+                    pkg.setPackageType(filename.contains(Constants.JDK_PREFIX) ? JDK : JRE);
+                    break;
             }
 
             switch (releaseStatus) {
-                case NONE:
-                    pkg.setReleaseStatus(filename.contains(Constants.EA_POSTFIX) ? EA : GA);
-                    break;
                 case GA:
                     if (filename.contains(Constants.EA_POSTFIX)) { continue; }
                     pkg.setReleaseStatus(GA);
@@ -242,6 +240,10 @@ public class Trava implements Distribution {
                 case EA:
                     if (!filename.contains(Constants.EA_POSTFIX)) { continue; }
                     pkg.setReleaseStatus(EA);
+                    break;
+                case NONE:
+                default:
+                    pkg.setReleaseStatus(filename.contains(Constants.EA_POSTFIX) ? EA : GA);
                     break;
             }
 
@@ -266,19 +268,10 @@ public class Trava implements Distribution {
                                                                   .orElse(OperatingSystem.NONE);
             if (OperatingSystem.NONE == os) {
                 switch (pkg.getArchiveType()) {
-                    case DEB:
-                    case RPM:
-                    case TAR_GZ:
-                        os = OperatingSystem.LINUX;
-                        break;
-                    case MSI:
-                    case ZIP:
-                        os = OperatingSystem.WINDOWS;
-                        break;
-                    case DMG:
-                    case PKG:
-                        os = OperatingSystem.MACOS;
-                        break;
+                    case DEB, RPM, TAR_GZ -> os = OperatingSystem.LINUX;
+                    case MSI, ZIP         -> os = OperatingSystem.WINDOWS;
+                    case DMG, PKG         -> os = OperatingSystem.MACOS;
+                    default               -> { continue; }
                 }
             }
             if (OperatingSystem.NONE == os) {
@@ -409,19 +402,10 @@ public class Trava implements Distribution {
                                                                       .orElse(OperatingSystem.NONE);
                 if (OperatingSystem.NONE == os) {
                     switch (pkg.getArchiveType()) {
-                        case DEB:
-                        case RPM:
-                        case TAR_GZ:
-                            os = OperatingSystem.LINUX;
-                            break;
-                        case MSI:
-                        case ZIP:
-                            os = OperatingSystem.WINDOWS;
-                            break;
-                        case DMG:
-                        case PKG:
-                            os = OperatingSystem.MACOS;
-                            break;
+                        case DEB, RPM, TAR_GZ -> os = OperatingSystem.LINUX;
+                        case MSI, ZIP         -> os = OperatingSystem.WINDOWS;
+                        case DMG, PKG         -> os = OperatingSystem.MACOS;
+                        default               -> { continue; }
                     }
                 }
                 if (OperatingSystem.NONE == os) {

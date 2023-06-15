@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021.
+ * Copyright (c) 2022.
  *
  * This file is part of DiscoAPI.
  *
@@ -18,6 +18,7 @@
  */
 
 package io.foojay.api.util;
+
 import java.time.Instant;
 
 
@@ -35,4 +36,3 @@ public enum UpdaterState {
     public Instant getTimestamp() { return timestamp; }
     public void setTimestamp(final Instant timestamp) { this.timestamp = timestamp; }
 }
-

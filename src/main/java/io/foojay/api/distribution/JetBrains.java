@@ -195,6 +195,8 @@ public class JetBrains implements Distribution {
             if (strippedDownloadLink.isEmpty()) { continue; }
 
             String   filename         = Helper.getFileNameFromText(strippedDownloadLink);
+            if (filename.endsWith("diz.tar.gz") || filename.contains("fastdebug")) { continue; }
+
             String   strippedFilename = filename.replaceFirst("jbrsdk-", "").replaceAll("(\\.tar\\.gz|\\.zip)", "");
             String[] filenameParts    = strippedFilename.split("-");
 
@@ -271,11 +273,12 @@ public class JetBrains implements Distribution {
         while(JBRSDK_MATCHER.find()) {
             if (JBRSDK_MATCHER.groupCount() >= 2) {
                 String   filename         = JBRSDK_MATCHER.group(1);
+                if (null == filename || filename.isEmpty() || filename.contains("checksum") || filename.contains("fastdebug") || filename.endsWith("diz.tar.gz")) { continue; }
+
                 String   strippedFilename = filename.replaceFirst("jbrsdk-", "").replaceAll("(\\.tar\\.gz|\\.zip)", "");
                 String[] filenameParts    = strippedFilename.split("-");
                 String   downloadLink     = JBRSDK_MATCHER.group(2);
 
-                if (null == filename || filename.isEmpty() || filename.endsWith("checksum")) { continue; }
 
                 if (onlyNewPkgs) {
                     if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
@@ -355,7 +358,7 @@ public class JetBrains implements Distribution {
         List<String> fileHrefs = new ArrayList<>(Helper.getFileHrefsFromString(html));
         for (String href : fileHrefs) {
             final String filename = Helper.getFileNameFromText(href);
-            if (null == filename || !filename.startsWith("jbrsdk")) { continue; }
+            if (null == filename || !filename.startsWith("jbrsdk") || filename.contains("fastdebug") || filename.endsWith("diz.tar.gz")) { continue; }
 
             if (onlyNewPkgs) {
                 if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(href)).count() > 0) { continue; }
@@ -395,11 +398,8 @@ public class JetBrains implements Distribution {
             ArchiveType archiveType = ArchiveType.getFromFileName(filename);
             if (OperatingSystem.MACOS == operatingSystem) {
                 switch(archiveType) {
-                    case DEB:
-                    case RPM: operatingSystem = OperatingSystem.LINUX; break;
-                    case CAB:
-                    case MSI:
-                    case EXE: operatingSystem = OperatingSystem.WINDOWS; break;
+                    case DEB, RPM      -> operatingSystem = OperatingSystem.LINUX;
+                    case CAB, MSI, EXE -> operatingSystem = OperatingSystem.WINDOWS;
                 }
             }
 

@@ -37,6 +37,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.Feature;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
@@ -331,6 +332,10 @@ public class Zulu implements Distribution {
         }
         pkg.setFPU(fpu);
 
+        if (filename.contains("crac")) {
+            pkg.getFeatures().add(Feature.CRAC);
+        }
+
         String withoutPrefix = FILENAME_PREFIX_MATCHER.reset(filename).replaceAll("");
 
         if (null != javafxBundled && javafxBundled && !withoutPrefix.contains(Constants.FX_POSTFIX)) { return pkgs; }
@@ -359,14 +364,12 @@ public class Zulu implements Distribution {
                 pkg.setPackageType(JRE);
                 break;
             case NONE:
+            default:
                 pkg.setPackageType(withoutPrefix.contains(Constants.JRE_POSTFIX) ? JRE : JDK);
                 break;
         }
 
         switch (releaseStatus) {
-            case NONE:
-                pkg.setReleaseStatus(withoutPrefix.contains(Constants.EA_POSTFIX) ? EA : GA);
-                break;
             case EA:
                 if (!withoutPrefix.contains(Constants.EA_POSTFIX)) { return pkgs; }
                 pkg.setReleaseStatus(EA);
@@ -374,6 +377,10 @@ public class Zulu implements Distribution {
             case GA:
                 if (withoutPrefix.contains(Constants.EA_POSTFIX)) { return pkgs; }
                 pkg.setReleaseStatus(EA);
+                break;
+            case NONE:
+            default:
+                pkg.setReleaseStatus(withoutPrefix.contains(Constants.EA_POSTFIX) ? EA : GA);
                 break;
         }
 
@@ -406,19 +413,10 @@ public class Zulu implements Distribution {
 
         if (OperatingSystem.NONE == os) {
             switch (pkg.getArchiveType()) {
-                case DEB:
-                case RPM:
-                case TAR_GZ:
-                    os = LINUX;
-                    break;
-                case MSI:
-                case ZIP:
-                    os = WINDOWS;
-                    break;
-                case DMG:
-                case PKG:
-                    os = MACOS;
-                    break;
+                case DEB, RPM, TAR_GZ -> os = LINUX;
+                case MSI, ZIP         -> os = WINDOWS;
+                case DMG, PKG         -> os = MACOS;
+                default               -> { return pkgs; }
             }
         }
 
@@ -442,6 +440,7 @@ public class Zulu implements Distribution {
             pkg.setTckTested(Verification.YES);
             pkg.setTckCertUri(tckCertUri);
         }
+
 
         pkgs.add(pkg);
 
@@ -497,6 +496,10 @@ public class Zulu implements Distribution {
                     fpu = FPU.UNKNOWN;
                 }
                 pkg.setFPU(fpu);
+
+                if (filename.contains("crac")) {
+                    pkg.getFeatures().add(Feature.CRAC);
+                }
 
                 PackageType packageType = Constants.PACKAGE_TYPE_LOOKUP.entrySet().stream()
                                                                        .filter(entry -> filename.contains(entry.getKey()))

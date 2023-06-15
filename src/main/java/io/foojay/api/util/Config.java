@@ -26,9 +26,9 @@ import org.slf4j.LoggerFactory;
 public enum Config {
     INSTANCE;
 
-    private static final Logger LOGGER                    = LoggerFactory.getLogger(Config.class);
+    private static final Logger LOGGER                     = LoggerFactory.getLogger(Config.class);
 
-    public static final String FOOJAY_API_BASE_URL         = "FOOJAY_API_BASE_URL";         // https://api.foojay.io/disco
+    public static final String FOOJAY_API_BASE_URL         = "FOOJAY_API_BASE_URL";
     public static final String FOOJAY_API_ENVIRONMENT      = "FOOJAY_API_ENVIRONMENT";
     public static final String FOOJAY_API_MONGODB_URL      = "FOOJAY_API_MONGODB_URL";
     public static final String FOOJAY_API_MONGODB_PORT     = "FOOJAY_API_MONGODB_PORT";

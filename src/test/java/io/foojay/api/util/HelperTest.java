@@ -19,23 +19,12 @@
 
 package io.foojay.api.util;
 
-import eu.hansolo.jdktools.Architecture;
-import eu.hansolo.jdktools.ArchiveType;
-import eu.hansolo.jdktools.Bitness;
-import eu.hansolo.jdktools.OperatingSystem;
 import eu.hansolo.jdktools.PackageType;
-import eu.hansolo.jdktools.ReleaseStatus;
-import eu.hansolo.jdktools.TermOfSupport;
-import eu.hansolo.jdktools.versioning.VersionNumber;
-import io.foojay.api.pkg.Distro;
-import io.foojay.api.pkg.Pkg;
 import org.junit.jupiter.api.Test;
 
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Properties;
 import java.util.Set;
 
 

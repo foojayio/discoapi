@@ -32,6 +32,7 @@ import eu.hansolo.jdktools.ReleaseStatus;
 import eu.hansolo.jdktools.SignatureType;
 import eu.hansolo.jdktools.TermOfSupport;
 import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.SimpleMajorVersion;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -177,43 +178,6 @@ public class LibericaNative implements Distribution {
 
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append(PACKAGE_URL);
-        int initialSize = queryBuilder.length();
-
-        queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-        queryBuilder.append("version-feature=").append(versionNumber.getFeature().getAsInt());
-
-        if (bitness != Bitness.NONE) {
-            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-            if (Architecture.X64 == architecture) {
-                queryBuilder.append(BITNESS_PARAM).append("=").append(architecture.getBitness().getAsString());
-            } else {
-                queryBuilder.append(BITNESS_PARAM).append("=").append(BITNESS_MAP.get(bitness));
-            }
-        }
-
-        if (releaseStatus != ReleaseStatus.NONE) {
-            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-            queryBuilder.append(RELEASE_STATUS_PARAM).append("=").append(RELEASE_STATUS_MAP.get(releaseStatus));
-        }
-
-        if (operatingSystem != OperatingSystem.NONE) {
-            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-            queryBuilder.append(OPERATING_SYSTEM_PARAM).append("=").append(OPERATING_SYSTEM_MAP.get(operatingSystem));
-        }
-
-        if (architecture != Architecture.NONE) {
-            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-            queryBuilder.append(ARCHITECTURE_PARAM).append("=").append(ARCHITECTURE_MAP.get(architecture));
-            if (Architecture.X64 == architecture && !queryBuilder.toString().contains(BITNESS_PARAM)) {
-                queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-                queryBuilder.append(BITNESS_PARAM).append("=").append(architecture.getBitness().getAsString());
-            }
-        }
-
-        if (archiveType != ArchiveType.NONE) {
-            queryBuilder.append(queryBuilder.length() == initialSize ? "?" : "&");
-            queryBuilder.append(ARCHIVE_TYPE_PARAM).append("=").append(ARCHIVE_TYPE_MAP.get(archiveType));
-        }
 
         LOGGER.debug("Query string for {}: {}", this.getName(), queryBuilder);
 
@@ -229,8 +193,7 @@ public class LibericaNative implements Distribution {
 
     public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         final List<Pkg>           pkgsFound = new ArrayList<>();
-
-        final String              apiUrl    = "https://api.bell-sw.com/v1/nik/releases?bundle-type=standard";
+        final String              apiUrl    = "https://api.bell-sw.com/v1/nik/releases?bundle-type=standard&components=liberica&fields=bitness,components,os,downloadUrl,LTS,bundleType,packageType,version,filename,size,GA,architecture&components=nik";
         final Map<String, String> headers   = new HashMap<>();
         headers.put("accept", "application/json");
 
@@ -254,7 +217,6 @@ public class LibericaNative implements Distribution {
                         pkg.setDirectlyDownloadable(true);
                         pkg.setFreeUseInProduction(true);
                         pkg.setJavaFXBundled(false);
-                        pkg.setTermOfSupport(LTS);
                         pkg.setPackageType(JDK);
 
                         if (pkgJsonObj.has(FIELD_OS)) {
@@ -269,34 +231,28 @@ public class LibericaNative implements Distribution {
                             continue;
                         }
 
-                        Bitness bitness = pkgJsonObj.has(FIELD_BITNESS) ? Bitness.fromInt(pkgJsonObj.get(FIELD_BITNESS).getAsInt()) : Bitness.NOT_FOUND;
                         if (pkgJsonObj.has(FIELD_ARCHITECTURE)) {
-                            Architecture architecture = Architecture.fromText(pkgJsonObj.get(FIELD_ARCHITECTURE).getAsString());
-                            if (Architecture.NOT_FOUND == architecture) {
-                                continue;
-                            } else {
-                                if (Bitness.NOT_FOUND != bitness) {
-                                    switch(bitness) {
-                                        case BIT_32 -> {
-
-                                        }
-                                        case BIT_64 -> {
-                                            if (Architecture.X64.getSynonyms().contains(architecture)) {
+                            String arch = pkgJsonObj.get(FIELD_ARCHITECTURE).getAsString();
+                            Architecture architecture;
+                            Bitness      bitness;
+                            if (arch.equals("x86")) {
                                                 architecture = X64;
-                                            } else if (Architecture.AARCH64.getSynonyms().contains(architecture)) {
+                                bitness      = BIT_64;
+                            } else if (arch.equals("arm")) {
                                                 architecture = AARCH64;
-                                            }
-                                        }
-                                        default -> {
-                                            bitness = architecture.getBitness();
-                                        }
-                                    }
+                                bitness      = BIT_64;
+                            } else {
+                                continue;
                                 }
                                 pkg.setArchitecture(architecture);
                                 pkg.setBitness(bitness);
-                            }
                         } else {
                             continue;
+                        }
+
+                        if (pkgJsonObj.has(FIELD_LTS)) {
+                            TermOfSupport termOfSupport = pkgJsonObj.get(FIELD_LTS).getAsBoolean() ? TermOfSupport.LTS : TermOfSupport.STS;
+                            pkg.setTermOfSupport(termOfSupport);
                         }
 
                         if (pkgJsonObj.has(FIELD_VERSION)) {
@@ -348,29 +304,15 @@ public class LibericaNative implements Distribution {
                         String[] withoutPresetParts    = filenameWithoutPreset.split("-");
                         if (withoutPresetParts.length == 4) {
                             MajorVersion    jv = new MajorVersion(VersionNumber.fromText(withoutPresetParts[0]).getFeature().getAsInt());
-                            VersionNumber   vn = VersionNumber.fromText(withoutPresetParts[1]);
-                            OperatingSystem os = OperatingSystem.fromText(withoutPresetParts[2]);
                             ArchiveType     at = Helper.getFileEnding(filename);
-                            Architecture    ar = Architecture.fromText(withoutPresetParts[3].replace("." + at.getUiString(), ""));
-
                             pkg.setJdkVersion(jv);
-                            pkg.setVersionNumber(vn);
-                            pkg.setOperatingSystem(os);
                             pkg.setArchiveType(at);
-                            pkg.setArchitecture(ar);
                         } else if (withoutPresetParts.length == 5) {
                             MajorVersion    jv = new MajorVersion(VersionNumber.fromText(withoutPresetParts[0]).getFeature().getAsInt());
                             VersionNumber   vn = VersionNumber.fromText(withoutPresetParts[1]);
-                            OperatingSystem os = OperatingSystem.fromText(withoutPresetParts[2]);
                             ArchiveType     at = Helper.getFileEnding(filename);
-                            Architecture    ar = Architecture.fromText(withoutPresetParts[3]);
-                            LibCType        lt = LibCType.fromText(withoutPresetParts[4].replace("." + at.getUiString(), ""));
                             pkg.setJdkVersion(jv);
-                            pkg.setVersionNumber(vn);
-                            pkg.setOperatingSystem(os);
                             pkg.setArchiveType(at);
-                            pkg.setArchitecture(ar);
-                            pkg.setLibCType(lt);
                         } else {
                             continue;
                         }

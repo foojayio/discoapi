@@ -40,6 +40,7 @@ import io.foojay.api.pkg.Feature;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
+import io.foojay.api.util.Helper;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -47,6 +48,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -75,8 +77,11 @@ public enum DiscoService {
         }
         Collection<Pkg> pkgSelection = selection;
 
+        final OptionalInt nextButOneEA = Helper.getNextButOneEA();
+        final int         latestEA     = nextButOneEA.isPresent() ? nextButOneEA.getAsInt() : MajorVersion.getLatest(true).getAsInt();
+
         final VersionNumber minVersionNumber = null == fromVersionNumber ? new VersionNumber(6)                                : fromVersionNumber;
-        final VersionNumber maxVersionNumber = null == toVersionNumber   ? new VersionNumber(MajorVersion.getLatest(true).getAsInt()) : toVersionNumber;
+        final VersionNumber maxVersionNumber = null == toVersionNumber   ? new VersionNumber(latestEA) : toVersionNumber;
         List<Pkg> pkgsFound = pkgSelection.parallelStream()
                                           .filter(pkg -> distributions.isEmpty()                  ? pkg.getDistribution()        != null        : distributions.contains(pkg.getDistribution()))
                                           .filter(pkg -> Match.ANY == match                       ? Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(distroScopes.stream().collect(toSet())::contains) : Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().allMatch(distroScopes.stream().collect(toSet())::contains))
@@ -109,7 +114,7 @@ public enum DiscoService {
             pkgsFound.removeAll(pkgsToRemove);
         }
 
-        return pkgsFound;
+        return pkgsFound.parallelStream().sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed())).collect(Collectors.toList());
     }
 
     public List<Pkg> getPkgsFromCache(final VersionNumber versionNumber, final Comparison comparison, final MajorVersion jdkVersion, final List<Distribution> distributions, final List<Architecture> architectures, final List<FPU> fpus, final List<ArchiveType> archiveTypes,
@@ -123,16 +128,16 @@ public enum DiscoService {
                                       final PackageType packageType, final List<OperatingSystem> operatingSystems, final List<LibCType> libCTypes, final List<ReleaseStatus> releaseStatus, final List<TermOfSupport> termsOfSupport,
                                       final Bitness bitness, final Boolean javafxBundled, final Boolean withFxIfAvailable, final Boolean directlyDownloadable, final Latest latest, final List<Feature> features, final Boolean signatureAvailable,
                                       final Boolean freeToUseInProduction, final Verification tckTested, final Verification aqavitCertified, final List<Scope> distroScopes, final Match match, final List<Scope> pkgScopes) {
+
+        final OptionalInt nextButOneEA = Helper.getNextButOneEA();
+        final int         latestEA     = nextButOneEA.isPresent() ? nextButOneEA.getAsInt() : MajorVersion.getLatest(true).getAsInt();
+
         Collection<Pkg> selection = CacheManager.INSTANCE.pkgCache.getPkgs();
         if (null != pkgScopes && !pkgScopes.isEmpty()) {
             for (Scope scope : pkgScopes) {
                 switch (scope.getApiString()) {
-                    case "signature_available":
-                        selection = selection.parallelStream().filter(pkg -> !pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
-                        break;
-                    case "signature_not_available":
-                        selection = selection.parallelStream().filter(pkg -> pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
-                        break;
+                    case "signature_available"     -> selection = selection.parallelStream().filter(pkg -> !pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
+                    case "signature_not_available" -> selection = selection.parallelStream().filter(pkg -> pkg.getSignatureUri().isEmpty()).collect(Collectors.toList());
                 }
             }
         }
@@ -145,14 +150,7 @@ public enum DiscoService {
                     final VersionNumber maxNumber;
                     if (null == versionNumber || versionNumber.getFeature().isEmpty()) {
                         Optional<Pkg> pkgWithMaxVersionNumber = pkgSelection.parallelStream()
-                                                                            .filter(pkg -> distributions.isEmpty()                    ? (pkg.getDistribution() != null &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GLUON_GRAALVM &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE8 &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE11 &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE16 &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.GRAALVM_CE17 &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.LIBERICA_NATIVE &&
-                                                                                                                                         pkg.getDistribution().getDistro() != Distro.MANDREL) : distributions.contains(pkg.getDistribution()))
+                                                                            .filter(pkg -> distributions.isEmpty() ? (pkg.getDistribution() != null && Distro.isBasedOnOpenJDK(pkg.getDistribution().getDistro())) : distributions.contains(pkg.getDistribution()))
                                                                             .filter(pkg -> Constants.SCOPE_LOOKUP.get(pkg.getDistribution().getDistro()).stream().anyMatch(distroScopes.stream().collect(toSet())::contains))
                                                                             .filter(pkg -> null               == jdkVersion           ? pkg.getJdkVersion()          != null          : pkg.getJdkVersion().equals(jdkVersion))
                                                                             .filter(pkg -> architectures.isEmpty()                    ? pkg.getArchitecture()        != null          : architectures.contains(pkg.getArchitecture()))
@@ -483,43 +481,43 @@ public enum DiscoService {
                     break;
                 case GREATER_THAN:
                     minVersionNumber = versionNumber;
-                    maxVersionNumber = new VersionNumber(MajorVersion.getLatest(true).getAsInt());
+                    maxVersionNumber = new VersionNumber(latestEA);
                     greaterCheck     = pkg -> pkg.getVersionNumber().compareTo(minVersionNumber) > 0;
                     smallerCheck     = pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) <= 0;
                     break;
                 case GREATER_THAN_OR_EQUAL:
                     minVersionNumber = versionNumber;
-                    maxVersionNumber = new VersionNumber(MajorVersion.getLatest(true).getAsInt());
+                    maxVersionNumber = new VersionNumber(latestEA);
                     greaterCheck     = pkg -> pkg.getVersionNumber().compareTo(minVersionNumber) >= 0;
                     smallerCheck     = pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) <= 0;
                     break;
                 case RANGE_INCLUDING:
                     minVersionNumber = versionNumber;
-                    maxVersionNumber = null == toVersionNumber ? new VersionNumber(MajorVersion.getLatest(true).getAsInt()) : toVersionNumber;
+                    maxVersionNumber = null == toVersionNumber ? new VersionNumber(latestEA) : toVersionNumber;
                     greaterCheck     = pkg -> pkg.getVersionNumber().compareTo(minVersionNumber) >= 0;
                     smallerCheck     = pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) <= 0;
                     break;
                 case RANGE_EXCLUDING_TO:
                     minVersionNumber = versionNumber;
-                    maxVersionNumber = null == toVersionNumber ? new VersionNumber(MajorVersion.getLatest(true).getAsInt()) : toVersionNumber;
+                    maxVersionNumber = null == toVersionNumber ? new VersionNumber(latestEA) : toVersionNumber;
                     greaterCheck     = pkg -> pkg.getVersionNumber().compareTo(minVersionNumber) >= 0;
                     smallerCheck     = pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) < 0;
                     break;
                 case RANGE_EXCLUDING_FROM:
                     minVersionNumber = versionNumber;
-                    maxVersionNumber = null == toVersionNumber ? new VersionNumber(MajorVersion.getLatest(true).getAsInt()) : toVersionNumber;
+                    maxVersionNumber = null == toVersionNumber ? new VersionNumber(latestEA) : toVersionNumber;
                     greaterCheck     = pkg -> pkg.getVersionNumber().compareTo(minVersionNumber) > 0;
                     smallerCheck     = pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) <= 0;
                     break;
                 case RANGE_EXCLUDING:
                     minVersionNumber = versionNumber;
-                    maxVersionNumber = null == toVersionNumber ? new VersionNumber(MajorVersion.getLatest(true).getAsInt()) : toVersionNumber;
+                    maxVersionNumber = null == toVersionNumber ? new VersionNumber(latestEA) : toVersionNumber;
                     greaterCheck     = pkg -> pkg.getVersionNumber().compareTo(minVersionNumber) > 0;
                     smallerCheck     = pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) < 0;
                     break;
                 default:
                     minVersionNumber = new VersionNumber(6);
-                    maxVersionNumber = new VersionNumber(MajorVersion.getLatest(true).getAsInt());
+                    maxVersionNumber = new VersionNumber(latestEA);
                     greaterCheck     = pkg -> pkg.getVersionNumber().compareTo(minVersionNumber) >= 0;
                     smallerCheck     = pkg -> pkg.getVersionNumber().compareTo(maxVersionNumber) <= 0;
                     break;
@@ -560,6 +558,6 @@ public enum DiscoService {
             pkgsFound.removeAll(pkgsToRemove);
         }
 
-        return pkgsFound;
+        return pkgsFound.parallelStream().sorted(Comparator.comparing(Pkg::getDistributionName).reversed().thenComparing(Comparator.comparing(Pkg::getSemver).reversed())).collect(Collectors.toList());
     }
 }
