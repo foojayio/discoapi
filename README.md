@@ -1,12 +1,15 @@
-# foojay Disco API 
+# Foojay Disco API 
 
-![Logo](https://github.com/foojay2020/discoapi/raw/main/discoduke.png)
+![Foojay Disco API Logo](https://github.com/foojay2020/discoapi/raw/main/discoduke.png)
 
-The foojay Disco API is a general purpose API to discover builds of OpenJDK from different distributions
+The Foojay Disco API is a general purpose API to discover builds of OpenJDK from different distributions
 
 Presentation about the [Disco API](https://de.slideshare.net/han_solo/disco-api-openjdk-distributions-as-a-service).
 
-#### At the moment the following distributions are supported by the API:
+[![Watch the video](https://img.youtube.com/vi/SX1194tzqhk/maxresdefault.jpg)](https://youtu.be/SX1194tzqhk)
+
+#### At the moment the API supports the following distributions:
+
 * AdoptOpenJDK
 * AdoptOpenJDK OpenJ9
 * Bi Sheng
@@ -34,15 +37,20 @@ Presentation about the [Disco API](https://de.slideshare.net/han_solo/disco-api-
 * Zulu Prime
   
 ---
+
 ### Terms that are used in this document:
+
 * LTS stands for Long Term Support. It means the version will receive security updates for a long time
 * MTS stands for Mid Term Support. It means the version will receive security updates at least until the next LTS will be released
 * STS stands for Short Term Support. It means the version will receive updates for the next 6 months (Dec 2020)
 * GA stands for General Availability. It means that the release is stable
 * EA stands for Early Access. It means that the release is not stable and will change probably every week
 * Bitness describes 32- or 64-bit architecture
+
 ---
+
 ### Terms and parameters used in the disco API:
+
 * **archive_type** stands more or less for the file extension of the package e.g. tar.gz, zip, dmg, msi etc.
 * **distribution** stands for the name of the distribution (aoj, aoj_openj9, corretto, dragonwell, liberica, liberica_native, oracle, oracle_open_jdk, sap_machine, semeru, temurin, trava, zulu etc.)
 * **major_version** stands for the major version of a package e.g. 8, 11, 13, 15 (it is the feature version in the [JEP 322](https://openjdk.java.net/jeps/322))
@@ -57,81 +65,63 @@ Presentation about the [Disco API](https://de.slideshare.net/han_solo/disco-api-
 * **javafx_bundled** indicates if the package comes bundled with javafx (e.g. true, false)
 * **directly_downloadable** indicates if the package can directly be downloaded or if you have to go to the download page of the distribution to get it
 * **id** stands for an id that is unique for each package
+
 ---
+
 There are different endpoints that can be used to drill down to the package the user would like to download.
 
 Please find more information here:
 [foojay API Swagger doc](https://api.foojay.io/swagger-ui)
 
 ---
+
 ### REST endpoints 
-/api.foojay.io/disco/v3.0/major_versions
-/api.foojay.io/disco/v3.0/distributions
-/api.foojay.io/disco/v3.0/packages
-/api.foojay.io/disco/v3.0/packages/jdks
-/api.foojay.io/disco/v3.0/packages/jres
-/api.foojay.io/disco/v3.0/ids
+
+* https://api.foojay.io/disco/v3.0/major_versions
+* https://api.foojay.io/disco/v3.0/distributions
+* https://api.foojay.io/disco/v3.0/packages
+* https://api.foojay.io/disco/v3.0/packages/jdks
+* https://api.foojay.io/disco/v3.0/packages/jres
+* https://api.foojay.io/disco/v3.0/ids
 
 ---
+
 ### Endpoint: major_versions
-<b>/api.foojay.io/disco/v3.0/major_versions</b> => Returns all major versions
 
-<b>/api.foojay.io/disco/v3.0/major_versions?ea=true</b> => Returns all major versions including early access builds
-
-<b>/api.foojay.io/disco/v3.0/major_versions?ga=true</b> => Returns all major versions including only general availability builds
-
-<b>/api.foojay.io/disco/v3.0/major_versions?maintained=true</b> => Returns all major versions that are maintained at the moment (e.g. 7, 8, 11, 13, 15, 16, 17-ea, 18-ea)
-
+* <b>https://api.foojay.io/disco/v3.0/major_versions </b> => Returns all major versions
+* <b>https://api.foojay.io/disco/v3.0/major_versions?ea=true </b> => Returns all major versions including early access builds
+* <b>https://api.foojay.io/disco/v3.0/major_versions?ga=true </b> => Returns all major versions including only general availability builds
+* <b>https://api.foojay.io/disco/v3.0/major_versions?maintained=true </b> => Returns all major versions that are maintained at the moment (e.g. 7, 8, 11, 13, 15, 16, 17-ea, 18-ea)
 
 ### Endpoint: distributions
-<b>/api.foojay.io/disco/v3.0/distributions</b> => Returns all available distributions incl. their available versions
 
-<b>/api.foojay.io/disco/v3.0/distributions/zulu</b> => Returns the given distribution (here Zulu) with it's available versions
-
+* <b>https://api.foojay.io/disco/v3.0/distributions </b> => Returns all available distributions incl. their available versions
+* <b>https://api.foojay.io/disco/v3.0/distributions/zulu </b> => Returns the given distribution (here Zulu) with its available versions
 
 ### Endpoint: packages
+
 The packages endpoint can be used with the following url parameters:
+
 - <b>version</b> (e.g. 1.8.0_262, 11.0.9.1, 17-ea.1, 11.0.8..<11.0.10)
-  
-
 - <b>distro</b> (e.g. aoj, aoj_openj9, corretto, dragonwell, graalvm_ce8, graalvm_ce11, graalvm_ce16, jetbrains, liberica, liberica_native, mandrel, microsoft, ojdk_build, openlogic, oracle, oracle_open_jdk, redhat, sap_machine, semeru, temurin, trava, zulu, zulu_prime)
-  
-
 - <b>architecture</b> (e.g. aarch64, amd64, arm, arm64, ia64, mips, ppc, ppc64el, ppc64le, ppc64, riscv64, s390, s390x, sparc, sparcv9, x64, x86-64, x86, i386, i486, i586, i686, x86-32)
-  
-
 - <b>archive_type</b> (e.g. apk, cab, deb, dmg, exe, msi, pkg, rpm, tar, tar.gz, tar.Z, zip)
-  
-
 - <b>package_type</b> (e.g. jdk, jre)
-  
-
 - <b>operating_system</b> (e.g. aix, alpine_linux, linux, linux_musl, macos, qnx, solaris, windows)
-  
-
 - <b>libc_type</b> (e.g. c_std_lib, glibc, libc, musl)
-  
-
 - <b>release_status</b> (e.g. ea, ga)
-  
-
 - <b>term_of_support</b> (e.g. sts, mts, lts)
-  
-
 - <b>bitness</b> (e.g. 32, 64)
-  
-
 - <b>javafx_bundled</b> (e.g. true, false)
-  
-
 - <b>directly_downloadable</b> (e.g. true, false)
-  
-
 - <b>latest</b> (e.g. all_of_version, per_distro, overall, available)
 
 ### Get the download link of a package
-Let's assume we are looking for the latest version of JDK 11, including JavaFX for MacOS with Intel processor and we would like to use an installer, so it should be either dmg or pkg.
+
+Let's assume we are looking for the latest version of JDK 11, including JavaFX for MacOS with Intel processor, and we would like to use an installer, so it should be either dmg or pkg.
+
 The url parameters will look as follows:
+
 - latest=available
 - package_type=jdk
 - version=11
@@ -142,9 +132,20 @@ The url parameters will look as follows:
 - archive_type=pkg
 
 So the http request will look as follows:
-https://api.foojay.io/disco/v3.0/packages?package_type=jdk&latest=available&version=11&javafx_bundled=true&operating_system=macos&architecture=x64&archive_type=dmg&archive_type=pkg
+
+```
+https://api.foojay.io/disco/v3.0/packages?package_type=jdk
+    &latest=available
+    &version=11
+    &javafx_bundled=true
+    &operating_system=macos
+    &architecture=x64
+    &archive_type=dmg
+    &archive_type=pkg
+```
 
 The response to this request is the following:
+
 ```JSON
 {
   "result": [
@@ -245,6 +246,7 @@ The response to this request is the following:
   "message": "3 package(s) found"
 }
 ```
+
 As you can see the API found 3 packages in 2 distributions, Zulu and Liberica.
 
 <b>Attention:</b>
@@ -263,6 +265,7 @@ package you would like to download.
 
 So if we make the following request: https://api.foojay.io/disco/v3.0/ids/2dd07b11553c798fa49274d937ba88e9
 we will get this response back:
+
 ```JSON
 {
   "result":[
@@ -282,31 +285,42 @@ we will get this response back:
 In this response you will now get the direct_download_uri which will let you download the package.
 
 ---
+
 ### IDE Plugins
+
 There are several plugins and extensions available that already make use of the DiscoAPI and that can help you to get
 the JDK of your choice even faster.
 
 #### IntelliJ Idea plugin
+
 In the IntelliJ Idea Plugin marketplace you will find the [DiscoIdea](https://plugins.jetbrains.com/plugin/16787-discoidea) plugin.
 
 #### Eclipse plugin
+
 In Eclipse you can find the [DiscoEclipse](https://marketplace.eclipse.org/content/discoeclipse) plugin on the marketplace
 
 #### Visual Studio Code
+
 In Visual Studio Code you can find the [DiscoVSC](https://marketplace.visualstudio.com/items?itemName=GerritGrunwald.discovsc&ssr=false#overview) plugin on the marketplace
 
 ---
+
 ### Browser plugins
+
 More or less the same plugin that is available for the different IDE's is also available as a browser plugin.
 
 #### Chrome
+
 For Google Chrome please look for [DiscoChrome](https://chrome.google.com/webstore/detail/discochrome/cikmnphhlggceijbbdeohhlkbdagjjce) in the chrome web store
 
 #### Firefox
+
 For Firefox please look for [DiscoFox](https://addons.mozilla.org/addon/discofox/) on the firefox addons page
 
 #### Safari
+
 For Safari please look for [DiscoSafari](https://apps.apple.com/de/app/discosafari/id1571307341?mt=12) on the Mac app store
 
 #### Edge
+
 For Microsoft Edge please look for [DiscoEdge](https://microsoftedge.microsoft.com/addons/detail/efeaimfkdbolmkhafogcoocbidfhdkcm) on Edge plugins page
