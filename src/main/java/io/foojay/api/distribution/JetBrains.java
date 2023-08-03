@@ -128,7 +128,7 @@ public class JetBrains implements Distribution {
     @Override public String getOfficialUri() { return OFFICIAL_URI; }
 
     @Override public List<String> getSynonyms() {
-        return List.of("jetbrains", "JetBrains", "JETBRAINS");
+        return List.of("jetbrains", "JetBrains", "JETBRAINS", "JetBrains s.r.o");
     }
 
     @Override public List<Semver> getVersions() {

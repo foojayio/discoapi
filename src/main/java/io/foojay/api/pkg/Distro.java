@@ -258,6 +258,7 @@ public enum Distro implements Api {
             case "jetbrains":
             case "JetBrains":
             case "JETBRAINS":
+            case "JetBrains s.r.o":
                 return JETBRAINS;
             case "liberica":
             case "LIBERICA":
