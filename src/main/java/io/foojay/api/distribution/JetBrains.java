@@ -90,7 +90,7 @@ public class JetBrains implements Distribution {
     private static final SignatureType SIGNATURE_TYPE         = SignatureType.NONE;
     private static final HashAlgorithm SIGNATURE_ALGORITHM    = HashAlgorithm.NONE;
     private static final String        SIGNATURE_URI          = "";
-    private static final String        OFFICIAL_URI           = "https://confluence.jetbrains.com/display/JBR/JetBrains+Runtime";
+    private static final String        OFFICIAL_URI           = "https://github.com/JetBrains/JetBrainsRuntime";
 
     private static final Pattern       JBRSDK_PATTERN         = Pattern.compile("JBRSDK\\s+\\|\\s+\\[([0-9a-zA-Z_.-]+)\\]\\(([0-9a-z:/._-]+)\\)");
     private static final Matcher       JBRSDK_MATCHER         = JBRSDK_PATTERN.matcher("");
@@ -189,8 +189,6 @@ public class JetBrains implements Distribution {
             String strippedDownloadLink = "";
             if (downloadLink.startsWith("https://cache-redirector")) {
                 strippedDownloadLink = downloadLink.replaceAll("\\?_.*", "");
-            } else if (downloadLink.startsWith("https://bintray.com")) {
-                strippedDownloadLink = downloadLink.replaceFirst("https://bintray.com/jetbrains/intellij-jbr/download_file\\?file_path=", "");
             }
             if (strippedDownloadLink.isEmpty()) { continue; }
 
