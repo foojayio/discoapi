@@ -189,8 +189,6 @@ public class JetBrains implements Distribution {
             String strippedDownloadLink = "";
             if (downloadLink.startsWith("https://cache-redirector")) {
                 strippedDownloadLink = downloadLink.replaceAll("\\?_.*", "");
-            } else if (downloadLink.startsWith("https://bintray.com")) {
-                strippedDownloadLink = downloadLink.replaceFirst("https://bintray.com/jetbrains/intellij-jbr/download_file\\?file_path=", "");
             }
             if (strippedDownloadLink.isEmpty()) { continue; }
 
