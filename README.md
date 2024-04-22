@@ -65,12 +65,14 @@ Please find more information here:
 
 ---
 ### REST endpoints 
+```
 /api.foojay.io/disco/v3.0/major_versions
 /api.foojay.io/disco/v3.0/distributions
 /api.foojay.io/disco/v3.0/packages
 /api.foojay.io/disco/v3.0/packages/jdks
 /api.foojay.io/disco/v3.0/packages/jres
 /api.foojay.io/disco/v3.0/ids
+```
 
 ---
 ### Endpoint: major_versions
