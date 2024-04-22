@@ -377,7 +377,7 @@ public class ZuluPrime implements Distribution {
 
             pkg.setTermOfSupport(Helper.getTermOfSupport(vNumber.getFeature().getAsInt()));
 
-            pkg.setPackageType(JDK);
+            pkg.setPackageType(filename.contains("jre") ? JRE : JDK);
 
             pkg.setReleaseStatus(GA);
 

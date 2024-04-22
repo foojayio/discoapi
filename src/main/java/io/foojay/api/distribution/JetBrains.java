@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.TreeSet;
@@ -94,6 +95,15 @@ public class JetBrains implements Distribution {
 
     private static final Pattern       JBRSDK_PATTERN         = Pattern.compile("JBRSDK\\s+\\|\\s+\\[([0-9a-zA-Z_.-]+)\\]\\(([0-9a-z:/._-]+)\\)");
     private static final Matcher       JBRSDK_MATCHER         = JBRSDK_PATTERN.matcher("");
+    private static final Pattern       JBRSDK_JCEF_PATTERN    = Pattern.compile("(https:\\/\\/[a-zA-Z0-9_\\/\\.\\-]+)((jbrsdk_jcef)-([a-zA-Z0-9\\.]*)-([a-zA-Z]*)-([a-zA-Z0-9]*)-([bB0-9\\.]*)(((\\.tar\\.gz)|(\\.zip)|(\\.pkg)|(\\.msi))(\\.checksum)?))");//Pattern.compile("(https:\\/\\/[a-zA-Z0-9_\\/\\.\\-]+)((jbrsdk_jcef)-([a-zA-Z0-9\\.]*)-([a-zA-Z]*)-([a-zA-Z0-9]*)-([bB0-9\\.]*)((\\.tar\\.gz)|(\\.zip))(?!\\.checksum))");
+    private static final Matcher       JBRSDK_JCEF_MATCHER    = JBRSDK_JCEF_PATTERN.matcher("");
+    // Group 0 -> download link
+    // Group 2 -> filename
+    // Group 4 -> version number
+    // Group 5 -> operating system
+    // Group 6 -> architecture
+    // Group 7 -> build number
+    // Group 8 -> file ending
 
     @Override public Distro getDistro() { return Distro.JETBRAINS; }
 
@@ -267,78 +277,81 @@ public class JetBrains implements Distribution {
 
     public List<Pkg> getAllPkgsFromString(final String bodyText, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
-        JBRSDK_MATCHER.reset(bodyText);
-        while(JBRSDK_MATCHER.find()) {
-            if (JBRSDK_MATCHER.groupCount() >= 2) {
-                String   filename         = JBRSDK_MATCHER.group(1);
-                if (null == filename || filename.isEmpty() || filename.contains("checksum") || filename.contains("fastdebug") || filename.endsWith("diz.tar.gz")) { continue; }
+        
+        // SDK + JCEF
+        JBRSDK_JCEF_MATCHER.reset(bodyText);
+        while(JBRSDK_JCEF_MATCHER.find()) {
+            final String downloadLink     = JBRSDK_JCEF_MATCHER.group(0);
+            final String filename         = JBRSDK_JCEF_MATCHER.group(2);
+            final String versionNumber    = JBRSDK_JCEF_MATCHER.group(4);
+            final String operatingSystem  = JBRSDK_JCEF_MATCHER.group(5);
+            final String architecture     = JBRSDK_JCEF_MATCHER.group(6);
+            final String buildNumber      = JBRSDK_JCEF_MATCHER.group(7).replaceAll("\\.", "");
+            final String fileEnding       = JBRSDK_JCEF_MATCHER.group(8);
 
-                String   strippedFilename = filename.replaceFirst("jbrsdk-", "").replaceAll("(\\.tar\\.gz|\\.zip)", "");
-                String[] filenameParts    = strippedFilename.split("-");
-                String   downloadLink     = JBRSDK_MATCHER.group(2);
-
-
-                if (onlyNewPkgs) {
-                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+            // Fetch checksum
+            if (fileEnding.endsWith("checksum")) {
+                final String filenameWithoutChecksum = filename.replace(".checksum", "");
+                final Optional<Pkg> optPkg = pkgs.stream().filter(pkg -> pkg.getFilename().equals(filenameWithoutChecksum)).findFirst();
+                if (optPkg.isPresent()) {
+                    optPkg.get().setChecksumUri(downloadLink);
+                    optPkg.get().setChecksumType(HashAlgorithm.SHA512);
                 }
-
-                Pkg pkg = new Pkg();
-
-                pkg.setDistribution(Distro.JETBRAINS.get());
-                pkg.setFileName(filename);
-                pkg.setDirectDownloadUri(downloadLink);
-
-                ArchiveType ext = getFromFileName(filename);
-                pkg.setArchiveType(ext);
-
-                Architecture arch = Constants.ARCHITECTURE_LOOKUP.entrySet().stream()
-                                                                 .filter(entry -> filename.contains(entry.getKey()))
-                                                                 .findFirst()
-                                                                 .map(Entry::getValue)
-                                                                 .orElse(Architecture.NONE);
-
-                pkg.setArchitecture(arch);
-                pkg.setBitness(arch.getBitness());
-
-
-                VersionNumber vNumber = VersionNumber.fromText(filenameParts[0].replaceAll("_", "."));
-                pkg.setVersionNumber(vNumber);
-                pkg.setJavaVersion(vNumber);
-                pkg.setDistributionVersion(vNumber);
-                pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
-
-                pkg.setTermOfSupport(TermOfSupport.LTS);
-
-                pkg.setPackageType(JDK);
-
-                pkg.setReleaseStatus(GA);
-
-                OperatingSystem os = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
-                                                                      .filter(entry -> strippedFilename.contains(entry.getKey()))
-                                                                      .findFirst()
-                                                                      .map(Entry::getValue)
-                                                                      .orElse(OperatingSystem.NONE);
-
-                if (OperatingSystem.NONE == os) {
-                    LOGGER.debug("Operating System not found in {} for filename: {}", getName(), filename);
-                    continue;
-                }
-                pkg.setOperatingSystem(os);
-
-                if (WINDOWS == os) {
-                    pkg.setLibCType(LibCType.C_STD_LIB);
-                } else if (LINUX == os ) {
-                    pkg.setLibCType(LibCType.GLIBC);
-                } else if (MACOS == os) {
-                    pkg.setLibCType(LibCType.LIBC);
-                }
-
-                pkg.setFreeUseInProduction(Boolean.TRUE);
-
-                pkg.setSize(Helper.getFileSize(downloadLink));
-
-                pkgs.add(pkg);
+                continue;
             }
+
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+            }
+
+            Pkg pkg = new Pkg();
+
+            pkg.setDistribution(JetBrains.this);
+            pkg.setFileName(filename);
+            pkg.setDirectDownloadUri(downloadLink);
+
+            ArchiveType ext = ArchiveType.fromText(fileEnding);
+            pkg.setArchiveType(ext);
+
+            Architecture arch = Architecture.fromText(architecture);
+
+            pkg.setArchitecture(arch);
+            pkg.setBitness(arch.getBitness());
+
+            VersionNumber vNumber = VersionNumber.fromText(versionNumber);
+            vNumber.setBuild(Integer.parseInt(buildNumber.substring(1)));
+            pkg.setVersionNumber(vNumber);
+            pkg.setJavaVersion(vNumber);
+            pkg.setDistributionVersion(vNumber);
+            pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
+
+            pkg.setTermOfSupport(Helper.getTermOfSupport(vNumber));
+
+            pkg.setPackageType(JDK);
+
+            pkg.setReleaseStatus(GA);
+
+            OperatingSystem os = OperatingSystem.fromText(operatingSystem);
+
+            if (OperatingSystem.NONE == os) {
+                LOGGER.debug("Operating System not found in {} for filename: {}", getName(), filename);
+                continue;
+            }
+            pkg.setOperatingSystem(os);
+
+            if (WINDOWS == os) {
+                pkg.setLibCType(LibCType.C_STD_LIB);
+            } else if (LINUX == os ) {
+                pkg.setLibCType(LibCType.GLIBC);
+            } else if (MACOS == os) {
+                pkg.setLibCType(LibCType.LIBC);
+            }
+
+            pkg.setFreeUseInProduction(Boolean.TRUE);
+
+            pkg.setSize(Helper.getFileSize(downloadLink));
+
+            pkgs.add(pkg);
         }
 
         Helper.checkPkgsForTooEarlyGA(pkgs);

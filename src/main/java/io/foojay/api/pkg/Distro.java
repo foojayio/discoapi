@@ -60,41 +60,41 @@ import static io.foojay.api.util.Constants.SQUARE_BRACKET_OPEN;
 
 
 public enum Distro implements Api {
-    AOJ("AOJ", "aoj", new AOJ(), EVERY_MONTH, false, BuildScope.BUILD_OF_OPEN_JDK),
-    AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), EVERY_MONTH, false, BuildScope.BUILD_OF_OPEN_JDK),
-    BISHENG("Bi Sheng", "bisheng", new BiSheng(), EVERY_WEEK, true, BuildScope.BUILD_OF_OPEN_JDK),
-    CORRETTO("Corretto", "corretto", new Corretto(), EVERY_TWELVE_HOURS + 4, true, BuildScope.BUILD_OF_OPEN_JDK),
-    DEBIAN("Debian", "debian", new Debian(), EVERY_WEEK + 4, true, BuildScope.BUILD_OF_OPEN_JDK),
-    DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), EVERY_DAY + 4, true, BuildScope.BUILD_OF_OPEN_JDK),
-    GLUON_GRAALVM("Gluon GraalVM", "gluon_graalvm", new GluonGraalVM(), EVERY_DAY - 16, true, BuildScope.BUILD_OF_GRAALVM),
-    GRAALVM_CE8("GraalVM CE 8", "graalvm_ce8", new GraalVMCE8(), EVERY_WEEK, false, BuildScope.BUILD_OF_GRAALVM),
-    GRAALVM_CE11("GraalVM CE 11", "graalvm_ce11", new GraalVMCE11(), EVERY_DAY - 4, false, BuildScope.BUILD_OF_GRAALVM),
-    GRAALVM_CE16("GraalVM CE 16", "graalvm_ce16", new GraalVMCE16(), EVERY_MONTH, false, BuildScope.BUILD_OF_GRAALVM),
-    GRAALVM_CE17("GraalVM CE 17", "graalvm_ce17", new GraalVMCE17(), EVERY_DAY + 8, false, BuildScope.BUILD_OF_GRAALVM),
-    GRAALVM_CE19("GraalVM CE 19", "graalvm_ce19", new GraalVMCE19(), EVERY_DAY + 17, false, BuildScope.BUILD_OF_GRAALVM),
-    GRAALVM_CE20("GraalVM CE 20", "graalvm_ce20", new GraalVMCE20(), EVERY_DAY + 23, false, BuildScope.BUILD_OF_GRAALVM),
-    GRAALVM_COMMUNITY("GraalVM Community", "graalvm_community", new GraalVM_Community(), EVERY_DAY + 25, true, BuildScope.BUILD_OF_GRAALVM),
-    GRAALVM("GraalVM", "graalvm", new GraalVM(), EVERY_DAY + 29, true, BuildScope.BUILD_OF_GRAALVM),
-    JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 720 - 4, true, BuildScope.BUILD_OF_OPEN_JDK),
-    KONA("Kona", "kona", new Kona(), EVERY_DAY - 8, true, BuildScope.BUILD_OF_OPEN_JDK),
-    LIBERICA("Liberica", "liberica", new Liberica(), EVERY_TWO_HOURS, true, BuildScope.BUILD_OF_OPEN_JDK),
-    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), EVERY_SIX_HOURS - 4, true, BuildScope.BUILD_OF_GRAALVM),
-    MANDREL("Mandrel", "mandrel", new Mandrel(), EVERY_DAY + 12, true, BuildScope.BUILD_OF_GRAALVM),
-    MICROSOFT("Microsoft", "microsoft", new Microsoft(), EVERY_TWELVE_HOURS + 8, true, BuildScope.BUILD_OF_OPEN_JDK),
-    OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), EVERY_DAY - 12, false, BuildScope.BUILD_OF_OPEN_JDK),
-    OPEN_LOGIC("OpenLogic", "openlogic", new OpenLogic(), EVERY_WEEK + 8, true, BuildScope.BUILD_OF_OPEN_JDK),
-    ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), EVERY_HOUR, true, BuildScope.BUILD_OF_OPEN_JDK),
-    ORACLE("Oracle", "oracle", new Oracle(), EVERY_TWO_HOURS + 4, true, BuildScope.BUILD_OF_OPEN_JDK),
-    RED_HAT("Red Hat", "redhat", new RedHat(), EVERY_DAY + 16, true, BuildScope.BUILD_OF_OPEN_JDK),
-    SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), EVERY_TWO_HOURS + 8, true, BuildScope.BUILD_OF_OPEN_JDK),
-    SEMERU("Semeru", "semeru", new Semeru(), EVERY_SIX_HOURS - 8, true, BuildScope.BUILD_OF_OPEN_JDK),
-    SEMERU_CERTIFIED("Semeru certified", "semeru_certified", new SemeruCertified(), EVERY_SIX_HOURS - 12, true, BuildScope.BUILD_OF_OPEN_JDK),
-    TEMURIN("Temurin", "temurin", new Temurin(), EVERY_HOUR - 4, true, BuildScope.BUILD_OF_OPEN_JDK),
-    TRAVA("Trava", "trava", new Trava(), EVERY_DAY + 24, true, BuildScope.BUILD_OF_OPEN_JDK),
-    ZULU("Zulu", "zulu", new Zulu(), EVERY_FIFTEEN_MINUTES, true, BuildScope.BUILD_OF_OPEN_JDK),
-    ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), EVERY_TWELVE_HOURS + 16, true, BuildScope.BUILD_OF_OPEN_JDK),
-    NONE("-", "", null, 0, false, BuildScope.NOT_FOUND),
-    NOT_FOUND("", "", null, 0, false, BuildScope.NOT_FOUND);
+    AOJ("AOJ", "aoj", new AOJ(), EVERY_MONTH, false, true, BuildScope.BUILD_OF_OPEN_JDK),
+    AOJ_OPENJ9("AOJ OpenJ9", "aoj_openj9", new AOJ_OPENJ9(), EVERY_MONTH, false, true, BuildScope.BUILD_OF_OPEN_JDK),
+    BISHENG("Bi Sheng", "bisheng", new BiSheng(), EVERY_WEEK, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    CORRETTO("Corretto", "corretto", new Corretto(), EVERY_TWELVE_HOURS + 4, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    DEBIAN("Debian", "debian", new Debian(), EVERY_WEEK + 4, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    DRAGONWELL("Dragonwell", "dragonwell", new Dragonwell(), EVERY_DAY + 4, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    GLUON_GRAALVM("Gluon GraalVM", "gluon_graalvm", new GluonGraalVM(), EVERY_DAY - 16, true, true, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_CE8("GraalVM CE 8", "graalvm_ce8", new GraalVMCE8(), EVERY_WEEK, false, true, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_CE11("GraalVM CE 11", "graalvm_ce11", new GraalVMCE11(), EVERY_DAY - 4, true, true, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_CE16("GraalVM CE 16", "graalvm_ce16", new GraalVMCE16(), EVERY_MONTH, false, true, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_CE17("GraalVM CE 17", "graalvm_ce17", new GraalVMCE17(), EVERY_DAY + 8, false, true, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_CE19("GraalVM CE 19", "graalvm_ce19", new GraalVMCE19(), EVERY_DAY + 17, false, true, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_CE20("GraalVM CE 20", "graalvm_ce20", new GraalVMCE20(), EVERY_DAY + 23, false, true, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM_COMMUNITY("GraalVM Community", "graalvm_community", new GraalVM_Community(), EVERY_DAY + 25, true, true, BuildScope.BUILD_OF_GRAALVM),
+    GRAALVM("GraalVM", "graalvm", new GraalVM(), EVERY_DAY + 29, true, true, BuildScope.BUILD_OF_GRAALVM),
+    JETBRAINS("JetBrains", "jetbrains", new JetBrains(), 720 - 4, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    KONA("Kona", "kona", new Kona(), EVERY_DAY - 8, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    LIBERICA("Liberica", "liberica", new Liberica(), EVERY_TWO_HOURS, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    LIBERICA_NATIVE("Liberica Native", "liberica_native", new LibericaNative(), EVERY_SIX_HOURS - 4, true, true, BuildScope.BUILD_OF_GRAALVM),
+    MANDREL("Mandrel", "mandrel", new Mandrel(), EVERY_DAY + 12, true, true, BuildScope.BUILD_OF_GRAALVM),
+    MICROSOFT("Microsoft", "microsoft", new Microsoft(), EVERY_TWELVE_HOURS + 8, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    OJDK_BUILD("OJDKBuild", "ojdk_build", new OJDKBuild(), EVERY_DAY - 12, false, true, BuildScope.BUILD_OF_OPEN_JDK),
+    OPEN_LOGIC("OpenLogic", "openlogic", new OpenLogic(), EVERY_WEEK + 8, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    ORACLE_OPEN_JDK("Oracle OpenJDK", "oracle_open_jdk", new OracleOpenJDK(), EVERY_HOUR, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    ORACLE("Oracle", "oracle", new Oracle(), EVERY_TWO_HOURS + 4, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    RED_HAT("Red Hat", "redhat", new RedHat(), EVERY_DAY + 16, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    SAP_MACHINE("SAP Machine", "sap_machine", new SAPMachine(), EVERY_TWO_HOURS + 8, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    SEMERU("Semeru", "semeru", new Semeru(), EVERY_SIX_HOURS - 8, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    SEMERU_CERTIFIED("Semeru certified", "semeru_certified", new SemeruCertified(), EVERY_SIX_HOURS - 12, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    TEMURIN("Temurin", "temurin", new Temurin(), EVERY_HOUR - 4, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    TRAVA("Trava", "trava", new Trava(), EVERY_DAY + 24, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    ZULU("Zulu", "zulu", new Zulu(), EVERY_FIFTEEN_MINUTES, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    ZULU_PRIME("ZuluPrime", "zulu_prime", new ZuluPrime(), EVERY_TWELVE_HOURS + 16, true, true, BuildScope.BUILD_OF_OPEN_JDK),
+    NONE("-", "", null, 0, false, false, BuildScope.NOT_FOUND),
+    NOT_FOUND("", "", null, 0, false, false, BuildScope.NOT_FOUND);
 
     public  static final String                    FIELD_NAME                = "name";
     public  static final String                    FIELD_API_PARAMETER       = "api_parameter";
@@ -107,25 +107,28 @@ public enum Distro implements Api {
     public  static final String                    FIELD_SYNONYMS            = "synonyms";
     public  static final String                    FIELD_VERSIONS            = "versions";
     public  static final String                    FIELD_MAINTAINED          = "maintained";
+    public  static final String                    FIELD_AVAILABLE           = "available";
     public  static final String                    FIELD_BUILD_OF_OPENJDK    = "build_of_openjdk";
     public  static final String                    FIELD_BUILD_OF_GRAALVM    = "build_of_graalvm";
     private        final String                    uiString;
     private        final String                    apiString;
     private        final Distribution              distribution;
     private        final int                       updateIntervalInMinutes;
-    private        final boolean                   maintained;
+    private        final boolean                   maintained; // Distribution will get new pkgs
+    private        final boolean                   available;  // Distribution incl. download links is no longer available
     private        final Scope                     buildScope;
     public         final AtomicReference<Instant>  lastUpdate;
     public         final AtomicReference<Instant>  lastValidationCheck;
     public         final AtomicReference<Instant>  lastRefresh;
 
 
-    Distro(final String uiString, final String apiString, final Distribution distribution, final int updateIntervalInMinutes, final boolean maintained, final Scope buildScope) {
+    Distro(final String uiString, final String apiString, final Distribution distribution, final int updateIntervalInMinutes, final boolean maintained, final boolean available, final Scope buildScope) {
         this.uiString                = uiString;
         this.apiString               = apiString;
         this.distribution            = distribution;
         this.updateIntervalInMinutes = updateIntervalInMinutes;
         this.maintained              = maintained;
+        this.available               = available;
         this.buildScope              = buildScope;
         this.lastUpdate              = new AtomicReference<>();
         this.lastValidationCheck     = new AtomicReference<>(Instant.MIN);
@@ -404,6 +407,8 @@ public enum Distro implements Api {
 
     public boolean isMaintained() { return maintained; }
 
+    public boolean isAvailable() { return available; }
+
     public boolean isBuildOfOpenJDK() { return buildScope == BuildScope.BUILD_OF_OPEN_JDK; }
 
     public boolean isBuildOfGraalVM() { return buildScope == BuildScope.BUILD_OF_GRAALVM; }
@@ -524,6 +529,7 @@ public enum Distro implements Api {
                           .append(INDENTED_QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_AVAILABLE).append(QUOTES).append(COLON).append(isAvailable()).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_BUILD_OF_OPENJDK).append(QUOTES).append(COLON).append(isBuildOfOpenJDK()).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_BUILD_OF_GRAALVM).append(QUOTES).append(COLON).append(isBuildOfGraalVM()).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_OFFICIAL_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getOfficialUri()).append(QUOTES);
@@ -557,6 +563,7 @@ public enum Distro implements Api {
                           .append(QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA)
+                          .append(QUOTES).append(FIELD_AVAILABLE).append(QUOTES).append(COLON).append(isAvailable()).append(COMMA)
                           .append(QUOTES).append(FIELD_BUILD_OF_OPENJDK).append(QUOTES).append(COLON).append(isBuildOfOpenJDK()).append(COMMA)
                           .append(QUOTES).append(FIELD_BUILD_OF_GRAALVM).append(QUOTES).append(COLON).append(isBuildOfGraalVM()).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_OFFICIAL_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getOfficialUri()).append(QUOTES);
@@ -588,6 +595,7 @@ public enum Distro implements Api {
                           .append(INDENTED_QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA_NEW_LINE)
+                          .append(INDENTED_QUOTES).append(FIELD_AVAILABLE).append(QUOTES).append(COLON).append(isAvailable()).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_BUILD_OF_OPENJDK).append(QUOTES).append(COLON).append(isBuildOfOpenJDK()).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(FIELD_BUILD_OF_GRAALVM).append(QUOTES).append(COLON).append(isBuildOfGraalVM()).append(COMMA_NEW_LINE)
                           .append(INDENTED_QUOTES).append(Distro.FIELD_OFFICIAL_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getOfficialUri()).append(QUOTES).append(NEW_LINE)
@@ -599,6 +607,7 @@ public enum Distro implements Api {
                           .append(QUOTES).append(FIELD_NAME).append(QUOTES).append(COLON).append(QUOTES).append(uiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_API_PARAMETER).append(QUOTES).append(COLON).append(QUOTES).append(apiString).append(QUOTES).append(COMMA)
                           .append(QUOTES).append(FIELD_MAINTAINED).append(QUOTES).append(COLON).append(isMaintained()).append(COMMA)
+                          .append(QUOTES).append(FIELD_AVAILABLE).append(QUOTES).append(COLON).append(isAvailable()).append(COMMA)
                           .append(QUOTES).append(FIELD_BUILD_OF_OPENJDK).append(QUOTES).append(COLON).append(isBuildOfOpenJDK()).append(COMMA)
                           .append(QUOTES).append(FIELD_BUILD_OF_GRAALVM).append(QUOTES).append(COLON).append(isBuildOfGraalVM()).append(COMMA)
                           .append(QUOTES).append(Distro.FIELD_OFFICIAL_URI).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getOfficialUri()).append(QUOTES)

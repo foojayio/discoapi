@@ -19,6 +19,7 @@
 
 package io.foojay.api.distribution;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -39,6 +40,7 @@ import io.foojay.api.pkg.Distro;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
+import io.foojay.api.util.GithubTokenPool;
 import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +49,12 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.TreeSet;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 
 import static eu.hansolo.jdktools.ReleaseStatus.EA;
@@ -60,7 +64,8 @@ import static eu.hansolo.jdktools.ReleaseStatus.GA;
 public class SemeruCertified implements Distribution {
     private static final Logger LOGGER = LoggerFactory.getLogger(SemeruCertified.class);
 
-    private static final String        PACKAGE_URL            = "https://developer.ibm.com/languages/java/semeru-runtimes/downloads/";
+    //private static final String        PACKAGE_URL            = "https://developer.ibm.com/languages/java/semeru-runtimes/downloads/";
+    private static final String        PACKAGE_URL            = "https://api.github.com/repos/ibmruntimes/";
 
     // URL parameters
     private static final String        ARCHITECTURE_PARAM     = "architecture";
@@ -148,50 +153,27 @@ public class SemeruCertified implements Distribution {
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
+    public List<Pkg> getAllPkgsFromHtml(final String html, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
-        try {
-            try {
-                final HttpResponse<String> response = Helper.get(PACKAGE_URL);
-                if (null == response) { return pkgs; }
-                final String htmlAllJDKs  = response.body();
-                if (!htmlAllJDKs.isEmpty()) {
-                    pkgs.addAll(getAllPkgsFromHtml(htmlAllJDKs, onlyNewPkgs));
-                }
-            } catch (Exception e) {
-                LOGGER.error("Error fetching all packages from {}. {}", getName(), e);
-            }
-        } catch (Exception e) {
-            LOGGER.error("Error fetching all packages from Semeru Certified. {}", e);
-        }
-
-        Helper.checkPkgsForTooEarlyGA(pkgs);
-
-        return pkgs;
-    }
-
-    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final boolean onlyNewPkgs) {
-        List<Pkg> pkgs = new ArrayList<>();
+        if (null == html || html.isEmpty()) { return pkgs; }
 
         OptionalInt nextEA       = Helper.getNextEA();
         OptionalInt nextButOneEA = Helper.getNextButOneEA();
 
-        for (int i = 0; i < jsonArray.size(); i++) {
-            JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
-            if (jsonObj.has("prerelease")) {
-                boolean prerelease = jsonObj.get("prerelease").getAsBoolean();
-                if (prerelease) { continue; }
-            }
-            JsonArray assets = jsonObj.getAsJsonArray("assets");
-            for (JsonElement element : assets) {
-                JsonObject assetJsonObj = element.getAsJsonObject();
-                String     filename     = assetJsonObj.get("name").getAsString();
+        List<String> downloadLinks = new ArrayList<>(Helper.getDownloadLinkFromString(html));
+        List<String> signatureUris = new ArrayList<>(Helper.getSigFromString(html));
+        for (String downloadLink : downloadLinks) {
+            String filename = Helper.getFileNameFromText(downloadLink.replaceAll("'", ""));
 
-                if (null == filename || filename.isEmpty() || filename.endsWith("txt") || filename.contains("debugimage") || filename.contains("testimage") || filename.endsWith("json")) { continue; }
+            if (null == filename || filename.isEmpty() || filename.endsWith("txt") || filename.contains("debugimage") || filename.contains("testimage") || filename.endsWith("json") || filename.endsWith("bin") || filename.endsWith("sig")) { continue; }
                 if (filename.contains("-debug-")) { continue; }
-                if (null == filename || !filename.startsWith("ibm-semeru-open")) { continue; }
+            if (null == filename || !filename.startsWith("ibm-semeru-certified")) { continue; }
 
-                final String withoutPrefix    = filename.replaceAll("ibm-semeru-open-", "");
+            if (onlyNewPkgs) {
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+            }
+
+            final String withoutPrefix    = filename.replaceAll("ibm-semeru-certified-", "");
                 final String withoutLeadingNo = withoutPrefix.replaceAll("^[0-9]+-", "");
 
                 PackageType packageType = Constants.PACKAGE_TYPE_LOOKUP.entrySet().stream()
@@ -212,12 +194,6 @@ public class SemeruCertified implements Distribution {
 
                 final VersionNumber versionNumber = VersionNumber.fromText(filenameParts[2] + (filenameParts.length == 6 ? ("+b" + filenameParts[3]) : ""));
                 final MajorVersion  majorVersion  = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
-
-                String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
-
-                if (onlyNewPkgs) {
-                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
-                }
 
                 OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
                                                                                    .filter(entry -> withoutSuffix.contains(entry.getKey()))
@@ -275,64 +251,76 @@ public class SemeruCertified implements Distribution {
                 }
                 pkg.setPackageType(packageType);
                 pkg.setOperatingSystem(operatingSystem);
-                pkg.setFreeUseInProduction(Boolean.TRUE);
+            pkg.setFreeUseInProduction(Boolean.FALSE);
+            if (signatureUris.contains(downloadLink + ".sig")) { pkg.setSignatureUri(downloadLink + ".sig"); }
                 pkg.setSize(Helper.getFileSize(downloadLink));
                 pkgs.add(pkg);
             }
+
+        Helper.checkPkgsForTooEarlyGA(pkgs);
+
+        return pkgs;
         }
 
-        // Fetch checksums
-        for (int i = 0 ; i < jsonArray.size(); i++) {
-            JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
-            JsonArray  assets  = jsonObj.getAsJsonArray("assets");
-            for (JsonElement element : assets) {
-                JsonObject assetJsonObj = element.getAsJsonObject();
-                String     filename     = assetJsonObj.get("name").getAsString();
-                if (null == filename || filename.isEmpty() || !filename.endsWith(Constants.FILE_ENDING_SHA256_TXT)) { continue; }
-                String nameToMatch;
-                if (filename.endsWith(Constants.FILE_ENDING_SHA256_TXT)) {
-                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256_DMG_TXT, "");
-                } else if (filename.endsWith(Constants.FILE_ENDING_SHA256_TXT)) {
-                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256_TXT, "");
-                } else {
-                    continue;
-                }
+    public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
+        List<Pkg> pkgs = new ArrayList<>();
 
-                final String  downloadLink = assetJsonObj.get("browser_download_url").getAsString();
-                Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFilename().contains(nameToMatch)).findFirst();
-                if (optPkg.isPresent()) {
-                    Pkg pkg = optPkg.get();
-                    pkg.setChecksumUri(downloadLink);
-                    pkg.setChecksumType(HashAlgorithm.SHA256);
+        OptionalInt nextButOneEA = Helper.getNextButOneEA();
+        final int latestEA = nextButOneEA.isPresent() ? nextButOneEA.getAsInt() : MajorVersion.getLatest(true).getAsInt();
+
+        try {
+            for (int i = 8 ; i <= latestEA ; i++) {
+                if (i < 17 && TermOfSupport.LTS != new MajorVersion(i).getTermOfSupport()) { continue; }
+                String packageUrl = PACKAGE_URL + "semeru" + i + "-certified-binaries/releases";
+                // Get all packages from github
+                try {
+                    HttpResponse<String> response = Helper.get(packageUrl, Map.of("accept", "application/vnd.github.v3+json",
+                                                                                  "authorization", GithubTokenPool.INSTANCE.next()));
+                    if (response.statusCode() == 200) {
+                        String      bodyText = response.body();
+                        Gson        gson     = new Gson();
+                        JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
+                        if (element instanceof JsonArray) {
+                            JsonArray jsonArray = element.getAsJsonArray();
+                            pkgs.addAll(getAllPkgsFromJson(jsonArray, onlyNewPkgs));
+                        }
+                } else {
+                        // Problem with url request
+                        LOGGER.debug("Response ({}) {} ", response.statusCode(), response.body());
+                }
+                } catch (CompletionException e) {
+                    LOGGER.error("Error fetching packages for distribution {} from {}", getName(), packageUrl);
                 }
             }
+        } catch (Exception e) {
+            LOGGER.error("Error fetching all packages from Semeru. {}", e);
         }
 
         Helper.checkPkgsForTooEarlyGA(pkgs);
 
-        LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
     }
 
-    public List<Pkg> getAllPkgsFromHtml(final String html, final boolean onlyNewPkgs) {
+    public List<Pkg> getAllPkgsFromJson(final JsonArray jsonArray, final boolean onlyNewPkgs) {
         List<Pkg> pkgs = new ArrayList<>();
-        if (null == html || html.isEmpty()) { return pkgs; }
 
         OptionalInt nextEA       = Helper.getNextEA();
         OptionalInt nextButOneEA = Helper.getNextButOneEA();
 
-        List<String> downloadLinks = new ArrayList<>(Helper.getDownloadLinkFromString(html));
-        List<String> signatureUris = new ArrayList<>(Helper.getSigFromString(html));
-        for (String downloadLink : downloadLinks) {
-            String filename = Helper.getFileNameFromText(downloadLink.replaceAll("'", ""));
+        for (int i = 0; i < jsonArray.size(); i++) {
+            JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
+            if (jsonObj.has("prerelease")) {
+                boolean prerelease = jsonObj.get("prerelease").getAsBoolean();
+                if (prerelease) { continue; }
+            }
+            JsonArray assets = jsonObj.getAsJsonArray("assets");
+            for (JsonElement element : assets) {
+                JsonObject assetJsonObj = element.getAsJsonObject();
+                String     filename     = assetJsonObj.get("name").getAsString();
 
-            if (null == filename || filename.isEmpty() || filename.endsWith("txt") || filename.contains("debugimage") || filename.contains("testimage") || filename.endsWith("json") || filename.endsWith("bin")) { continue; }
+                if (null == filename || filename.isEmpty() || filename.endsWith("txt") || filename.contains("debugimage") || filename.contains("testimage") || filename.endsWith("json") || filename.endsWith("bin") || filename.endsWith("sig")) { continue; }
             if (filename.contains("-debug-")) { continue; }
             if (null == filename || !filename.startsWith("ibm-semeru-certified")) { continue; }
-
-            if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
-            }
 
             final String withoutPrefix    = filename.replaceAll("ibm-semeru-certified-", "");
             final String withoutLeadingNo = withoutPrefix.replaceAll("^[0-9]+-", "");
@@ -353,8 +341,19 @@ public class SemeruCertified implements Distribution {
 
             final String[] filenameParts = withoutSuffix.split("_");
 
-            final VersionNumber versionNumber = VersionNumber.fromText(filenameParts[2] + (filenameParts.length == 6 ? ("+b" + filenameParts[3]) : ""));
+                final VersionNumber versionNumber;
+                try {
+                    versionNumber = VersionNumber.fromText(filenameParts[2] + (filenameParts.length == 6 ? ("+b" + filenameParts[3]) : ""));
+                } catch (IllegalArgumentException e) {
+                    continue;
+                }
             final MajorVersion  majorVersion  = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
+
+                String downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+
+                if (onlyNewPkgs) {
+                    if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                }
 
             OperatingSystem operatingSystem = Constants.OPERATING_SYSTEM_LOOKUP.entrySet().stream()
                                                                                .filter(entry -> withoutSuffix.contains(entry.getKey()))
@@ -362,7 +361,7 @@ public class SemeruCertified implements Distribution {
                                                                                .map(Entry::getValue)
                                                                                .orElse(OperatingSystem.NOT_FOUND);
             if (OperatingSystem.NOT_FOUND == operatingSystem) {
-                LOGGER.debug("Operating System not found in Semeru for filename: {}", filename);
+                    LOGGER.debug("Operating System not found in Semeru Certified for filename: {}", filename);
                 continue;
             }
 
@@ -413,13 +412,42 @@ public class SemeruCertified implements Distribution {
             pkg.setPackageType(packageType);
             pkg.setOperatingSystem(operatingSystem);
             pkg.setFreeUseInProduction(Boolean.FALSE);
-            if (signatureUris.contains(downloadLink + ".sig")) { pkg.setSignatureUri(downloadLink + ".sig"); }
             pkg.setSize(Helper.getFileSize(downloadLink));
             pkgs.add(pkg);
+        }
+        }
+
+        // Fetch checksums
+        for (int i = 0 ; i < jsonArray.size(); i++) {
+            JsonObject jsonObj = jsonArray.get(i).getAsJsonObject();
+            JsonArray  assets  = jsonObj.getAsJsonArray("assets");
+            for (JsonElement element : assets) {
+                JsonObject assetJsonObj = element.getAsJsonObject();
+                String     filename     = assetJsonObj.get("name").getAsString();
+
+                if (null == filename || filename.isEmpty() || (!filename.endsWith(Constants.FILE_ENDING_SHA256_TXT) && !filename.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT))) { continue; }
+                String nameToMatch;
+                if (filename.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT)) {
+                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256_DMG_TXT, "");
+                } else if (filename.endsWith(Constants.FILE_ENDING_SHA256_TXT)) {
+                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256_TXT, "");
+                } else {
+                    continue;
+                }
+
+                final String  downloadLink = assetJsonObj.get("browser_download_url").getAsString();
+                Optional<Pkg> optPkg       = pkgs.stream().filter(pkg -> pkg.getFilename().contains(nameToMatch)).findFirst();
+                if (optPkg.isPresent()) {
+                    Pkg pkg = optPkg.get();
+                    pkg.setChecksumUri(downloadLink);
+                    pkg.setChecksumType(HashAlgorithm.SHA256);
+                }
+            }
         }
 
         Helper.checkPkgsForTooEarlyGA(pkgs);
 
+        LOGGER.debug("Successfully fetched {} packages from {}", pkgs.size(), PACKAGE_URL);
         return pkgs;
     }
 }

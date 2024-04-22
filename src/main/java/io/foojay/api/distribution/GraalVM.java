@@ -46,6 +46,7 @@ import io.foojay.api.util.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.StringReader;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -67,6 +68,7 @@ import static eu.hansolo.jdktools.OperatingSystem.LINUX;
 import static eu.hansolo.jdktools.OperatingSystem.MACOS;
 import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
 import static eu.hansolo.jdktools.PackageType.JDK;
+import static eu.hansolo.jdktools.PackageType.JRE;
 
 
 public class GraalVM implements Distribution {
@@ -74,6 +76,8 @@ public class GraalVM implements Distribution {
     private static final String  PACKAGE_URL                   = "https://download.oracle.com/graalvm/";
     private static final Pattern FILENAME_PATTERN              = Pattern.compile(new StringBuilder().append("^(graalvm-jdk-").append(")(.*)(_bin)(\\.tar\\.gz|\\.zip)$").toString());
     private static final Matcher FILENAME_MATCHER              = FILENAME_PATTERN.matcher("");
+    private static final String  EA_BUILDS_URL                 = "https://raw.githubusercontent.com/graalvm/oracle-graalvm-ea-builds/main/versions/";
+
 
     // URL parameters
     private static final String        ARCHITECTURE_PARAM      = "";
@@ -426,5 +430,74 @@ public class GraalVM implements Distribution {
                                  });
                              });
         return pkgs;
+    }
+
+    public List<Pkg> getEaBuildsFromGithub() {
+        List<Pkg> pkgsFound = new ArrayList<>();
+        CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> majorVersion.getAsInt() > 21).forEach(majorVersion -> {
+            String jsonFilename = majorVersion.getAsInt() + "-ea.json";
+            String eaJsonUri    = EA_BUILDS_URL + jsonFilename;
+            System.out.println(eaJsonUri);
+            try {
+                HttpResponse<String> response = Helper.get(eaJsonUri);
+                if (null != response) {
+                    String body = response.body();
+                    if (!body.isEmpty()) {
+                        Gson        gson    = new Gson();
+                        JsonElement element = gson.fromJson(body, JsonElement.class);
+                        if (element instanceof JsonArray) {
+                            JsonArray jsonArray = element.getAsJsonArray();
+                            for (JsonElement jsonVersionElement : jsonArray) {
+                                final JsonObject jsonObj         = jsonVersionElement.getAsJsonObject();
+                                final String     version         = jsonObj.get("version").getAsString();
+                                final boolean    latest          = jsonObj.get("latest").getAsBoolean();
+                                final String     downloadBaseUrl = jsonObj.get("download_base_url").getAsString();
+                                final JsonArray  files           = jsonObj.get("files").getAsJsonArray();
+
+                                final VersionNumber versionNumber   = VersionNumber.fromText(version);
+                                for (JsonElement jsonFileElement : files) {
+                                    final JsonObject      fileObj         = jsonFileElement.getAsJsonObject();
+                                    final String          filename        = fileObj.get("filename").getAsString();
+                                    final String          arch            = fileObj.get("arch").getAsString();
+                                    final String          platform        = fileObj.get("platform").getAsString();
+
+                                    final ArchiveType     archiveType     = ArchiveType.getFromFileName(filename);
+                                    final Architecture    architecture    = Architecture.fromText(arch);
+                                    final OperatingSystem operatingSystem = OperatingSystem.fromText(platform);
+                                    final String          fileDownloadUri = downloadBaseUrl + filename;
+                                    final PackageType     packageType     = filename.toLowerCase().contains("-jdk") ? JDK : JRE;
+
+                                    Pkg pkg = new Pkg();
+                                    pkg.setDistribution(getDistro().get());
+                                    pkg.setVersionNumber(versionNumber);
+                                    pkg.setJavaVersion(versionNumber);
+                                    pkg.setDistributionVersion(versionNumber);
+                                    pkg.setJdkVersion(new MajorVersion(versionNumber.getFeature().getAsInt()));
+                                    pkg.setPackageType(packageType);
+                                    pkg.setArchitecture(architecture);
+                                    pkg.setBitness(architecture.getBitness());
+                                    pkg.setOperatingSystem(operatingSystem);
+                                    pkg.setReleaseStatus(ReleaseStatus.EA);
+                                    pkg.setTermOfSupport(versionNumber.getMajorVersion().getTermOfSupport());
+                                    pkg.setFileName(filename);
+                                    pkg.setArchiveType(archiveType);
+                                    pkg.setJavaFXBundled(false);
+                                    pkg.setDirectlyDownloadable(true);
+                                    pkg.setFreeUseInProduction(Boolean.TRUE);
+                                    pkg.setDirectDownloadUri(fileDownloadUri);
+                                    pkg.setSize(Helper.getFileSize(fileDownloadUri));
+                                    pkg.setLatestBuildAvailable(latest);
+
+                                    pkgsFound.add(pkg);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.error("Error reading {} file from github. {}", jsonFilename, e.getMessage());
+            }
+        });
+        return pkgsFound;
     }
 }

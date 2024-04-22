@@ -53,6 +53,7 @@ import java.util.stream.Collectors;
 
 import static io.foojay.api.util.Constants.API_VERSION_V1;
 import static io.foojay.api.util.Constants.API_VERSION_V2;
+import static io.foojay.api.util.Constants.API_VERSION_V3;
 import static io.foojay.api.util.Constants.BASE_URL;
 import static io.foojay.api.util.Constants.COLON;
 import static io.foojay.api.util.Constants.COMMA;
@@ -388,8 +389,14 @@ public class Pkg {
     public void setSize(final long size) { this.size = size; }
 
     public Set<Feature> getFeatures() { return features; }
-    public void setFeatures(final List<Feature> features) { setFeatures(new HashSet<>(features)); }
-    public void setFeatures(final Set<Feature> features) { this.features = features; }
+    public void setFeatures(final List<Feature> features) {
+        if (null == features) { return; }
+        setFeatures(new HashSet<>(features));
+    }
+    public void setFeatures(final Set<Feature> features) {
+        if (null == features) { return; }
+        this.features = features;
+    }
 
     public String getId() {
         return directlyDownloadable ? Helper.getMD5(directDownloadUri.getBytes(StandardCharsets.UTF_8)) : Helper.getMD5((directDownloadUri + filename).getBytes(StandardCharsets.UTF_8));
@@ -968,19 +975,19 @@ public class Pkg {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         Pkg pkg = (Pkg) o;
-        return distribution.equals(pkg.distribution) &&
-               versionNumber.equals(pkg.versionNumber) &&
-               architecture         == pkg.architecture &&
-               operatingSystem      == pkg.operatingSystem &&
+        return distribution.equals(pkg.getDistribution()) &&
+               versionNumber.equals(pkg.getVersionNumber()) &&
+               architecture         == pkg.getArchitecture() &&
+               operatingSystem      == pkg.getOperatingSystem() &&
                libCType             == pkg.getLibCType() &&
-               packageType          == pkg.packageType &&
-               releaseStatus        == pkg.releaseStatus &&
-               archiveType          == pkg.archiveType &&
-               termOfSupport        == pkg.termOfSupport &&
-               javafxBundled        == pkg.javafxBundled &&
-               directlyDownloadable == pkg.directlyDownloadable &&
-               filename.equals(pkg.filename) &&
-               directDownloadUri.equals(pkg.directDownloadUri) &&
+               packageType          == pkg.getPackageType() &&
+               releaseStatus        == pkg.getReleaseStatus() &&
+               archiveType          == pkg.getArchiveType() &&
+               termOfSupport        == pkg.getTermOfSupport() &&
+               javafxBundled        == pkg.isJavaFXBundled() &&
+               directlyDownloadable == pkg.isDirectlyDownloadable() &&
+               filename.equals(pkg.getFilename()) &&
+               directDownloadUri.equals(pkg.getDirectDownloadUri()) &&
                getId().equals(pkg.getId());
     }
 
@@ -989,6 +996,6 @@ public class Pkg {
     }
 
     @Override public String toString() {
-        return toString(OutputFormat.REDUCED_COMPRESSED, API_VERSION_V2);
+        return toString(OutputFormat.REDUCED_COMPRESSED, API_VERSION_V3);
     }
 }

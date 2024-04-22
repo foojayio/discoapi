@@ -97,6 +97,7 @@ public class LibericaNative implements Distribution {
     private static final String                       FIELD_ARCHITECTURE            = "architecture";
     private static final String                       FIELD_LATEST_LTS              = "latestLTS";
     private static final String                       FIELD_OS                      = "os";
+    private static final String                       FIELD_SIZE                    = "size";
     private static final String                       FIELD_COMPONENTS              = "components";
     private static final String                       FIELD_LATEST_IN_ANUAL_VERSION = "latestInAnnualVersion";
     private static final String                       FIELD_DOWNLOAD_URL            = "downloadUrl";
@@ -208,8 +209,8 @@ public class LibericaNative implements Distribution {
                 JsonElement element = gson.fromJson(body, JsonElement.class);
                 if (element instanceof JsonArray) {
                     JsonArray jsonArray = element.getAsJsonArray();
-                    for (int i = 0; i < jsonArray.size(); i++) {
-                        JsonObject pkgJsonObj = jsonArray.get(i).getAsJsonObject();
+                    jsonArray.forEach(jsonElement -> {
+                        JsonObject pkgJsonObj = jsonElement.getAsJsonObject();
 
                         Pkg pkg = new Pkg();
                         pkg.setDistribution(Distro.LIBERICA_NATIVE.get());
@@ -219,40 +220,100 @@ public class LibericaNative implements Distribution {
                         pkg.setJavaFXBundled(false);
                         pkg.setPackageType(JDK);
 
+                        if (pkgJsonObj.has(FIELD_BITNESS)) {
+                            Bitness bitness = Bitness.fromInt(pkgJsonObj.get(FIELD_BITNESS).getAsInt());
+                            if (Bitness.NOT_FOUND == bitness) {
+                                return;
+                            } else {
+                                pkg.setBitness(bitness);
+                            }
+                        }
+
+                        if (pkgJsonObj.has(FIELD_COMPONENTS)) {
+                            JsonArray components = pkgJsonObj.getAsJsonArray(FIELD_COMPONENTS);
+                            if (!components.isEmpty()) {
+                                JsonObject firstEntry = components.get(0).getAsJsonObject();
+                                if (firstEntry.has(FIELD_VERSION)) {
+                                    VersionNumber jdkVersion = VersionNumber.fromText(firstEntry.get(FIELD_VERSION).getAsString());
+                                    pkg.setJdkVersion(new MajorVersion(jdkVersion.getFeature().getAsInt()));
+                                }
+                            }
+                        }
+
+                        final String filename;
+                        if (pkgJsonObj.has(FIELD_FILENAME)) {
+                            filename = pkgJsonObj.get(FIELD_FILENAME).getAsString();
+                            if (null == filename || filename.isEmpty()) {
+                                return;
+                            } else {
+                                pkg.setFileName(filename);
+                            }
+                        } else {
+                            return;
+                        }
+
+
+                        String   filenameWithoutPreset = filename.replace("bellsoft-liberica-vm-openjdk", "");
+                        String[] withoutPresetParts    = filenameWithoutPreset.split("-");
+                        if (withoutPresetParts.length == 4) {
+                            MajorVersion    jv = new MajorVersion(VersionNumber.fromText(withoutPresetParts[0]).getFeature().getAsInt());
+                            ArchiveType     at = Helper.getFileEnding(filename);
+                            if (null == pkg.getJdkVersion()) { pkg.setJdkVersion(jv); }
+                            pkg.setArchiveType(at);
+                        } else if (withoutPresetParts.length == 5) {
+                            MajorVersion    jv = new MajorVersion(VersionNumber.fromText(withoutPresetParts[0]).getFeature().getAsInt());
+                            ArchiveType     at = Helper.getFileEnding(filename);
+                            if (null == pkg.getJdkVersion()) { pkg.setJdkVersion(jv); }
+                            pkg.setArchiveType(at);
+                        } else {
+                            return;
+                        }
+
+
                         if (pkgJsonObj.has(FIELD_OS)) {
                             OperatingSystem operatingSystem = OperatingSystem.fromText(pkgJsonObj.get(FIELD_OS).getAsString());
                             if (OperatingSystem.NOT_FOUND == operatingSystem) {
-                                continue;
+                                return;
                             } else {
                                 pkg.setOperatingSystem(operatingSystem);
                                 pkg.setLibCType(operatingSystem.getLibCType());
                             }
                         } else {
-                            continue;
+                            return;
                         }
 
-                        if (pkgJsonObj.has(FIELD_ARCHITECTURE)) {
-                            String arch = pkgJsonObj.get(FIELD_ARCHITECTURE).getAsString();
-                            Architecture architecture;
-                            Bitness      bitness;
-                            if (arch.equals("x86")) {
-                                                architecture = X64;
-                                bitness      = BIT_64;
-                            } else if (arch.equals("arm")) {
-                                                architecture = AARCH64;
-                                bitness      = BIT_64;
+                        if (pkgJsonObj.has(FIELD_SIZE)) {
+                            long size = pkgJsonObj.get(FIELD_SIZE).getAsLong();
+                            pkg.setSize(size);
+                        }
+
+                        final String downloadLink;
+                        if (pkgJsonObj.has(FIELD_DOWNLOAD_URL)) {
+                            downloadLink = pkgJsonObj.get(FIELD_DOWNLOAD_URL).getAsString();
+                            if (null == downloadLink || downloadLink.isEmpty()) {
+                                return;
                             } else {
-                                continue;
+                                pkg.setDirectDownloadUri(downloadLink);
+                                if (pkg.getSize() == 0) { pkg.setSize(Helper.getFileSize(downloadLink)); }
                                 }
-                                pkg.setArchitecture(architecture);
-                                pkg.setBitness(bitness);
                         } else {
-                            continue;
+                            return;
                         }
 
                         if (pkgJsonObj.has(FIELD_LTS)) {
                             TermOfSupport termOfSupport = pkgJsonObj.get(FIELD_LTS).getAsBoolean() ? TermOfSupport.LTS : TermOfSupport.STS;
                             pkg.setTermOfSupport(termOfSupport);
+                        }
+
+                        if (pkgJsonObj.has(FIELD_PACKAGE_TYPE)) {
+                            ArchiveType archiveType = ArchiveType.fromText(pkgJsonObj.get(FIELD_PACKAGE_TYPE).getAsString());
+                            if (ArchiveType.NOT_FOUND == archiveType) {
+                                return;
+                            } else {
+                                pkg.setArchiveType(archiveType);
+                            }
+                        } else {
+                            if (null == pkg.getArchiveType()) { return; }
                         }
 
                         if (pkgJsonObj.has(FIELD_VERSION)) {
@@ -261,76 +322,47 @@ public class LibericaNative implements Distribution {
                             pkg.setJavaVersion(versionNumber);
                             pkg.setDistributionVersion(versionNumber);
                         } else {
-                            continue;
+                            return;
                         }
 
                         if (pkgJsonObj.has(FIELD_GA)) {
                             ReleaseStatus releaseStatus = pkgJsonObj.get(FIELD_GA).getAsBoolean() ? ReleaseStatus.GA : ReleaseStatus.EA;
                             pkg.setReleaseStatus(releaseStatus);
                         } else {
-                            continue;
+                            return;
+                        }
+
+                        if (pkgJsonObj.has(FIELD_ARCHITECTURE)) {
+                            String arch = pkgJsonObj.get(FIELD_ARCHITECTURE).getAsString();
+                            Architecture architecture;
+                            Bitness      bitness;
+                            if (null == arch || arch.isEmpty()) {
+                                return;
+                            } else if (arch.equals("x86")) {
+                                architecture = X64;
+                                bitness      = BIT_64;
+                            } else if (arch.equals("arm")) {
+                                architecture = AARCH64;
+                                bitness      = BIT_64;
+                            } else {
+                                return;
+                            }
+                            pkg.setArchitecture(architecture);
+                            pkg.setBitness(bitness);
+                        } else {
+                            return;
                         }
 
                         if (pkgJsonObj.has(FIELD_LATEST)) {
                             pkg.setLatestBuildAvailable(pkgJsonObj.get(FIELD_LATEST).getAsBoolean());
                         }
 
-                        if (pkgJsonObj.has(FIELD_PACKAGE_TYPE)) {
-                            ArchiveType archiveType = ArchiveType.fromText(pkgJsonObj.get(FIELD_PACKAGE_TYPE).getAsString());
-                            if (ArchiveType.NOT_FOUND == archiveType) {
-                                continue;
-                            } else {
-                                pkg.setArchiveType(archiveType);
-                            }
-                        } else {
-                            continue;
-                        }
-
-                        final String filename;
-                        final String downloadLink;
-
-                        if (pkgJsonObj.has(FIELD_FILENAME)) {
-                            filename = pkgJsonObj.get(FIELD_FILENAME).getAsString();
-                            if (null == filename || filename.isEmpty()) {
-                                continue;
-                            } else {
-                                pkg.setFileName(filename);
-                            }
-                        } else {
-                            continue;
-                        }
-
-                        String   filenameWithoutPreset = filename.replace("bellsoft-liberica-vm-openjdk", "");
-                        String[] withoutPresetParts    = filenameWithoutPreset.split("-");
-                        if (withoutPresetParts.length == 4) {
-                            MajorVersion    jv = new MajorVersion(VersionNumber.fromText(withoutPresetParts[0]).getFeature().getAsInt());
-                            ArchiveType     at = Helper.getFileEnding(filename);
-                            pkg.setJdkVersion(jv);
-                            pkg.setArchiveType(at);
-                        } else if (withoutPresetParts.length == 5) {
-                            MajorVersion    jv = new MajorVersion(VersionNumber.fromText(withoutPresetParts[0]).getFeature().getAsInt());
-                            VersionNumber   vn = VersionNumber.fromText(withoutPresetParts[1]);
-                            ArchiveType     at = Helper.getFileEnding(filename);
-                            pkg.setJdkVersion(jv);
-                            pkg.setArchiveType(at);
-                        } else {
-                            continue;
-                        }
-
-                        if (pkgJsonObj.has(FIELD_DOWNLOAD_URL)) {
-                            downloadLink = pkgJsonObj.get(FIELD_DOWNLOAD_URL).getAsString();
-                            if (null == downloadLink || downloadLink.isEmpty()) {
-                                continue;
-                            } else {
-                                pkg.setDirectDownloadUri(downloadLink);
-                                pkg.setSize(Helper.getFileSize(downloadLink));
-                            }
-                        } else {
-                            continue;
-                        }
-
                         if (onlyNewPkgs) {
-                            if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                            if (CacheManager.INSTANCE.pkgCache.getPkgs()
+                                                              .stream()
+                                                              .filter(p -> p.getDirectDownloadUri().equals(pkg.getDirectDownloadUri()))
+                                                              .filter(p -> p.getFilename().equals(pkg.getFilename()))
+                                                              .findFirst().isPresent()) { return; }
                         }
 
                         if (pkgJsonObj.has(FIELD_SHA1)) {
@@ -340,7 +372,7 @@ public class LibericaNative implements Distribution {
                         }
 
                         pkgsFound.add(pkg);
-                    }
+                    });
                 }
             } else {
                 // Problem with url request

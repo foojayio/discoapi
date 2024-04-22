@@ -35,6 +35,7 @@ import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.CacheManager;
 import io.foojay.api.pkg.Distro;
+import io.foojay.api.pkg.Feature;
 import io.foojay.api.pkg.MajorVersion;
 import io.foojay.api.pkg.Pkg;
 import io.foojay.api.util.Constants;
@@ -373,6 +374,10 @@ public class Liberica implements Distribution {
         pkg.setDirectDownloadUri(downloadLink);
 
         pkg.setFreeUseInProduction(Boolean.TRUE);
+
+        if (filename.contains("crac")) {
+            pkg.getFeatures().add(Feature.CRAC);
+        }
 
         if (jsonObj.has(FIELD_SHA1)) {
             String hash = jsonObj.get(FIELD_SHA1).getAsString();

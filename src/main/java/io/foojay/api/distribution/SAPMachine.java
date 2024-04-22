@@ -445,12 +445,16 @@ public class SAPMachine implements Distribution {
                 JsonObject assetJsonObj = element.getAsJsonObject();
                 String     filename     = assetJsonObj.get("name").getAsString();
 
-                if (null == filename || filename.isEmpty() || (!filename.endsWith(Constants.FILE_ENDING_SHA256_TXT) && !filename.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT))) { continue; }
+                if (null == filename || filename.isEmpty() || filename.contains("symbols")) {
+                    continue;
+                }
+
                 String nameToMatch;
-                if (filename.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT)) {
-                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256_DMG_TXT, "");
-                } else if (filename.endsWith(Constants.FILE_ENDING_SHA256_TXT)) {
-                    nameToMatch = filename.replaceAll("." + Constants.FILE_ENDING_SHA256_TXT, "");
+                String fn = filename;
+                if (fn.endsWith(Constants.FILE_ENDING_SHA256_DMG_TXT)) {
+                    nameToMatch = fn.replaceAll("." + Constants.FILE_ENDING_SHA256_DMG_TXT, "");
+                } else if (fn.endsWith(Constants.FILE_ENDING_SHA256_TXT)) {
+                    nameToMatch = fn.replaceAll("." + Constants.FILE_ENDING_SHA256_TXT, "");
                 } else {
                     continue;
                 }

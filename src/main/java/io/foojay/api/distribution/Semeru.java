@@ -207,7 +207,7 @@ public class Semeru implements Distribution {
                 JsonObject assetJsonObj = element.getAsJsonObject();
                 String     filename     = assetJsonObj.get("name").getAsString();
 
-                if (null == filename || filename.isEmpty() || filename.endsWith("txt") || filename.contains("debugimage") || filename.contains("testimage") || filename.endsWith("json")) { continue; }
+                if (null == filename || filename.isEmpty() || filename.endsWith("txt") || filename.contains("debugimage") || filename.contains("testimage") || filename.endsWith("json") || filename.endsWith("bin") || filename.endsWith("sig")) { continue; }
                 if (filename.contains("-debug-")) { continue; }
                 if (null == filename || !filename.startsWith("ibm-semeru-open")) { continue; }
 
@@ -230,7 +230,12 @@ public class Semeru implements Distribution {
 
                 final String[] filenameParts = withoutSuffix.split("_");
 
-                final VersionNumber versionNumber = VersionNumber.fromText(filenameParts[2] + (filenameParts.length == 6 ? ("+b" + filenameParts[3]) : ""));
+                final VersionNumber versionNumber;
+                try {
+                    versionNumber = VersionNumber.fromText(filenameParts[2] + (filenameParts.length == 6 ? ("+b" + filenameParts[3]) : ""));
+                } catch (IllegalArgumentException e) {
+                    continue;
+                }
                 final MajorVersion  majorVersion  = new MajorVersion(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0);
 
                 String downloadLink = assetJsonObj.get("browser_download_url").getAsString();

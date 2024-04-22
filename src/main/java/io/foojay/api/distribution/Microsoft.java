@@ -172,7 +172,7 @@ public class Microsoft implements Distribution {
         List<String> sha256FileHrefs = new ArrayList<>(Helper.getSha256FileHrefsFromString(html));
         for (String href : fileHrefs) {
             final String filename = Helper.getFileNameFromText(href);
-            if (filename.contains("debugsymbols") || filename.startsWith("jdk") || filename.contains("sources")) { continue; }
+            if (filename.contains("debugsymbols") || filename.startsWith("jdk") || filename.contains("sources") || filename.endsWith("sig")) { continue; }
 
             if (onlyNewPkgs) {
                 if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(href)).count() > 0) { continue; }
