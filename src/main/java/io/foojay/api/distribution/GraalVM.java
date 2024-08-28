@@ -349,7 +349,7 @@ public class GraalVM implements Distribution {
         }
     }
 
-    public List<Pkg> getAllPkgsFrom17AndAbove(final boolean onlyNewPkgs) {
+    public List<Pkg> getAllPkgsFrom17AndAbove(final boolean includingEA, final boolean onlyNewPkgs) {
         final List<Pkg>                                                  pkgs             = new ArrayList<>();
         final String                                                     baseUrl          = "https://download.oracle.com/graalvm/";
         final List<OperatingSystem>                                      operatingSystems = List.of(OperatingSystem.LINUX, OperatingSystem.MACOS, OperatingSystem.WINDOWS);
@@ -429,15 +429,20 @@ public class GraalVM implements Distribution {
                                      });
                                  });
                              });
+
+        if (includingEA) {
+            pkgs.addAll(getEaBuildsFromGithub());
+        }
+
         return pkgs;
     }
 
     public List<Pkg> getEaBuildsFromGithub() {
+        LOGGER.error("Fetching ea-pkgs from github");
         List<Pkg> pkgsFound = new ArrayList<>();
         CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> majorVersion.getAsInt() > 21).forEach(majorVersion -> {
             String jsonFilename = majorVersion.getAsInt() + "-ea.json";
             String eaJsonUri    = EA_BUILDS_URL + jsonFilename;
-            System.out.println(eaJsonUri);
             try {
                 HttpResponse<String> response = Helper.get(eaJsonUri);
                 if (null != response) {
@@ -494,6 +499,7 @@ public class GraalVM implements Distribution {
                         }
                     }
                 }
+                LOGGER.error("Successfully fetched {} ea-pkgs from github", pkgsFound.size());
             } catch (Exception e) {
                 LOGGER.error("Error reading {} file from github. {}", jsonFilename, e.getMessage());
             }

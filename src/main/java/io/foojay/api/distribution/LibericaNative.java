@@ -194,7 +194,7 @@ public class LibericaNative implements Distribution {
 
     public List<Pkg> getAllPkgs(final boolean onlyNewPkgs) {
         final List<Pkg>           pkgsFound = new ArrayList<>();
-        final String              apiUrl    = "https://api.bell-sw.com/v1/nik/releases?bundle-type=standard&components=liberica&fields=bitness,components,os,downloadUrl,LTS,bundleType,packageType,version,filename,size,GA,architecture&components=nik";
+        final String              apiUrl    = "https://api.bell-sw.com/v1/nik/releases?bundle-type=standard&bundle-type=full&components=liberica&fields=bitness,components,os,downloadUrl,LTS,bundleType,packageType,version,filename,size,GA,architecture&components=nik";
         final Map<String, String> headers   = new HashMap<>();
         headers.put("accept", "application/json");
 
@@ -217,8 +217,13 @@ public class LibericaNative implements Distribution {
                         pkg.setFPU(FPU.UNKNOWN);
                         pkg.setDirectlyDownloadable(true);
                         pkg.setFreeUseInProduction(true);
-                        pkg.setJavaFXBundled(false);
                         pkg.setPackageType(JDK);
+
+                        boolean bundleTypeFull = false;
+                        if (pkgJsonObj.has(FIELD_BUNDLE_TYPE)) {
+                            bundleTypeFull = pkgJsonObj.get(FIELD_BUNDLE_TYPE).getAsString().toLowerCase().equals("full");
+                        }
+                        pkg.setJavaFXBundled(bundleTypeFull);
 
                         if (pkgJsonObj.has(FIELD_BITNESS)) {
                             Bitness bitness = Bitness.fromInt(pkgJsonObj.get(FIELD_BITNESS).getAsInt());
@@ -253,7 +258,7 @@ public class LibericaNative implements Distribution {
                         }
 
 
-                        String   filenameWithoutPreset = filename.replace("bellsoft-liberica-vm-openjdk", "");
+                        String   filenameWithoutPreset = filename.replace(bundleTypeFull ? "bellsoft-liberica-vm-full-openjdk": "bellsoft-liberica-vm-openjdk", "");
                         String[] withoutPresetParts    = filenameWithoutPreset.split("-");
                         if (withoutPresetParts.length == 4) {
                             MajorVersion    jv = new MajorVersion(VersionNumber.fromText(withoutPresetParts[0]).getFeature().getAsInt());
