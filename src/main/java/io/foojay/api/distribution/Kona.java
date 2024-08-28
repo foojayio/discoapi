@@ -61,7 +61,7 @@ import static eu.hansolo.jdktools.OperatingSystem.LINUX;
 import static eu.hansolo.jdktools.OperatingSystem.MACOS;
 import static eu.hansolo.jdktools.OperatingSystem.WINDOWS;
 import static eu.hansolo.jdktools.PackageType.JDK;
-
+import static eu.hansolo.jdktools.PackageType.JRE;
 
 public class Kona implements Distribution {
     private static final Logger LOGGER = LoggerFactory.getLogger(Kona.class);
@@ -264,7 +264,11 @@ public class Kona implements Distribution {
                 pkg.setDistributionVersion(vNumber);
                 pkg.setJdkVersion(new MajorVersion(vNumber.getFeature().getAsInt()));
                 pkg.setTermOfSupport(Helper.getTermOfSupport(vNumber));
-                pkg.setPackageType(JDK);
+                if (filename.contains("_jre")) {
+                    pkg.setPackageType(JRE);
+                } else {
+                    pkg.setPackageType(JDK);
+                }
                 pkg.setReleaseStatus(filename.contains("-ea") ? ReleaseStatus.EA : ReleaseStatus.GA);
 
                 if (filename.contains("_fiber")) { pkg.setFeatures(List.of(Feature.KONA_FIBER)); }
