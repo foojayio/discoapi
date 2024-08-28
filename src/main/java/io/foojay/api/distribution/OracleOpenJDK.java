@@ -236,6 +236,12 @@ public class OracleOpenJDK implements Distribution {
                     } else {
                         Pkg pkg = getPkgForOperatingSystem(versionNumber, os, architecture, releaseStatus);
                         if (null == pkg) { continue; }
+
+                        if (WINDOWS == pkg.getOperatingSystem())  {
+                            if (pkg.getFilename().contains("linux")) { continue; }
+                            if (pkg.getFilename().contains("macos")) { continue; }
+                        }
+
                         pkgs.add(pkg);
                     }
                 }
@@ -380,6 +386,11 @@ public class OracleOpenJDK implements Distribution {
 
                 pkg.setSize(Helper.getFileSize(downloadLink));
 
+                if (WINDOWS == pkg.getOperatingSystem())  {
+                    if (pkg.getFilename().contains("linux")) { continue; }
+                    if (pkg.getFilename().contains("macos")) { continue; }
+                }
+
                 pkgs.add(pkg);
             }
         }
@@ -505,6 +516,11 @@ public class OracleOpenJDK implements Distribution {
                 pkg.setFreeUseInProduction(Boolean.TRUE);
 
                 pkg.setSize(Helper.getFileSize(downloadLink));
+
+                if (WINDOWS == pkg.getOperatingSystem())  {
+                    if (pkg.getFilename().contains("linux")) { continue; }
+                    if (pkg.getFilename().contains("macos")) { continue; }
+                }
 
                 pkgs.add(pkg);
             }
@@ -640,6 +656,11 @@ public class OracleOpenJDK implements Distribution {
                 features.add(Feature.CRAC);
                 pkg.setFeatures(features);
 
+                if (WINDOWS == pkg.getOperatingSystem())  {
+                    if (pkg.getFilename().contains("linux")) { continue; }
+                    if (pkg.getFilename().contains("macos")) { continue; }
+                }
+
                 pkgs.add(pkg);
             }
         }
@@ -657,7 +678,16 @@ public class OracleOpenJDK implements Distribution {
             if (null != response) {
                 String html = response.body();
                 if (!html.isEmpty()) {
-                    pkgs.addAll(extractPackagesFromHtml(html, false, onlyNewPkgs));
+                    List<Pkg> pkgsFromHtml = extractPackagesFromHtml(html, false, onlyNewPkgs);
+                    pkgsFromHtml.forEach(pkg -> {
+                        if (WINDOWS == pkg.getOperatingSystem())  {
+                            if (!pkg.getFilename().contains("linux") && !pkg.getFilename().contains("macos")) {
+                                pkgs.add(pkg);
+                            }
+                        } else {
+                            pkgs.add(pkg);
+                        }
+                    });
                 }
             }
         } catch (Exception e) {
@@ -675,7 +705,16 @@ public class OracleOpenJDK implements Distribution {
                     String html = response.body();
                     if (!html.isEmpty()) {
                         isReleaseCandidate = html.contains("Release-Candidate");
-                        pkgs.addAll(extractPackagesFromHtml(html, isReleaseCandidate, onlyNewPkgs));
+                        List<Pkg> pkgsFromHtml = extractPackagesFromHtml(html, isReleaseCandidate, onlyNewPkgs);
+                        pkgsFromHtml.forEach(pkg -> {
+                           if (WINDOWS == pkg.getOperatingSystem())  {
+                               if (!pkg.getFilename().contains("linux") && !pkg.getFilename().contains("macos")) {
+                                   pkgs.add(pkg);
+                               }
+                           } else {
+                               pkgs.add(pkg);
+                           }
+                        });
                     }
                 }
             } catch (Exception e) {
@@ -817,7 +856,15 @@ public class OracleOpenJDK implements Distribution {
 
                 pkg.setSize(Helper.getFileSize(downloadLink));
 
-                if (!pkgMap.containsKey(pkg)) { pkgMap.put(pkg.getId(), pkg); }
+                if (!pkgMap.containsKey(pkg)) {
+                    if (WINDOWS == pkg.getOperatingSystem())  {
+                        if (!pkg.getFilename().contains("linux") && !pkg.getFilename().contains("macos")) {
+                            pkgMap.put(pkg.getId(), pkg);
+                        }
+                    } else {
+                        pkgMap.put(pkg.getId(), pkg);
+                    }
+                }
             }
         });
 
@@ -903,6 +950,10 @@ public class OracleOpenJDK implements Distribution {
 
         pkg.setSize(Helper.getFileSize(downloadLink));
 
+        if (WINDOWS == pkg.getOperatingSystem() && (pkg.getFilename().contains("linux") || pkg.getFilename().contains("macos"))) {
+            return null;
+        }
+
         return pkg;
     }
 
@@ -971,6 +1022,12 @@ public class OracleOpenJDK implements Distribution {
 
             pkg.setFreeUseInProduction(Boolean.TRUE);
             pkg.setSize(Helper.getFileSize(downloadLink));
+
+            if (WINDOWS == pkg.getOperatingSystem()) {
+                if (pkg.getFilename().contains("linux")) { continue; }
+                if (pkg.getFilename().contains("macos")) { continue; }
+            }
+
             pkgs.add(pkg);
         }
 
