@@ -84,7 +84,7 @@ public class Kona implements Distribution {
     private static final SignatureType SIGNATURE_TYPE      = SignatureType.NONE;
     private static final HashAlgorithm SIGNATURE_ALGORITHM = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI          = "";
-    private static final String                       OFFICIAL_URI           = "https://github.com/Tencent/TencentKona-11/wiki";
+    private static final String                       OFFICIAL_URI           = "https://tencent.github.io/konajdk";
 
 
     @Override public Distro getDistro() { return Distro.KONA; }
@@ -140,7 +140,7 @@ public class Kona implements Distribution {
         queryBuilder.append(PACKAGE_URL);
 
         switch(versionNumber.getFeature().getAsInt()) {
-            case 8, 11, 17 -> queryBuilder.append("-").append(versionNumber.getFeature().getAsInt()).append("/releases").append("?per_page=100");
+            case 8, 11, 17, 21 -> queryBuilder.append("-").append(versionNumber.getFeature().getAsInt()).append("/releases").append("?per_page=100");
             default        -> { return ""; }
         }
 
@@ -162,7 +162,7 @@ public class Kona implements Distribution {
 
         CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> majorVersion.getAsInt() > 7).forEach(majorVersion -> {
             switch(majorVersion.getAsInt()) {
-                case 8, 11, 17 -> packageUrls.add(new StringBuilder(PACKAGE_URL).append("-").append(majorVersion.getAsInt()).append("/releases").append("?per_page=100").toString());
+                case 8, 11, 17, 21 -> packageUrls.add(new StringBuilder(PACKAGE_URL).append("-").append(majorVersion.getAsInt()).append("/releases").append("?per_page=100").toString());
         }
         });
 
@@ -236,14 +236,7 @@ public class Kona implements Distribution {
                 VersionNumber vNumber = null;
                 String        n       = filename.replace("TencentKona", "");
                 if (n.startsWith("-")) { n = n.substring(1); }
-                if (n.startsWith("17")) {
-                    n = n.replace("_signed", "");
-                    n = n.replace("_notarized", "");
-                    n = n.replace("_64", "");
-                    n = n.substring(0, n.indexOf("_"));
-                    if (n.endsWith("-jdk")) { n = n.replace("-jdk", ""); }
-                    vNumber = VersionNumber.fromText(n);
-                } else if (n.startsWith("11")) {
+                if (n.startsWith("21") || n.startsWith("17") || n.startsWith("11")) {
                     n = n.replace("_signed", "");
                     n = n.replace("_notarized", "");
                     n = n.replace("_64", "");
@@ -256,7 +249,7 @@ public class Kona implements Distribution {
                     n = n.replace("_notarized", "");
                     n = n.replace("_64", "");
                     String[] parts = n.split("_");
-                        vNumber = VersionNumber.fromText(parts[parts.length - 1]);
+                    vNumber = VersionNumber.fromText(parts[parts.length - 1]);
                     }
                 if (null == vNumber) { continue; }
 
