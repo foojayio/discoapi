@@ -63,6 +63,7 @@ import static eu.hansolo.jdktools.Architecture.ARM;
 import static eu.hansolo.jdktools.Architecture.MIPS;
 import static eu.hansolo.jdktools.Architecture.PPC64;
 import static eu.hansolo.jdktools.Architecture.PPC64LE;
+import static eu.hansolo.jdktools.Architecture.RISCV64;
 import static eu.hansolo.jdktools.Architecture.SPARCV9;
 import static eu.hansolo.jdktools.Architecture.X64;
 import static eu.hansolo.jdktools.Architecture.X86;
@@ -96,7 +97,7 @@ public class Temurin implements Distribution {
     private static final String        BITNESS_PARAM          = "";
 
     // Mappings for url parameters
-    private static final Map<Architecture, String>    ARCHITECTURE_MAP         = Map.of(AARCH64, "aarch64", ARM, "arm", MIPS, "mips", PPC64, "ppc64", PPC64LE, "ppc64le", SPARCV9, "sparcv9", X64, "x64", X86, "x32");
+    private static final Map<Architecture, String>    ARCHITECTURE_MAP         = Map.of(AARCH64, "aarch64", ARM, "arm", MIPS, "mips", PPC64, "ppc64", PPC64LE, "ppc64le", SPARCV9, "sparcv9", X64, "x64", X86, "x32", RISCV64, "riscv64");
     private static final Map<OperatingSystem, String> OPERATING_SYSTEM_MAP     = Map.of(LINUX, "linux", MACOS, "mac", WINDOWS, "windows", SOLARIS, "solaris", AIX, "aix");
     private static final Map<PackageType, String>     PACKAGE_TYPE_MAP         = Map.of(JDK, "jdk", JRE, "jre");
     private static final Map<ReleaseStatus, String>   RELEASE_STATUS_MAP       = Map.of(EA, "ea", GA, "ga");
