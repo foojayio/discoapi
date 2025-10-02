@@ -88,7 +88,7 @@ public class SAPMachine implements Distribution {
     private static final String                       GITHUB_USER             = "SAP";
     private static final String                       GITHUB_REPOSITORY       = "SapMachine";
     private static final String                       PACKAGE_URL             = "https://api.github.com/repos/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases";
-    private static final String                       PACKAGE_JSON_URL        = "https://sap.github.io/SapMachine/assets/data/sapmachine_releases.json";
+    private static final String                       PACKAGE_JSON_URL        = "https://sapmachine.io/assets/data/sapmachine_releases.json";
     public  static final List<String>                 PACKAGE_URLS            = List.of("https://github.com/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases/tag/sapmachine-10.0.2%2B13-1",
                                                                                         "https://github.com/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases/tag/sapmachine-12.0.2",
                                                                                         "https://github.com/" + GITHUB_USER + "/" + GITHUB_REPOSITORY + "/releases/tag/sapmachine-13.0.2");
@@ -107,7 +107,7 @@ public class SAPMachine implements Distribution {
     private static final SignatureType                SIGNATURE_TYPE          = SignatureType.NONE;
     private static final HashAlgorithm                SIGNATURE_ALGORITHM     = HashAlgorithm.NONE;
     private static final String                       SIGNATURE_URI           = "";
-    private static final String                       OFFICIAL_URI            = "https://sap.github.io/SapMachine/";
+    private static final String                       OFFICIAL_URI            = "https://sapmachine.io/";
 
 
     @Override public Distro getDistro() { return Distro.SAP_MACHINE; }
@@ -629,7 +629,7 @@ public class SAPMachine implements Distribution {
 
         Helper.checkPkgsForTooEarlyGA(pkgs);
 
-        LOGGER.debug("Successfully fetched {} packages from sap.github.io", pkgs.size());
+        LOGGER.debug("Successfully fetched {} packages from sapmachine.io", pkgs.size());
         return pkgs;
     }
 
