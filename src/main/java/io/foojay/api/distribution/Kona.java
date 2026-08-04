@@ -140,7 +140,7 @@ public class Kona implements Distribution {
         queryBuilder.append(PACKAGE_URL);
 
         switch(versionNumber.getFeature().getAsInt()) {
-            case 8, 11, 17, 21 -> queryBuilder.append("-").append(versionNumber.getFeature().getAsInt()).append("/releases").append("?per_page=100");
+            case 8, 11, 17, 21, 25 -> queryBuilder.append("-").append(versionNumber.getFeature().getAsInt()).append("/releases").append("?per_page=100");
             default        -> { return ""; }
         }
 
@@ -162,7 +162,7 @@ public class Kona implements Distribution {
 
         CacheManager.INSTANCE.getMajorVersions().stream().filter(majorVersion -> majorVersion.getAsInt() > 7).forEach(majorVersion -> {
             switch(majorVersion.getAsInt()) {
-                case 8, 11, 17, 21 -> packageUrls.add(new StringBuilder(PACKAGE_URL).append("-").append(majorVersion.getAsInt()).append("/releases").append("?per_page=100").toString());
+                case 8, 11, 17, 21, 25 -> packageUrls.add(new StringBuilder(PACKAGE_URL).append("-").append(majorVersion.getAsInt()).append("/releases").append("?per_page=100").toString());
         }
         });
 
@@ -236,7 +236,7 @@ public class Kona implements Distribution {
                 VersionNumber vNumber = null;
                 String        n       = filename.replace("TencentKona", "");
                 if (n.startsWith("-")) { n = n.substring(1); }
-                if (n.startsWith("21") || n.startsWith("17") || n.startsWith("11")) {
+                if (n.startsWith("25") || n.startsWith("21") || n.startsWith("17") || n.startsWith("11")) {
                     n = n.replace("_signed", "");
                     n = n.replace("_notarized", "");
                     n = n.replace("_64", "");
