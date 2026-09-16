@@ -972,12 +972,17 @@ public class OracleOpenJDK implements Distribution {
             ArchiveType     archiveType     = Helper.getFileEnding(filename);
             TermOfSupport   termOfSupport   = Helper.getTermOfSupport(versionNumber);
             ReleaseStatus   releaseStatus   = (href.contains("/GA/") || href.contains("/ga/")) ? ReleaseStatus.GA : ReleaseStatus.EA;
-            if (isReleaseCandidate) { releaseStatus = EA; }
+            if (isReleaseCandidate || Helper.isTooEarlyForGA(versionNumber.getFeature().getAsInt())) { releaseStatus = EA; }
             String          downloadLink    = href.replaceAll("\"", "").replace("href=", "");
             String          checksumUri     = Helper.isUriValid(downloadLink + ".sha256") ? downloadLink + ".sha256" : "";
 
+            // Oracle keeps filename and download link when a release candidate becomes GA, only the release status changes
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                final ReleaseStatus statusFound = releaseStatus;
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream()
+                                                            .filter(p -> p.getFilename().equals(filename))
+                                                            .filter(p -> p.getDirectDownloadUri().equals(downloadLink))
+                                                            .anyMatch(p -> p.getReleaseStatus() == statusFound)) { continue; }
             }
 
             BUILD_NUMBER_MATCHER.reset(downloadLink);
