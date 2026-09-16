@@ -972,13 +972,16 @@ public class OracleOpenJDK implements Distribution {
             ArchiveType     archiveType     = Helper.getFileEnding(filename);
             TermOfSupport   termOfSupport   = Helper.getTermOfSupport(versionNumber);
             ReleaseStatus   releaseStatus   = (href.contains("/GA/") || href.contains("/ga/")) ? ReleaseStatus.GA : ReleaseStatus.EA;
-            if (isReleaseCandidate) { releaseStatus = EA; }
+            if (isReleaseCandidate || Helper.isTooEarlyForGA(versionNumber.getFeature().getAsInt())) { releaseStatus = EA; }
             String          downloadLink    = href.replaceAll("\"", "").replace("href=", "");
-            String          checksumUri     = Helper.isUriValid(downloadLink + ".sha256") ? downloadLink + ".sha256" : "";
 
+            // Oracle serves release candidates from the final GA location, so filename and download link
+            // stay the same when the build becomes GA. Only skip a known pkg if its release status is unchanged too.
             if (onlyNewPkgs) {
-                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).count() > 0) { continue; }
+                final ReleaseStatus statusFound = releaseStatus;
+                if (CacheManager.INSTANCE.pkgCache.getPkgs().stream().filter(p -> p.getFilename().equals(filename)).filter(p -> p.getDirectDownloadUri().equals(downloadLink)).anyMatch(p -> p.getReleaseStatus() == statusFound)) { continue; }
             }
+            String          checksumUri     = Helper.isUriValid(downloadLink + ".sha256") ? downloadLink + ".sha256" : "";
 
             BUILD_NUMBER_MATCHER.reset(downloadLink);
             while(BUILD_NUMBER_MATCHER.find()) {

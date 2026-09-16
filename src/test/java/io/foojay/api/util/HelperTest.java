@@ -22,6 +22,7 @@ package io.foojay.api.util;
 import eu.hansolo.jdktools.PackageType;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -169,5 +170,22 @@ public class HelperTest {
 
         final String numberString3 = "text";
         assert !Helper.isPositiveInteger(numberString3);
+    }
+
+    @Test
+    public void tooEarlyForGATest() {
+        final int futureVersion  = 9001;
+        final int pastVersion    = 9002;
+        final int unknownVersion = 9003;
+        Constants.GA_RELEASE_DATES.put(futureVersion, LocalDate.now().plusDays(1));
+        Constants.GA_RELEASE_DATES.put(pastVersion, LocalDate.now());
+        try {
+            assert Helper.isTooEarlyForGA(futureVersion);
+            assert !Helper.isTooEarlyForGA(pastVersion);
+            assert !Helper.isTooEarlyForGA(unknownVersion);
+        } finally {
+            Constants.GA_RELEASE_DATES.remove(futureVersion);
+            Constants.GA_RELEASE_DATES.remove(pastVersion);
+        }
     }
 }

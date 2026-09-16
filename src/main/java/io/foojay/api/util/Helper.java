@@ -857,15 +857,16 @@ public class Helper {
         return releaseDetailsUrl;
     }
 
+    public static final boolean isTooEarlyForGA(final int featureVersion) {
+        final LocalDate gaDate = Constants.GA_RELEASE_DATES.get(featureVersion);
+        return null != gaDate && gaDate.isAfter(LocalDate.now());
+    }
+
     public static final void checkPkgsForTooEarlyGA(final List<Pkg> pkgs) {
-        final LocalDate now = LocalDate.now();
-        Constants.GA_RELEASE_DATES.entrySet()
-                                  .stream()
-                                  .filter(entry -> entry.getValue().isAfter(now))
-                                  .forEach(entry -> pkgs.stream()
-                                                        .filter(pkg -> pkg.getMajorVersion().getAsInt() == entry.getKey())
-                                                        .filter(pkg -> pkg.getReleaseStatus() == ReleaseStatus.GA)
-                                                        .forEach(pkg -> pkg.setReleaseStatus(ReleaseStatus.EA)));
+        pkgs.stream()
+            .filter(pkg -> pkg.getReleaseStatus() == ReleaseStatus.GA)
+            .filter(pkg -> isTooEarlyForGA(pkg.getMajorVersion().getAsInt()))
+            .forEach(pkg -> pkg.setReleaseStatus(ReleaseStatus.EA));
     }
 
     public static final Optional<Semver> getMaxVersionNumber(final BuildScope buildScope, final Integer jdkVersion, final boolean includeEa) {
