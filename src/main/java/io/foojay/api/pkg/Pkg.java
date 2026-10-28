@@ -261,9 +261,15 @@ public class Pkg {
         this.urlValid             = pkg.isUrlValid();
         this.size                 = pkg.getSize();
         pkg.getFeatures().forEach(feature -> this.features.add(Feature.fromText(feature.getApiString())));
-        this.semver               = versionNumber.getFeature().isPresent() ? Semver.fromText(versionNumber.toString()).getSemver1() : new Semver(versionNumber);
+        this.semver               = toSemver(versionNumber);
     }
 
+
+    // The text round trip drops the fifth element of the version number, which JEP 322 ranks above its absence
+    static Semver toSemver(final VersionNumber versionNumber) {
+        boolean keepElements = versionNumber.getFeature().isEmpty() || versionNumber.getFifth().orElse(0) > 0;
+        return keepElements ? new Semver(versionNumber) : Semver.fromText(versionNumber.toString()).getSemver1();
+    }
 
     public Distribution getDistribution() { return distribution; }
     public void setDistribution(final Distribution distribution) { this.distribution = distribution; }
@@ -275,7 +281,7 @@ public class Pkg {
     public VersionNumber getVersionNumber() { return versionNumber; }
     public void setVersionNumber(final VersionNumber versionNumber) {
         this.versionNumber = versionNumber;
-        this.semver        = Semver.fromText(versionNumber.toString()).getSemver1();
+        this.semver        = toSemver(versionNumber);
     }
 
     public VersionNumber getJavaVersion() { return javaVersion; }
@@ -325,7 +331,7 @@ public class Pkg {
     public void setReleaseStatus(final ReleaseStatus releaseStatus) {
         this.releaseStatus = releaseStatus;
         this.versionNumber.setReleaseStatus(releaseStatus);
-        this.semver        = Semver.fromText(versionNumber.toString()).getSemver1();
+        this.semver        = toSemver(versionNumber);
     }
 
     public ArchiveType getArchiveType() { return archiveType; }
