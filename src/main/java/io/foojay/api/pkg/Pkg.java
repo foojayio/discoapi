@@ -261,9 +261,26 @@ public class Pkg {
         this.urlValid             = pkg.isUrlValid();
         this.size                 = pkg.getSize();
         pkg.getFeatures().forEach(feature -> this.features.add(Feature.fromText(feature.getApiString())));
-        this.semver               = versionNumber.getFeature().isPresent() ? Semver.fromText(versionNumber.toString()).getSemver1() : new Semver(versionNumber);
+        this.semver               = toSemver(versionNumber);
     }
 
+
+    // The text round trip drops the fifth element of the version number, which JEP 322 ranks above its absence
+    static Semver toSemver(final VersionNumber versionNumber) {
+        boolean keepElements = versionNumber.getFeature().isEmpty() || versionNumber.getFifth().orElse(0) > 0;
+        return keepElements ? new Semver(versionNumber) : Semver.fromText(versionNumber.toString()).getSemver1();
+    }
+
+    // Semver.toString() does not print the fifth element, so insert it after the numeric core
+    static String toJavaVersion(final Semver semver, final VersionNumber versionNumber) {
+        String version = semver.toString();
+        int    fifth   = versionNumber.getFifth().orElse(0);
+        if (fifth <= 0) { return version; }
+        int end = 0;
+        while (end < version.length() && (Character.isDigit(version.charAt(end)) || '.' == version.charAt(end))) { end++; }
+        String core = versionNumber.getFeature().getAsInt() + "." + versionNumber.getInterim().orElse(0) + "." + versionNumber.getUpdate().orElse(0) + "." + versionNumber.getPatch().orElse(0);
+        return core + "." + fifth + version.substring(end);
+    }
 
     public Distribution getDistribution() { return distribution; }
     public void setDistribution(final Distribution distribution) { this.distribution = distribution; }
@@ -275,7 +292,7 @@ public class Pkg {
     public VersionNumber getVersionNumber() { return versionNumber; }
     public void setVersionNumber(final VersionNumber versionNumber) {
         this.versionNumber = versionNumber;
-        this.semver        = Semver.fromText(versionNumber.toString()).getSemver1();
+        this.semver        = toSemver(versionNumber);
     }
 
     public VersionNumber getJavaVersion() { return javaVersion; }
@@ -325,7 +342,7 @@ public class Pkg {
     public void setReleaseStatus(final ReleaseStatus releaseStatus) {
         this.releaseStatus = releaseStatus;
         this.versionNumber.setReleaseStatus(releaseStatus);
-        this.semver        = Semver.fromText(versionNumber.toString()).getSemver1();
+        this.semver        = toSemver(versionNumber);
     }
 
     public ArchiveType getArchiveType() { return archiveType; }
@@ -417,7 +434,7 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? Boolean.FALSE : latestBuildAvailable).append(COMMA_NEW_LINE)
@@ -454,7 +471,7 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
@@ -488,7 +505,7 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.FEATURE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).append(COMMA_NEW_LINE)
@@ -527,7 +544,7 @@ public class Pkg {
                                                   .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
                                                   .append(QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
@@ -564,7 +581,7 @@ public class Pkg {
                                                   .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
                                                   .append(QUOTES).append(PkgField.FEATURE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).append(COMMA)
@@ -605,7 +622,7 @@ public class Pkg {
                                                   .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
                                                   .append(QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
@@ -643,7 +660,7 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? Boolean.FALSE : latestBuildAvailable).append(COMMA_NEW_LINE)
@@ -680,7 +697,7 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA_NEW_LINE)
@@ -713,7 +730,7 @@ public class Pkg {
                                                   .append(INDENTED_QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA_NEW_LINE)
-                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA_NEW_LINE)
+                                                  .append(INDENTED_QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA_NEW_LINE)
                                                   .append(INDENTED_QUOTES).append(PkgField.FEATURE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).append(COMMA_NEW_LINE)
@@ -751,7 +768,7 @@ public class Pkg {
                                                   .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
                                                   .append(QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)
@@ -788,7 +805,7 @@ public class Pkg {
                                                   .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
                                                   .append(QUOTES).append(PkgField.FEATURE_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().isPresent() ? versionNumber.getFeature().getAsInt() : 0).append(COMMA)
@@ -827,7 +844,7 @@ public class Pkg {
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
                                                   .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.RELEASE_STATUS).append(QUOTES).append(COLON).append(QUOTES).append(releaseStatus.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.OPERATING_SYSTEM).append(QUOTES).append(COLON).append(QUOTES).append(operatingSystem.getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.ARCHITECTURE).append(QUOTES).append(COLON).append(QUOTES).append(architecture.getApiString()).append(QUOTES).append(COMMA)
@@ -850,7 +867,7 @@ public class Pkg {
                                                   .append(QUOTES).append(PkgField.ARCHIVE_TYPE).append(QUOTES).append(COLON).append(QUOTES).append(archiveType.getUiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION).append(QUOTES).append(COLON).append(QUOTES).append(distribution.getDistro().getApiString()).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.MAJOR_VERSION).append(QUOTES).append(COLON).append(versionNumber.getFeature().getAsInt()).append(COMMA)
-                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(semver).append(QUOTES).append(COMMA)
+                                                  .append(QUOTES).append(PkgField.JAVA_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(toJavaVersion(semver, versionNumber)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.DISTRIBUTION_VERSION).append(QUOTES).append(COLON).append(QUOTES).append(distributionVersion.toString(OutputFormat.REDUCED_COMPRESSED, false, false)).append(QUOTES).append(COMMA)
                                                   .append(QUOTES).append(PkgField.JDK_VERSION).append(QUOTES).append(COLON).append(jdkVersion.getAsInt()).append(COMMA)
                                                   .append(QUOTES).append(PkgField.LATEST_BUILD_AVAILABLE).append(QUOTES).append(COLON).append(null == latestBuildAvailable ? false : latestBuildAvailable).append(COMMA)

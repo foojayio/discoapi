@@ -19,6 +19,7 @@
 
 package io.foojay.api.distribution;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.ArchiveType;
@@ -44,10 +45,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.OptionalInt;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -113,6 +117,7 @@ public class Liberica implements Distribution {
     private static final String                       FIELD_INTERIM_VERSION           = "interimVersion";
     private static final String                       FIELD_UPDATE_VERSION            = "updateVersion";
     private static final String                       FIELD_PATCH_VERSION             = "patchVersion";
+    private static final String                       FIELD_EXTRA_VERSION             = "extraVersion";
     private static final String                       FIELD_BUILD_VERSION             = "buildVersion";
     private static final String                       FIELD_FX                        = "FX";
     private static final String                       FIELD_PACKAGE_TYPE              = "packageType";
@@ -169,11 +174,19 @@ public class Liberica implements Distribution {
     }
 
     @Override public List<Semver> getVersions() {
-        return CacheManager.INSTANCE.pkgCache.getPkgs()
-                                             .stream()
-                                             .filter(pkg -> Distro.LIBERICA.get().equals(pkg.getDistribution()))
-                                             .map(pkg -> pkg.getSemver())
-                                             .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Semver::toString)))).stream().sorted(Comparator.comparing(Semver::getVersionNumber).reversed()).collect(Collectors.toList());
+        return distinctVersions(CacheManager.INSTANCE.pkgCache.getPkgs()
+                                                    .stream()
+                                                    .filter(pkg -> Distro.LIBERICA.get().equals(pkg.getDistribution()))
+                                                    .map(pkg -> pkg.getSemver())
+                                                    .collect(Collectors.toList()));
+    }
+
+    // toString() omits the fifth element, so compare the version number as well
+    static List<Semver> distinctVersions(final Collection<Semver> semvers) {
+        final Comparator<Semver> byVersionNumber = Comparator.comparing(Semver::getVersionNumber);
+        final Set<Semver>        distinct        = new TreeSet<>(Comparator.<Semver, String>comparing(Semver::toString).thenComparing(byVersionNumber));
+        distinct.addAll(semvers);
+        return distinct.stream().sorted(byVersionNumber.reversed()).collect(Collectors.toList());
     }
 
 
@@ -265,7 +278,11 @@ public class Liberica implements Distribution {
 
         String        filename      = jsonObj.get(FIELD_FILENAME).getAsString();
         String        downloadLink  = jsonObj.get(FIELD_DOWNLOAD_URL).getAsString();
-        VersionNumber vNumber       = new VersionNumber(jsonObj.get(FIELD_FEATURE_VERSION).getAsInt(), jsonObj.get(FIELD_INTERIM_VERSION).getAsInt(), jsonObj.get(FIELD_UPDATE_VERSION).getAsInt(), jsonObj.get(FIELD_PATCH_VERSION).getAsInt());
+        VersionNumber vNumber       = new VersionNumber(jsonObj.get(FIELD_FEATURE_VERSION).getAsInt(),
+                                                        jsonObj.get(FIELD_INTERIM_VERSION).getAsInt(),
+                                                        jsonObj.get(FIELD_UPDATE_VERSION).getAsInt(),
+                                                        jsonObj.get(FIELD_PATCH_VERSION).getAsInt());
+        getFifthElement(jsonObj).ifPresent(vNumber::setFifth);
         VersionNumber dNumber       = new VersionNumber(versionNumber);
         Integer       buildVersion  = jsonObj.get(FIELD_BUILD_VERSION).getAsInt();
 
@@ -392,5 +409,12 @@ public class Liberica implements Distribution {
         Helper.checkPkgsForTooEarlyGA(pkgs);
 
         return pkgs;
+    }
+
+    // BellSoft security rebuilds (e.g. 25.0.5.0.3+5) have a fifth element in the version number (JEP 322)
+    static OptionalInt getFifthElement(final JsonObject jsonObj) {
+        JsonElement element = jsonObj.get(FIELD_EXTRA_VERSION);
+        int         extra   = null == element || element.isJsonNull() ? 0 : element.getAsInt();
+        return extra > 0 ? OptionalInt.of(extra) : OptionalInt.empty();
     }
 }
