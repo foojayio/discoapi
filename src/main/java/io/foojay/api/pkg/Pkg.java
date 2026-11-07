@@ -278,7 +278,8 @@ public class Pkg {
         if (fifth <= 0) { return version; }
         int end = 0;
         while (end < version.length() && (Character.isDigit(version.charAt(end)) || '.' == version.charAt(end))) { end++; }
-        return version.substring(0, end) + "." + fifth + version.substring(end);
+        String core = versionNumber.getFeature().getAsInt() + "." + versionNumber.getInterim().orElse(0) + "." + versionNumber.getUpdate().orElse(0) + "." + versionNumber.getPatch().orElse(0);
+        return core + "." + fifth + version.substring(end);
     }
 
     public Distribution getDistribution() { return distribution; }

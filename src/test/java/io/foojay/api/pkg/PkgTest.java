@@ -19,6 +19,7 @@
 
 package io.foojay.api.pkg;
 
+import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import org.junit.jupiter.api.Test;
 
@@ -49,5 +50,33 @@ public class PkgTest {
 
         assertEquals("25.0.5.0.3+5", Pkg.toJavaVersion(Pkg.toSemver(rebuild), rebuild));
         assertEquals("25.0.5+11", Pkg.toJavaVersion(Pkg.toSemver(regular), regular));
+    }
+
+    @Test
+    public void javaVersionUnchangedWithoutFifthElement() {
+        VersionNumber temurinPatch = new VersionNumber(25, 0, 4, 1);
+        temurinPatch.setBuild(1);
+        VersionNumber three = new VersionNumber(21, 0, 13);
+        three.setBuild(9);
+        VersionNumber feature = new VersionNumber(27);
+        VersionNumber eaWithFifthZero = new VersionNumber(25, 0, 5, 0);
+        eaWithFifthZero.setFifth(0);
+        eaWithFifthZero.setBuild(9);
+
+        for (VersionNumber vn : new VersionNumber[] { temurinPatch, three, feature, eaWithFifthZero }) {
+            assertEquals(Pkg.toSemver(vn).toString(), Pkg.toJavaVersion(Pkg.toSemver(vn), vn));
+        }
+        assertEquals("25.0.4.1+1", Pkg.toJavaVersion(Pkg.toSemver(temurinPatch), temurinPatch));
+        assertEquals("21.0.13+9", Pkg.toJavaVersion(Pkg.toSemver(three), three));
+    }
+
+    @Test
+    public void javaVersionKeepsZeroPatchWhenSemverLostFifthElement() {
+        VersionNumber rebuild = new VersionNumber(25, 0, 5, 0);
+        rebuild.setFifth(3);
+        rebuild.setBuild(5);
+        Semver lost = Semver.fromText(rebuild.toString()).getSemver1();
+
+        assertEquals("25.0.5.0.3+5", Pkg.toJavaVersion(lost, rebuild));
     }
 }
